@@ -31,7 +31,7 @@ inline Custom_url_widget::Custom_url_widget(QWidget * const parent) : QWidget(pa
          horizontal_layout_.addWidget(&add_button_);
          horizontal_layout_.addWidget(&cancel_button_);
          
-         input_line_.setPlaceholderText("Paste the link here.");
+         input_line_.setPlaceholderText("Paste the link here");
 
          connect_buttons();
 }

@@ -4,7 +4,10 @@
 #include "custom_url_widget.hxx"
 #include <QMainWindow>
 #include <QMessageBox>
+#include <QToolBar>
 #include <string_view>
+#include <QMenuBar>
+#include <QMenu>
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -17,14 +20,16 @@ public:
          ~Main_window() override = default;
 
 private:
-         void setup_menu_bar(QMenuBar * menu_bar) const noexcept;
-         void setup_file_menu(QMenu * file_menu) const noexcept;
-         void confirm_quit() const noexcept;
-         void input_custom_link() noexcept;
+         void setup_menu_bar() noexcept;
+         void add_top_actions() noexcept;
 
+         void input_custom_link() noexcept;
+         void confirm_quit() const noexcept;
+
+         QToolBar tool_bar_;
+         QMenu file_menu_ = QMenu("File",menuBar());
          QWidget central_widget_;
          Custom_url_widget custom_url_widget_;
-
 signals:
          void quit() const;
          
@@ -36,7 +41,12 @@ inline Main_window::Main_window(){
          setWindowTitle("Torapp");
          setMinimumSize(QSize(800,640));
          setCentralWidget(&central_widget_);
-         setup_menu_bar(menuBar());
+         addToolBar(&tool_bar_);
+
+         tool_bar_.setFloatable(false);
+
+         setup_menu_bar();
+         add_top_actions();
 
          connect(&custom_url_widget_,&Custom_url_widget::url_received,this,&Main_window::handle_custom_url);
 }
