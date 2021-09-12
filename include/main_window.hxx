@@ -1,13 +1,16 @@
 #ifndef MAIN_WINDOW_HXX
 #define MAIN_WINDOW_HXX
 
-#include "custom_url_widget.hxx"
+#include "custom_download_widget.hxx"
+#include "network_manager.hxx"
+#include "download_status_tracker.hxx"
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QToolBar>
 #include <string_view>
 #include <QMenuBar>
 #include <QMenu>
+#include <QFile>
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -15,26 +18,30 @@ public:
          Main_window();
          Main_window(const Main_window & rhs) = delete;
          Main_window(Main_window && rhs) = delete;
-         Main_window & operator = (Main_window && rhs) = delete;
          Main_window & operator = (const Main_window & rhs) = delete;
+         Main_window & operator = (Main_window && rhs) = delete;
          ~Main_window() override = default;
 
 private:
+         // display
          void setup_menu_bar() noexcept;
          void add_top_actions() noexcept;
-
+         // network
          void input_custom_link() noexcept;
+         // helpers
          void confirm_quit() const noexcept;
 
+         QWidget central_widget_;
+         QHBoxLayout central_layout_ = QHBoxLayout(&central_widget_);
          QToolBar tool_bar_;
          QMenu file_menu_ = QMenu("File",menuBar());
-         QWidget central_widget_;
-         Custom_url_widget custom_url_widget_;
+         Custom_download_widget custom_download_widget_;
+         Network_manager network_manager_;
 signals:
          void quit() const;
          
 public slots:
-         void handle_custom_url(const QUrl & custom_url) const noexcept;
+         void handle_custom_url(const QUrl & custom_url) noexcept;
 };
 
 inline Main_window::Main_window(){
@@ -48,7 +55,7 @@ inline Main_window::Main_window(){
          setup_menu_bar();
          add_top_actions();
 
-         connect(&custom_url_widget_,&Custom_url_widget::url_received,this,&Main_window::handle_custom_url);
+         connect(&custom_download_widget_,&Custom_download_widget::request_received,this,&Main_window::handle_custom_url);
 }
 
 inline void Main_window::confirm_quit() const noexcept {
@@ -62,8 +69,14 @@ inline void Main_window::confirm_quit() const noexcept {
          }
 }
 
-inline void Main_window::handle_custom_url(const QUrl & custom_url) const noexcept {
-         qInfo() << custom_url;
+inline void Main_window::handle_custom_url(const QUrl & custom_url) noexcept {
+         auto tracker = std::make_shared<Download_status_tracker>();
+         //todo get the directory from custom request widget
+         //todo also rename that
+         auto file_handle = std::make_shared<QFile>("/home/ali");
+
+         central_layout_.addWidget(tracker.get());
+         network_manager_.new_download(custom_url,tracker,file_handle);
 }
 
 #endif // MAIN_WINDOW_HXX

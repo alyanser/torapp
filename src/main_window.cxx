@@ -15,6 +15,6 @@ void Main_window::add_top_actions() noexcept {
          file_menu_.addAction(custom_link_action);
          file_menu_.addAction(exit_action);
 
-         connect(custom_link_action,&QAction::triggered,&custom_url_widget_,&Custom_url_widget::show);
+         connect(custom_link_action,&QAction::triggered,&custom_download_widget_,&Custom_download_widget::show);
          connect(exit_action,&QAction::triggered,this,&Main_window::confirm_quit);
 }
