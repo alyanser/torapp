@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 set(CXX_FLAGS "-stdlib=libc++ -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmissing-declarations -Wold-style-cast  -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wswitch-default -Wundef")
 
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CXX_FLAGS}")
 
@@ -20,6 +20,7 @@ set(SOURCES
          src/main.cxx
          src/main_window.cxx
          src/network_manager.cxx
+         src/custom_download_widget.cxx
 )
 
 set(MOC_INCLUDES

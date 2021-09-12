@@ -70,8 +70,9 @@ inline Download_status_tracker::Download_status_tracker(const QString & package_
 
 inline void Download_status_tracker::bind_lifetime_with_cancel_button() noexcept {
 
-         connect(&cancel_button_,&QPushButton::clicked,this,[this,self = shared_from_this()](){
-                  emit request_cancelled();
+         //! potential bug
+         connect(&cancel_button_,&QPushButton::clicked,this,[self = shared_from_this()]{
+                  emit self->request_cancelled();
                   Ensures(self.unique());
 
          },Qt::SingleShotConnection);

@@ -86,6 +86,7 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          tracker->bind_lifetime_with_cancel_button();
          central_layout_.addWidget(tracker.get());
 
+         //! consider the consequences of multiple requests on same file
          if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
                   tracker->set_misc_state(Download_status_tracker::Misc_State::File_Write_Error);
          }else{
