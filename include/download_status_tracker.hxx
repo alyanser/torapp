@@ -1,7 +1,6 @@
 #ifndef DOWNLOAD_STATUS_TRACKER_HXX
 #define DOWNLOAD_STATUS_TRACKER_HXX
 
-#include <gsl/assert>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -53,8 +52,8 @@ public slots:
 };
 
 inline Download_status_tracker::Download_status_tracker(const QString & package_name,const QString & download_path){
-         Expects(!package_name.isEmpty());
-         Expects(!download_path.isEmpty());
+         assert(!package_name.isEmpty());
+         assert(!download_path.isEmpty());
 
          package_name_label_.setText(package_name);
          download_path_label_.setText(download_path);
@@ -73,7 +72,7 @@ inline void Download_status_tracker::bind_lifetime_with_cancel_button() noexcept
          //! potential bug
          connect(&cancel_button_,&QPushButton::clicked,this,[self = shared_from_this()]{
                   emit self->request_cancelled();
-                  Ensures(self.unique());
+                  assert(self.unique());
 
          },Qt::SingleShotConnection);
 }
@@ -91,11 +90,12 @@ inline void Download_status_tracker::setup_state_widget() noexcept {
          state_widget_.addWidget(&download_progress_bar_);
          state_widget_.addWidget(&state_line_);
 
-         Ensures(!state_widget_.currentIndex());
+         assert(!state_widget_.currentIndex());
 }
 
 inline void Download_status_tracker::set_misc_state(const Misc_State new_misc_state) noexcept {
-         Expects(new_misc_state != Misc_State::No_State && new_misc_state != Misc_State::Custom_State);
+         assert(new_misc_state != Misc_State::No_State);
+         assert(new_misc_state != Misc_State::Custom_State);
 
          misc_state_ = new_misc_state;
          update_state_line();

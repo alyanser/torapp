@@ -5,7 +5,6 @@
 #include "network_manager.hxx"
 #include "download_status_tracker.hxx"
 
-#include <gsl/assert>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QToolBar>
@@ -77,8 +76,8 @@ inline void Main_window::confirm_quit() const noexcept {
 }
 
 inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString & download_path) noexcept {
-         Expects(!download_path.isEmpty());
-         Expects(!custom_url.isEmpty());
+         Assert(!download_path.isEmpty());
+         Assert(!custom_url.isEmpty());
 
          auto file_handle = std::make_shared<QFile>(download_path);
          auto tracker = std::make_shared<Download_status_tracker>(custom_url.toString(),download_path);
