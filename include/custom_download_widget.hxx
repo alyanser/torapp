@@ -31,7 +31,7 @@ private:
          QLabel url_label_ = QLabel("Url: ");
          QLabel path_label_ = QLabel("Path: ");
 
-         QPushButton add_button_ = QPushButton("Add");
+         QPushButton download_button_ = QPushButton("Download");
          QPushButton cancel_button_ = QPushButton("Cancel");
          QToolButton path_button_;
 
@@ -56,7 +56,7 @@ inline Custom_download_widget::Custom_download_widget(QWidget * const parent) : 
          url_layout_.addWidget(&url_label_);
          url_layout_.addWidget(&url_line_);
          
-         button_layout_.addWidget(&add_button_);
+         button_layout_.addWidget(&download_button_);
          button_layout_.addWidget(&cancel_button_);
 
          path_layout_.addWidget(&path_label_);
@@ -80,7 +80,7 @@ inline Custom_download_widget::Custom_download_widget(QWidget * const parent) : 
          });
 
          connect(&url_line_,&QLineEdit::returnPressed,this,&Custom_download_widget::on_input_received);
-         connect(&add_button_,&QPushButton::clicked,this,&Custom_download_widget::on_input_received);
+         connect(&download_button_,&QPushButton::clicked,this,&Custom_download_widget::on_input_received);
 }
 
 inline void Custom_download_widget::on_input_received() noexcept {

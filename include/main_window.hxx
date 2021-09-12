@@ -32,7 +32,7 @@ private:
          void confirm_quit() const noexcept;
 
          QWidget central_widget_;
-         QHBoxLayout central_layout_ = QHBoxLayout(&central_widget_);
+         QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
          QToolBar tool_bar_;
          QMenu file_menu_ = QMenu("File",menuBar());
          Custom_download_widget custom_download_widget_;
@@ -47,7 +47,7 @@ public slots:
 inline Main_window::Main_window(){
          {
                   constexpr size_t min_width = 800;
-                  constexpr size_t min_height = 800;
+                  constexpr size_t min_height = 640;
 
                   setMinimumSize(QSize(min_width,min_height));
          }
@@ -56,6 +56,7 @@ inline Main_window::Main_window(){
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
 
+         central_layout_.setAlignment(Qt::AlignTop);
          tool_bar_.setFloatable(false);
 
          setup_menu_bar();
@@ -79,16 +80,16 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          Expects(!download_path.isEmpty());
          Expects(!custom_url.isEmpty());
 
-         auto tracker = std::make_shared<Download_status_tracker>();
          auto file_handle = std::make_shared<QFile>(download_path);
+         auto tracker = std::make_shared<Download_status_tracker>(custom_url.toString(),download_path);
 
+         tracker->bind_lifetime_with_cancel_button();
          central_layout_.addWidget(tracker.get());
 
-         //todo report errors
-         if(!custom_url.isValid()){
-         }else if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+         if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+                  tracker->set_state(Download_status_tracker::State::File_Write_Error);
          }else{
-                  network_manager_.download(custom_url,tracker,file_handle);
+                  network_manager_.download(custom_url,*tracker,file_handle);
          }
 }
 

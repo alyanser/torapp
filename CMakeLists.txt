@@ -6,7 +6,7 @@ set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-set(CXX_FLAGS "-stdlib=libc++ -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmissing-declarations -Wold-style-cast  -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wswitch-default -Wundef")
+set(CXX_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmissing-declarations -Wold-style-cast  -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wswitch-default -Wundef")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address ${CXX_FLAGS}")
 
@@ -49,4 +49,6 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QMainWindow"]]
          [["QWidget"]]
          [["QNetworkAccessManager"]]
+         [["gsl/assert"]]
+         [["QDebug"]]
 )
