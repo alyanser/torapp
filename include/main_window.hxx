@@ -87,7 +87,7 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          central_layout_.addWidget(tracker.get());
 
          if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                  tracker->set_state(Download_status_tracker::State::File_Write_Error);
+                  tracker->set_misc_state(Download_status_tracker::Misc_State::File_Write_Error);
          }else{
                   network_manager_.download(custom_url,*tracker,file_handle);
          }

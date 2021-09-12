@@ -10,24 +10,31 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
          Expects(!address.isEmpty());
 
          const QNetworkRequest network_request(address);
-
          auto network_reply = std::shared_ptr<QNetworkReply>(get(network_request));
 
-         const auto on_ready_read = [&tracker,network_reply = network_reply.get(),file_handle = file_handle.get()]{
+         connect(&tracker,&Download_status_tracker::request_cancelled,network_reply.get(),[network_reply = network_reply.get()]{
+                  network_reply->abort();
+         },Qt::SingleShotConnection);
 
-                  if(network_reply->error() == QNetworkReply::NoError){
-                           file_handle->write(network_reply->readAll());
+         connect(network_reply.get(),&QNetworkReply::errorOccurred,&tracker,[&tracker,network_reply = std::weak_ptr(network_reply)]{
+                  tracker.set_custom_state(network_reply.lock()->errorString());
+         },Qt::SingleShotConnection);
+
+         const auto on_ready_read = [&tracker,network_reply = std::weak_ptr(network_reply),file_handle = std::weak_ptr(file_handle)]{
+
+                  if(network_reply.lock()->error() == QNetworkReply::NoError){
+                           file_handle.lock()->write(network_reply.lock()->readAll());
                   }else{
-                           tracker.set_custom_state(network_reply->errorString());
-                           file_handle->remove();
+                           tracker.set_custom_state(network_reply.lock()->errorString());
+                           file_handle.lock()->remove();
                   }
          };
 
-         connect(network_reply.get(),&QNetworkReply::readyRead,this,on_ready_read);
-
-         connect(network_reply.get(),&QNetworkReply::finished,this,[&tracker,network_reply,file_handle]{
+         connect(network_reply.get(),&QNetworkReply::finished,&tracker,[&tracker,network_reply,file_handle]{
                   Ensures(network_reply.unique());
                   Ensures(file_handle.unique());
 
          },Qt::SingleShotConnection);
+
+         connect(network_reply.get(),&QNetworkReply::readyRead,&tracker,on_ready_read);
 }
