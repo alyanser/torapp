@@ -5,6 +5,7 @@
 #include "network_manager.hxx"
 #include "download_status_tracker.hxx"
 
+#include <gsl/assert>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QToolBar>
@@ -44,8 +45,14 @@ public slots:
 };
 
 inline Main_window::Main_window(){
+         {
+                  constexpr size_t min_width = 800;
+                  constexpr size_t min_height = 800;
+
+                  setMinimumSize(QSize(min_width,min_height));
+         }
+
          setWindowTitle("Torapp");
-         setMinimumSize(QSize(800,640));
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
 
@@ -69,13 +76,16 @@ inline void Main_window::confirm_quit() const noexcept {
 }
 
 inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString & download_path) noexcept {
+         Expects(!download_path.isEmpty());
+         Expects(!custom_url.isEmpty());
+
          auto tracker = std::make_shared<Download_status_tracker>();
          auto file_handle = std::make_shared<QFile>(download_path);
 
          central_layout_.addWidget(tracker.get());
 
+         //todo report errors
          if(!custom_url.isValid()){
-                  //todo report errors
          }else if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
          }else{
                   network_manager_.download(custom_url,tracker,file_handle);
