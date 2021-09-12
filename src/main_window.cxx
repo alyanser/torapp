@@ -1,4 +1,5 @@
 #include "main_window.hxx"
+
 #include <QMenuBar>
 #include <QAction>
 

@@ -4,6 +4,7 @@
 #include "custom_download_widget.hxx"
 #include "network_manager.hxx"
 #include "download_status_tracker.hxx"
+
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QToolBar>
@@ -23,12 +24,10 @@ public:
          ~Main_window() override = default;
 
 private:
-         // display
          void setup_menu_bar() noexcept;
          void add_top_actions() noexcept;
-         // network
+         
          void input_custom_link() noexcept;
-         // helpers
          void confirm_quit() const noexcept;
 
          QWidget central_widget_;
@@ -41,7 +40,7 @@ signals:
          void quit() const;
          
 public slots:
-         void handle_custom_url(const QUrl & custom_url) noexcept;
+         void handle_custom_url(const QUrl & custom_url,const QString & download_path) noexcept;
 };
 
 inline Main_window::Main_window(){
@@ -69,14 +68,19 @@ inline void Main_window::confirm_quit() const noexcept {
          }
 }
 
-inline void Main_window::handle_custom_url(const QUrl & custom_url) noexcept {
+inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString & download_path) noexcept {
          auto tracker = std::make_shared<Download_status_tracker>();
-         //todo get the directory from custom request widget
-         //todo also rename that
-         auto file_handle = std::make_shared<QFile>("/home/ali");
+         auto file_handle = std::make_shared<QFile>(download_path);
 
          central_layout_.addWidget(tracker.get());
-         network_manager_.new_download(custom_url,tracker,file_handle);
+
+         if(!custom_url.isValid()){
+                  //todo report errors
+         }else if(!file_handle->open(QFile::WriteOnly)){
+         }else{
+                  qDebug() << "beginning new download";
+                  network_manager_.download(custom_url,tracker,file_handle);
+         }
 }
 
 #endif // MAIN_WINDOW_HXX
