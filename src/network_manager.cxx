@@ -10,14 +10,6 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
-         const auto on_download_progress_update = [&tracker](const auto bytes_received,const auto total_bytes){
-                  //todo configure the tracker
-         };
-
-         const auto on_upload_progress_update = [&tracker](const auto bytes_uploaded,const auto total_bytes){
-                  //todo configure the tracker
-         };
-
          const auto on_redirected = [network_reply = std::weak_ptr(network_reply)](const auto & /* new_url */){
                   emit network_reply.lock()->redirectAllowed();
          };
@@ -41,7 +33,12 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
          };
 
          const auto on_finished = [&tracker,network_reply,file_handle]{
-                  tracker.set_custom_state(network_reply->errorString());
+                  
+                  if(network_reply->error()){
+                           tracker.set_custom_state(network_reply->errorString());
+                  }else{
+                           tracker.set_misc_state(Download_status_tracker::Misc_State::Download_Finished);
+                  }
          };
 
          connect(&tracker,&Download_status_tracker::request_cancelled,network_reply.get(),on_request_cancelled,Qt::SingleShotConnection);
@@ -49,6 +46,6 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
          connect(network_reply.get(),&QNetworkReply::readyRead,&tracker,on_ready_read);
          connect(network_reply.get(),&QNetworkReply::finished,&tracker,on_finished,Qt::SingleShotConnection);
          connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),on_redirected,Qt::SingleShotConnection);
-         connect(network_reply.get(),&QNetworkReply::downloadProgress,on_download_progress_update);
-         connect(network_reply.get(),&QNetworkReply::uploadProgress,on_upload_progress_update);
+         connect(network_reply.get(),&QNetworkReply::downloadProgress,&tracker,&Download_status_tracker::download_progress_update);
+         connect(network_reply.get(),&QNetworkReply::uploadProgress,&tracker,&Download_status_tracker::upload_progress_update);
 }

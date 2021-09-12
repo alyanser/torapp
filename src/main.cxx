@@ -1,9 +1,8 @@
 #include "main_window.hxx"
+
 #include <QApplication>
 
 int main(int argc,char ** argv){
-         assert(false);
-         
          QApplication application(argc,argv);
          Main_window window;
 

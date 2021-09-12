@@ -1,6 +1,7 @@
 #ifndef DOWNLOAD_STATUS_TRACKER_HXX
 #define DOWNLOAD_STATUS_TRACKER_HXX
 
+#include <QString>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,8 +21,8 @@ public:
 
          void bind_lifetime_with_cancel_button() noexcept;
 private:
-         void setup_file_state_layout() noexcept;
-         void setup_network_state_layout() noexcept;
+         void setup_file_status_layout() noexcept;
+         void setup_network_status_layout() noexcept;
          void setup_state_widget() noexcept;
          void update_state_line() noexcept;
 
@@ -30,16 +31,27 @@ private:
          QVBoxLayout central_layout_ = QVBoxLayout(this);
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
-         //todo add buddies
+
+         QHBoxLayout package_name_layout_;
          QLabel package_name_buddy_ = QLabel("Name: ");
-         QLabel download_path_buddy_ = QLabel("Path: ");
          QLabel package_name_label_;
+
+         QHBoxLayout download_path_layout_;
+         QLabel download_path_buddy_ = QLabel("Path: ");
          QLabel download_path_label_;
 
          QStackedWidget state_widget_;
 
          QLineEdit state_line_;
          QProgressBar download_progress_bar_;
+
+         QHBoxLayout download_quantity_layout_;
+         QLabel download_quantity_buddy_ = QLabel("Downloaded: ");
+         QLabel download_quantity_line_ = QLabel("0/0 kb");
+
+         QHBoxLayout upload_quantity_layout_;
+         QLabel upload_quantity_buddy_ = QLabel("Uploaded: ");
+         QLabel upload_quantity_line_ = QLabel("0/0 kb");
 
          QPushButton cancel_button_ = QPushButton("Cancel");
 
@@ -49,6 +61,8 @@ signals:
 public slots:
          void set_misc_state(Misc_State new_misc_state) noexcept;
          void set_custom_state(const QString & custom_state) noexcept;
+         void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
+         void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 };
 
 inline Download_status_tracker::Download_status_tracker(const QString & package_name,const QString & download_path){
@@ -62,27 +76,36 @@ inline Download_status_tracker::Download_status_tracker(const QString & package_
          central_layout_.addWidget(&state_widget_);
          central_layout_.addLayout(&network_stat_layout_);
 
-         setup_file_state_layout();
+         setup_file_status_layout();
          setup_state_widget();
-         setup_network_state_layout();
+         setup_network_status_layout();
 }
 
-inline void Download_status_tracker::bind_lifetime_with_cancel_button() noexcept {
+inline void Download_status_tracker::setup_file_status_layout() noexcept {
+         file_stat_layout_.addLayout(&package_name_layout_);
+         file_stat_layout_.addLayout(&download_path_layout_);
 
-         //! potential bug
-         connect(&cancel_button_,&QPushButton::clicked,this,[self = shared_from_this()]{
-                  emit self->request_cancelled();
-                  assert(self.unique());
+         package_name_layout_.addWidget(&package_name_buddy_);
+         package_name_layout_.addWidget(&package_name_label_);
+         package_name_buddy_.setBuddy(&package_name_label_);
 
-         },Qt::SingleShotConnection);
+         download_path_layout_.addWidget(&download_path_buddy_);
+         download_path_layout_.addWidget(&download_path_label_);
+         download_path_buddy_.setBuddy(&download_path_label_);
 }
 
-inline void Download_status_tracker::setup_file_state_layout() noexcept {
-         file_stat_layout_.addWidget(&package_name_label_);
-         file_stat_layout_.addWidget(&download_path_label_);
-}
+inline void Download_status_tracker::setup_network_status_layout() noexcept {
+         network_stat_layout_.addLayout(&download_quantity_layout_);
+         network_stat_layout_.addLayout(&upload_quantity_layout_);
 
-inline void Download_status_tracker::setup_network_state_layout() noexcept {
+         download_quantity_buddy_.setBuddy(&download_quantity_line_);
+         download_quantity_layout_.addWidget(&download_quantity_buddy_);
+         download_quantity_layout_.addWidget(&download_quantity_line_);
+
+         upload_quantity_buddy_.setBuddy(&upload_quantity_line_);
+         upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
+         upload_quantity_layout_.addWidget(&upload_quantity_line_);
+         
          network_stat_layout_.addWidget(&cancel_button_);
 }
 
@@ -99,11 +122,33 @@ inline void Download_status_tracker::set_misc_state(const Misc_State new_misc_st
 
          misc_state_ = new_misc_state;
          update_state_line();
+
+         state_widget_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::set_custom_state(const QString & custom_state) noexcept {
          misc_state_ = Misc_State::Custom_State;
          state_line_.setText(custom_state);
+
+         state_widget_.setCurrentWidget(&state_line_);
+}
+
+inline void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
+         download_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg(total_bytes / 1000));
+}
+
+inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
+         upload_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_sent / 1000).arg(total_bytes / 1000));
+}
+
+inline void Download_status_tracker::bind_lifetime_with_cancel_button() noexcept {
+
+         connect(&cancel_button_,&QPushButton::clicked,this,[this,self = shared_from_this()]{
+                  //! potential bug
+                  emit request_cancelled();
+                  assert(self.unique());
+
+         },Qt::SingleShotConnection);
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {
