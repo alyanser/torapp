@@ -18,8 +18,7 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
                   if(network_reply->error() == QNetworkReply::NoError){
                            file_handle->write(network_reply->readAll());
                   }else{
-                           //todo update the error types
-                           tracker.set_state(Download_status_tracker::State::Unknown_Network_Error);
+                           tracker.set_custom_state(network_reply->errorString());
                            file_handle->remove();
                   }
          };
