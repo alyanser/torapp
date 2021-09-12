@@ -6,7 +6,7 @@ set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-set(CXX_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmissing-declarations -Wold-style-cast  -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wswitch-default -Wundef")
+set(CXX_FLAGS "-stdlib=libc++ -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmissing-declarations -Wold-style-cast  -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wswitch-default -Wundef")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 
@@ -34,7 +34,6 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
 include_directories(
          "include"
-         SYSTEM "ext"
 )
 
 find_package(Qt6 COMPONENTS Core Gui Network Widgets REQUIRED)
@@ -52,5 +51,4 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QWidget"]]
          [["QNetworkAccessManager"]]
          [["QDebug"]]
-         [["assert.hpp"]]
 )

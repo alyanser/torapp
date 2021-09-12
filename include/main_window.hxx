@@ -76,8 +76,8 @@ inline void Main_window::confirm_quit() const noexcept {
 }
 
 inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString & download_path) noexcept {
-         Assert(!download_path.isEmpty());
-         Assert(!custom_url.isEmpty());
+         assert(!download_path.isEmpty());
+         assert(!custom_url.isEmpty());
 
          auto file_handle = std::make_shared<QFile>(download_path);
          auto tracker = std::make_shared<Download_status_tracker>(custom_url.toString(),download_path);

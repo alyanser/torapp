@@ -1,13 +1,12 @@
 #include "network_manager.hxx"
 #include "download_status_tracker.hxx"
 
-#include <assert.hpp>
 #include <QNetworkReply>
 #include <QFile>
 #include <QMessageBox>
          
 void Network_manager::download(const QUrl & address,Download_status_tracker & tracker,std::shared_ptr<QFile> file_handle){
-         Assert(!address.isEmpty());
+         assert(!address.isEmpty());
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
