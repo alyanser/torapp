@@ -76,9 +76,8 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
 
          if(!custom_url.isValid()){
                   //todo report errors
-         }else if(!file_handle->open(QFile::WriteOnly)){
+         }else if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
          }else{
-                  qDebug() << "beginning new download";
                   network_manager_.download(custom_url,tracker,file_handle);
          }
 }

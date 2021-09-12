@@ -20,7 +20,7 @@ private:
          void on_input_received() noexcept;
 
          QString default_path = QDir::currentPath() + "/new_download";
-         QGridLayout central_layout_ = QGridLayout(this);
+         QVBoxLayout central_layout_ = QVBoxLayout(this);
          QHBoxLayout url_layout_;
          QHBoxLayout path_layout_;
          QHBoxLayout button_layout_;
@@ -43,9 +43,9 @@ inline Custom_download_widget::Custom_download_widget(QWidget * const parent) : 
          setMinimumSize(QSize(500,200));
          setWindowTitle("Custom Download");
          
-         central_layout_.addLayout(&url_layout_,0,0);
-         central_layout_.addLayout(&path_layout_,1,0);
-         central_layout_.addLayout(&button_layout_,2,0);
+         central_layout_.addLayout(&url_layout_);
+         central_layout_.addLayout(&path_layout_);
+         central_layout_.addLayout(&button_layout_);
 
          url_layout_.addWidget(&url_label_);
          url_layout_.addWidget(&url_line_);
@@ -63,24 +63,26 @@ inline Custom_download_widget::Custom_download_widget(QWidget * const parent) : 
          url_line_.setPlaceholderText("Complete url");
          path_line_.setText(default_path);
 
-         connect(&path_button_,&QToolButton::pressed,[this](){
+         connect(&path_button_,&QToolButton::pressed,[this]{
                   path_line_.setText(QFileDialog::getExistingDirectory(this));
          });
 
-         connect(&url_line_,&QLineEdit::returnPressed,this,&Custom_download_widget::on_input_received);
-         
-         connect(&add_button_,&QPushButton::clicked,this,&Custom_download_widget::on_input_received);
-
-         connect(&cancel_button_,&QPushButton::clicked,this,[this](){
+         connect(&cancel_button_,&QPushButton::clicked,this,[this]{
                   url_line_.clear();
                   path_line_.setText(default_path);
                   hide();
          });
+
+         connect(&url_line_,&QLineEdit::returnPressed,this,&Custom_download_widget::on_input_received);
+         connect(&add_button_,&QPushButton::clicked,this,&Custom_download_widget::on_input_received);
 }
 
 inline void Custom_download_widget::on_input_received() noexcept {
-         const auto current_url = QUrl(url_line_.text());
-         const auto current_path = path_line_.text().isEmpty() ? QDir::currentPath() : path_line_.text();
+         const auto current_path = path_line_.text();
+
+         if(current_path.isEmpty()){
+                  return void(QMessageBox::warning(this,"Invalid Path","Path is empty"));
+         }
 
          {
                   const QDir dir_check;
@@ -96,6 +98,8 @@ inline void Custom_download_widget::on_input_received() noexcept {
                            }
                   }
          }
+
+         const auto current_url = QUrl(url_line_.text());
          
          url_line_.clear();
          path_line_.setText(default_path);
