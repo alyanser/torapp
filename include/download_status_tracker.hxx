@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QTime>
+#include <QDesktopServices>
 
 class Download_status_tracker : public QWidget, public std::enable_shared_from_this<Download_status_tracker> {
          Q_OBJECT
@@ -57,6 +58,7 @@ private:
          QLabel upload_quantity_label_ = QLabel("0/0 kb");
 
          QPushButton close_button_ = QPushButton("Cancel");
+         QPushButton open_button_ = QPushButton("Open");
 
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,0);
@@ -79,73 +81,6 @@ public slots:
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 };
-
-inline Download_status_tracker::Download_status_tracker(const QString & package_name,const QString & download_path){
-         assert(!package_name.isEmpty());
-         assert(!download_path.isEmpty());
-
-         package_name_label_.setText(package_name);
-         download_path_label_.setText(download_path);
-
-         central_layout_.addLayout(&file_stat_layout_);
-         central_layout_.addWidget(&state_widget_);
-         central_layout_.addLayout(&network_stat_layout_);
-
-         setup_file_status_layout();
-         setup_state_widget();
-         setup_network_status_layout();
-
-         {
-                  using namespace std::chrono_literals;
-
-                  time_elapsed_timer_.setInterval(1000ms);
-                  //? what is start
-                  time_elapsed_timer_.start(1000ms);
-
-                  connect(&time_elapsed_timer_,&QTimer::timeout,&time_elapsed_label_,[this](){
-                           time_elapsed_ = time_elapsed_.addSecs(1);
-                           time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-                  });
-         }
-}
-
-inline void Download_status_tracker::setup_file_status_layout() noexcept {
-         file_stat_layout_.addLayout(&package_name_layout_);
-         file_stat_layout_.addLayout(&download_path_layout_);
-         file_stat_layout_.addLayout(&time_elapsed_layout_);
-
-         package_name_layout_.addWidget(&package_name_buddy_);
-         package_name_layout_.addWidget(&package_name_label_);
-         package_name_buddy_.setBuddy(&package_name_label_);
-
-         download_path_layout_.addWidget(&download_path_buddy_);
-         download_path_layout_.addWidget(&download_path_label_);
-         download_path_buddy_.setBuddy(&download_path_label_);
-
-         time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
-         time_elapsed_layout_.addWidget(&time_elapsed_label_);
-         time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
-}
-
-inline void Download_status_tracker::setup_network_status_layout() noexcept {
-         network_stat_layout_.addLayout(&download_speed_layout_);
-         network_stat_layout_.addLayout(&download_quantity_layout_);
-         network_stat_layout_.addLayout(&upload_quantity_layout_);
-
-         download_speed_layout_.addWidget(&download_speed_buddy_);
-         download_speed_layout_.addWidget(&download_speed_label_);
-         download_speed_buddy_.setBuddy(&download_speed_label_);
-
-         download_quantity_buddy_.setBuddy(&download_quantity_label_);
-         download_quantity_layout_.addWidget(&download_quantity_buddy_);
-         download_quantity_layout_.addWidget(&download_quantity_label_);
-
-         upload_quantity_buddy_.setBuddy(&upload_quantity_label_);
-         upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
-         upload_quantity_layout_.addWidget(&upload_quantity_label_);
-         
-         network_stat_layout_.addWidget(&close_button_);
-}
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
          state_widget_.addWidget(&download_progress_bar_);
@@ -177,26 +112,7 @@ inline void Download_status_tracker::on_download_finished() noexcept {
          close_button_.setText("Finish");
          time_elapsed_buddy_.setText("Time took: ");
          time_elapsed_timer_.stop();
-}
-
-inline void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
-         constexpr auto unknown_size = -1;
-
-         if(total_bytes == unknown_size){
-                  download_quantity_label_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg("inf"));
-                  // sets the bar in waiting state
-                  download_progress_bar_.setMinimum(0);
-                  download_progress_bar_.setMaximum(0);
-         }else if(total_bytes){
-                  assert(total_bytes > 0);
-                  download_quantity_label_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg(total_bytes / 1000));
-
-                  download_progress_bar_.setMaximum(total_bytes);
-                  download_progress_bar_.setValue(bytes_received);
-         }else{
-                  // download could not be initiated
-                  //? how to react
-         }
+         open_button_.setEnabled(true);
 }
 
 inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {

@@ -10,7 +10,7 @@ set(CXX_FLAGS "-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Winit-self -Wmi
 
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
 set(CMAKE_AUTOUIC on)
@@ -21,6 +21,7 @@ set(SOURCES
          src/main_window.cxx
          src/network_manager.cxx
          src/custom_download_widget.cxx
+         src/download_status_tracker.cxx
 )
 
 set(MOC_INCLUDES
