@@ -11,6 +11,7 @@
 #include <QProgressBar>
 #include <QStackedWidget>
 #include <utility>
+#include <QMessageBox>
 
 class Download_status_tracker : public QWidget, public std::enable_shared_from_this<Download_status_tracker> {
          Q_OBJECT
@@ -19,7 +20,7 @@ public:
 
          Download_status_tracker(const QString & package_name,const QString & download_path);
 
-         void bind_lifetime_with_cancel_button() noexcept;
+         void bind_lifetime_with_close_button() noexcept;
 private:
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
@@ -53,14 +54,15 @@ private:
          QLabel upload_quantity_buddy_ = QLabel("Uploaded: ");
          QLabel upload_quantity_line_ = QLabel("0/0 kb");
 
-         QPushButton cancel_button_ = QPushButton("Cancel");
+         QPushButton close_button_ = QPushButton("Cancel");
 
 signals:
-         void request_cancelled() const;
+         void request_satisfied() const;
 
 public slots:
          void set_misc_state(Misc_State new_misc_state) noexcept;
          void set_custom_state(const QString & custom_state) noexcept;
+         void on_download_finished() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 };
@@ -106,12 +108,15 @@ inline void Download_status_tracker::setup_network_status_layout() noexcept {
          upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
          upload_quantity_layout_.addWidget(&upload_quantity_line_);
          
-         network_stat_layout_.addWidget(&cancel_button_);
+         network_stat_layout_.addWidget(&close_button_);
 }
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
          state_widget_.addWidget(&download_progress_bar_);
          state_widget_.addWidget(&state_line_);
+
+         download_progress_bar_.setMinimum(0);
+         download_progress_bar_.setMinimum(100);
 
          assert(!state_widget_.currentIndex());
 }
@@ -133,22 +138,59 @@ inline void Download_status_tracker::set_custom_state(const QString & custom_sta
          state_widget_.setCurrentWidget(&state_line_);
 }
 
+inline void Download_status_tracker::on_download_finished() noexcept {
+         close_button_.setText("Finish");
+}
+
 inline void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
-         download_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg(total_bytes / 1000));
+         constexpr int32_t unknown_size = -1;
+
+         if(total_bytes == unknown_size){
+                  download_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg("inf"));
+                  // set the bar in waiting state
+                  download_progress_bar_.setMinimum(0);
+                  download_progress_bar_.setMaximum(0);
+         }else if(total_bytes){
+                  assert(total_bytes > 0);
+                  download_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg(total_bytes / 1000));
+                  
+                  download_progress_bar_.setMaximum(total_bytes);
+                  download_progress_bar_.setValue(bytes_received);
+         }else{
+                  // download could not be initiated
+                  //? how to react
+         }
 }
 
 inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
          upload_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_sent / 1000).arg(total_bytes / 1000));
 }
 
-inline void Download_status_tracker::bind_lifetime_with_cancel_button() noexcept {
+inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept {
 
-         connect(&cancel_button_,&QPushButton::clicked,this,[this,self = shared_from_this()]{
+         connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
                   //! potential bug
-                  emit request_cancelled();
                   assert(self.unique());
 
          },Qt::SingleShotConnection);
+
+         connect(&close_button_,&QPushButton::clicked,this,[this]{
+
+                  if(close_button_.text() == "Cancel"){
+                           constexpr std::string_view question_title("Cancel Download");
+                           constexpr std::string_view question_body("Are you sure you want to cancel the download?");
+
+                           constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
+                           
+                           const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+
+                           if(response == QMessageBox::No){
+                                    return;
+                           }
+                  }
+                  
+                  emit request_satisfied();
+         });
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {
