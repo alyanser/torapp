@@ -198,12 +198,6 @@ inline void Download_status_tracker::upload_progress_update(const int64_t bytes_
 
 inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept {
 
-         connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  //! potential bug
-                  assert(self.unique());
-
-         },Qt::SingleShotConnection);
-
          connect(&close_button_,&QPushButton::clicked,this,[this]{
 
                   if(close_button_.text() == "Cancel"){
@@ -221,6 +215,11 @@ inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept 
                   
                   emit request_satisfied();
          });
+
+         connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
+                  // keep self alive until request satisfied is emitted
+                  //? hide self
+         },Qt::SingleShotConnection);
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {

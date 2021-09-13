@@ -36,11 +36,10 @@ include_directories(
          "include"
 )
 
-find_package(Qt6 COMPONENTS Core Gui Network Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Core Network Widgets REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Core
-         Qt6::Gui
          Qt6::Network
          Qt6::Widgets
 )

@@ -9,7 +9,7 @@ class QFile;
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT
 public:
-         void download(const QUrl & address,Download_status_tracker & tracker,std::shared_ptr<QFile> file_handle);
+         void download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle);
 signals:
 };
 

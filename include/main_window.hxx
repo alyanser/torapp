@@ -89,7 +89,7 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
                   tracker->set_misc_state(Download_status_tracker::Misc_State::File_Write_Error);
          }else{
-                  network_manager_.download(custom_url,*tracker,file_handle);
+                  network_manager_.download(custom_url,tracker,file_handle);
          }
 }
 
