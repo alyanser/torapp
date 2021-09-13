@@ -53,11 +53,11 @@ void Custom_download_widget::on_input_received() noexcept {
          const auto current_url = QUrl(url_line_.text());
 
          if(current_path.isEmpty()){
-                  return void(QMessageBox::warning(this,"Empty Path","Path is empty"));
+                  return void(QMessageBox::warning(this,"Invalid Path","Path is invalid"));
          }
 
-         if(current_url.isEmpty()){
-                  return void(QMessageBox::warning(this,"Empty Url","Url is empty"));
+         if(current_url.toString().isEmpty()){
+                  return void(QMessageBox::warning(this,"Invalid Url","Url is invalid"));
          }
 
          if(QDir().exists(current_path)){

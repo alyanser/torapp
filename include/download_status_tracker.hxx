@@ -62,11 +62,15 @@ private:
          QTime time_elapsed_ = QTime(0,0,0);
          QTimer time_elapsed_timer_;
          QLabel time_elapsed_buddy_ = QLabel("Time elapsed: ");
-         QLabel time_elapsed_post_buddy_ = QLabel(" hh:mm:ss");
-         QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString());
+         QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString() + " hh::mm::ss");
+
+         QHBoxLayout download_speed_layout_;
+         QLabel download_speed_buddy_ = QLabel("Download Speed: ");
+         QLabel download_speed_label_ = QLabel("0 kbps");
 
 signals:
          void request_satisfied() const;
+         void release_lifetime_from_close_button() const;
 
 public slots:
          void set_misc_state(Misc_State new_misc_state) noexcept;
@@ -92,15 +96,15 @@ inline Download_status_tracker::Download_status_tracker(const QString & package_
          setup_network_status_layout();
 
          {
-                  //todo convert to hh::mm::ss
                   using namespace std::chrono_literals;
 
                   time_elapsed_timer_.setInterval(1000ms);
+                  //? what is start
                   time_elapsed_timer_.start(1000ms);
 
                   connect(&time_elapsed_timer_,&QTimer::timeout,&time_elapsed_label_,[this](){
                            time_elapsed_ = time_elapsed_.addSecs(1);
-                           time_elapsed_label_.setText(time_elapsed_.toString());
+                           time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
                   });
          }
 }
@@ -120,14 +124,17 @@ inline void Download_status_tracker::setup_file_status_layout() noexcept {
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
-         time_elapsed_layout_.addWidget(&time_elapsed_post_buddy_);
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
-         time_elapsed_post_buddy_.setBuddy(&time_elapsed_label_);
 }
 
 inline void Download_status_tracker::setup_network_status_layout() noexcept {
+         network_stat_layout_.addLayout(&download_speed_layout_);
          network_stat_layout_.addLayout(&download_quantity_layout_);
          network_stat_layout_.addLayout(&upload_quantity_layout_);
+
+         download_speed_layout_.addWidget(&download_speed_buddy_);
+         download_speed_layout_.addWidget(&download_speed_label_);
+         download_speed_buddy_.setBuddy(&download_speed_label_);
 
          download_quantity_buddy_.setBuddy(&download_quantity_label_);
          download_quantity_layout_.addWidget(&download_quantity_buddy_);
@@ -173,11 +180,11 @@ inline void Download_status_tracker::on_download_finished() noexcept {
 }
 
 inline void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
-         constexpr int32_t unknown_size = -1;
+         constexpr auto unknown_size = -1;
 
          if(total_bytes == unknown_size){
                   download_quantity_label_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg("inf"));
-                  // set the bar in waiting state
+                  // sets the bar in waiting state
                   download_progress_bar_.setMinimum(0);
                   download_progress_bar_.setMaximum(0);
          }else if(total_bytes){
@@ -203,7 +210,6 @@ inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept 
                   if(close_button_.text() == "Cancel"){
                            constexpr std::string_view question_title("Cancel Download");
                            constexpr std::string_view question_body("Are you sure you want to cancel the download?");
-
                            constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
                            
                            const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
@@ -216,10 +222,14 @@ inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept 
                   emit request_satisfied();
          });
 
-         connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
+         auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
                   // keep self alive until request satisfied is emitted
                   //? hide self
          },Qt::SingleShotConnection);
+
+         connect(this,&Download_status_tracker::release_lifetime_from_close_button,[self_lifetime_connection](){
+                  disconnect(self_lifetime_connection);
+         });
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {
