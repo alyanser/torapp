@@ -36,7 +36,7 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
          };
 
          connect(this,&Network_manager::begin_termination,network_reply.get(),&QNetworkReply::abort);
-         connect(this,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime_from_close_button);
+         connect(this,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime_from_terminate_holder);
          connect(tracker.get(),&Download_status_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
 
          connect(network_reply.get(),&QNetworkReply::readyRead,tracker.get(),on_ready_read);

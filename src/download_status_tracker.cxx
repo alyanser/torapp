@@ -1,14 +1,14 @@
 #include "download_status_tracker.hxx"
 
-Download_status_tracker::Download_status_tracker(const QString & package_name,const QString & download_path){
-         assert(!package_name.isEmpty());
+Download_status_tracker::Download_status_tracker(const QUrl & package_url,const QString & download_path){
+         assert(!package_url.isEmpty());
          assert(!download_path.isEmpty());
 
-         package_name_label_.setText(package_name);
+         package_name_label_.setText(package_url.toString());
          download_path_label_.setText(download_path);
 
          central_layout_.addLayout(&file_stat_layout_);
-         central_layout_.addWidget(&state_widget_);
+         central_layout_.addWidget(&state_holder_);
          central_layout_.addLayout(&network_stat_layout_);
 
          setup_file_status_layout();
@@ -38,6 +38,28 @@ Download_status_tracker::Download_status_tracker(const QString & package_name,co
                            QMessageBox::warning(this,message_title.data(),message_body.data());
                   }
          });
+
+         connect(&retry_button_,&QPushButton::clicked,[this,package_url,download_path](){
+                  initiate_buttons_holder_.setCurrentWidget(&open_button_);
+                  open_button_.setEnabled(false);
+
+                  emit retry_download(package_url,download_path);
+                  emit release_lifetime_from_terminate_holder();
+         });
+
+         connect(&cancel_button_,&QPushButton::clicked,this,[this]{
+                  constexpr std::string_view question_title("Cancel Download");
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download?");
+                  constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
+                  
+                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+
+                  if(response == QMessageBox::Yes){
+                           emit request_satisfied();
+                  }
+         });
+
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied);
 }
 
 QString Download_status_tracker::stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept {
@@ -95,8 +117,16 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
          upload_quantity_layout_.addWidget(&upload_quantity_label_);
          
-         network_stat_layout_.addWidget(&open_button_);
-         network_stat_layout_.addWidget(&close_button_);
+         network_stat_layout_.addWidget(&initiate_buttons_holder_);
+         network_stat_layout_.addWidget(&terminate_buttons_holder_);
+
+         initiate_buttons_holder_.addWidget(&open_button_);
+         initiate_buttons_holder_.addWidget(&retry_button_);
+
+         terminate_buttons_holder_.addWidget(&cancel_button_);
+         terminate_buttons_holder_.addWidget(&finish_button_);
+
+         initiate_buttons_holder_.setGeometry(open_button_.geometry());
 
          open_button_.setEnabled(false);
 }

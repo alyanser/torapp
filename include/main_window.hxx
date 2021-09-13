@@ -92,9 +92,9 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          assert(!custom_url.toString().isEmpty());
 
          auto file_handle = std::make_shared<QFile>(download_path);
-         auto tracker = std::make_shared<Download_status_tracker>(custom_url.toString(),download_path);
+         auto tracker = std::make_shared<Download_status_tracker>(custom_url,download_path);
 
-         tracker->bind_lifetime_with_close_button();
+         tracker->bind_lifetime_with_terminate_holder();
          central_layout_.addWidget(tracker.get());
 
          //! consider the consequences of multiple requests on same file
@@ -103,6 +103,8 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          }else{
                   tracker->set_error(Download_status_tracker::Error::File_Write);
          }
+
+         connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::handle_custom_url);
 }
 
 inline void Main_window::setup_menu_bar() noexcept {

@@ -22,7 +22,7 @@ public:
          enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, Custom };
 
-         Download_status_tracker(const QString & package_name,const QString & download_path);
+         Download_status_tracker(const QUrl & package_url,const QString & download_path);
 
          [[nodiscard]] 
          static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
@@ -31,7 +31,7 @@ public:
          [[nodiscard]] 
          uint32_t get_elapsed_seconds() const noexcept;
          
-         void bind_lifetime_with_close_button() noexcept;
+         void bind_lifetime_with_terminate_holder() noexcept;
 
 private:
          void setup_file_status_layout() noexcept;
@@ -53,7 +53,7 @@ private:
          QLabel download_path_buddy_ = QLabel("Path: ");
          QLabel download_path_label_;
 
-         QStackedWidget state_widget_;
+         QStackedWidget state_holder_;
          QLineEdit state_line_;
          QProgressBar download_progress_bar_;
 
@@ -65,8 +65,13 @@ private:
          QLabel upload_quantity_buddy_ = QLabel("Uploaded: ");
          QLabel upload_quantity_label_ = QLabel("0 byte(s) / 0 byte(s)");
 
-         QPushButton close_button_ = QPushButton("Cancel");
+         QStackedWidget terminate_buttons_holder_;
+         QPushButton finish_button_ = QPushButton("Finish");
+         QPushButton cancel_button_ = QPushButton("Cancel");
+
+         QStackedWidget initiate_buttons_holder_;
          QPushButton open_button_ = QPushButton("Open");
+         QPushButton retry_button_ = QPushButton("Retry");
 
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
@@ -80,7 +85,8 @@ private:
 
 signals:
          void request_satisfied() const;
-         void release_lifetime_from_close_button() const;
+         void release_lifetime_from_terminate_holder() const;
+         void retry_download(const QUrl & package_url,const QString & download_path) const;
 
 public slots:
          void set_error(Error new_error) noexcept;
@@ -91,14 +97,14 @@ public slots:
 };
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
-         state_widget_.addWidget(&download_progress_bar_);
-         state_widget_.addWidget(&state_line_);
+         state_holder_.addWidget(&download_progress_bar_);
+         state_holder_.addWidget(&state_line_);
 
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
          state_line_.setAlignment(Qt::AlignCenter);
 
-         assert(state_widget_.currentWidget() == &download_progress_bar_);
+         assert(state_holder_.currentWidget() == &download_progress_bar_);
 }
 
 inline void Download_status_tracker::set_error(const Error new_error) noexcept {
@@ -108,24 +114,26 @@ inline void Download_status_tracker::set_error(const Error new_error) noexcept {
          error_ = new_error;
          update_state_line();
 
-         state_widget_.setCurrentWidget(&state_line_);
+         state_holder_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          state_line_.setText(custom_error);
 
-         state_widget_.setCurrentWidget(&state_line_);
+         state_holder_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::on_download_finished() noexcept {
 
          time_elapsed_buddy_.setText("Time took: ");
-         close_button_.setText("Finish");
+         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          time_elapsed_timer_.stop();
          
          if(error_ == Error::Null){
                   open_button_.setEnabled(true);
+         }else{
+                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
          }
 }
 
@@ -153,30 +161,13 @@ inline std::pair<double,std::string_view> Download_status_tracker::stringify_byt
          return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
 }
 
-inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept {
-
-         connect(&close_button_,&QPushButton::clicked,this,[this]{
-
-                  if(close_button_.text() == "Cancel"){
-                           constexpr std::string_view question_title("Cancel Download");
-                           constexpr std::string_view question_body("Are you sure you want to cancel the download?");
-                           constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
-                           
-                           const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
-
-                           if(response == QMessageBox::No){
-                                    return;
-                           }
-                  }
-                  
-                  emit request_satisfied();
-         });
+inline void Download_status_tracker::bind_lifetime_with_terminate_holder() noexcept {
 
          auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  //? hide self
+                  self->hide();
          },Qt::SingleShotConnection);
 
-         connect(this,&Download_status_tracker::release_lifetime_from_close_button,[self_lifetime_connection](){
+         connect(this,&Download_status_tracker::release_lifetime_from_terminate_holder,[self_lifetime_connection](){
                   disconnect(self_lifetime_connection);
          });
 }
