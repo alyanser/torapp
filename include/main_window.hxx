@@ -50,13 +50,14 @@ public slots:
 
 inline Main_window::Main_window(){
          {
-                  constexpr size_t min_width = 800;
-                  constexpr size_t min_height = 640;
+                  constexpr size_t min_width = 1024;
+                  constexpr size_t min_height = 400;
+                  constexpr std::string_view window_title("Torapp");
 
                   setMinimumSize(QSize(min_width,min_height));
+                  setWindowTitle(window_title.data());
          }
 
-         setWindowTitle("Torapp");
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
 
@@ -100,8 +101,24 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
                   network_manager_.download(custom_url,tracker,file_handle);
          }else{
-                  tracker->set_misc_state(Download_status_tracker::Misc_State::File_Write_Error);
+                  tracker->set_error(Download_status_tracker::Error::File_Write);
          }
+}
+
+inline void Main_window::setup_menu_bar() noexcept {
+         auto * const menu_bar = menuBar();
+         menu_bar->addMenu(&file_menu_);
+}
+
+inline void Main_window::add_top_actions() noexcept {
+         auto * const custom_link_action = tool_bar_.addAction("Custom Link");
+         auto * const exit_action = tool_bar_.addAction("Close");
+
+         file_menu_.addAction(custom_link_action);
+         file_menu_.addAction(exit_action);
+
+         connect(custom_link_action,&QAction::triggered,&custom_download_widget_,&Custom_download_widget::show);
+         connect(exit_action,&QAction::triggered,this,&Main_window::confirm_quit);
 }
 
 #endif // MAIN_WINDOW_HXX

@@ -13,7 +13,7 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
          const auto on_error_occured = [tracker = tracker.get(),network_reply = network_reply.get()](const auto /* error_code */){
-                  tracker->set_custom_state(network_reply->errorString());
+                  tracker->set_error(network_reply->errorString());
          };
 
          const auto on_ready_read = [tracker = tracker.get(),network_reply = network_reply.get(),file_handle = file_handle.get()]{
@@ -21,17 +21,15 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
                   if(network_reply->error() == QNetworkReply::NoError){
                            file_handle->write(network_reply->readAll());
                   }else{
-                           tracker->set_custom_state(network_reply->errorString());
+                           tracker->set_error(network_reply->errorString());
                            file_handle->remove();
                   }
          };
 
          const auto on_finished = [tracker,network_reply,file_handle]{
                   
-                  if(network_reply->error()){
-                           tracker->set_custom_state(network_reply->errorString());
-                  }else{
-                           tracker->set_misc_state(Download_status_tracker::Misc_State::Download_Finished);
+                  if(network_reply->error() != QNetworkReply::NoError){
+                           tracker->set_error(network_reply->errorString());
                   }
 
                   tracker->on_download_finished();

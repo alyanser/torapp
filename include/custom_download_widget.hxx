@@ -15,7 +15,7 @@
 class Custom_download_widget : public QWidget {
          Q_OBJECT
 public:
-         explicit Custom_download_widget(QWidget * parent = nullptr);
+         Custom_download_widget();
 private:
          void on_input_received() noexcept;
 

@@ -18,7 +18,6 @@ set(CMAKE_AURORCC on)
 
 set(SOURCES
          src/main.cxx
-         src/main_window.cxx
          src/network_manager.cxx
          src/custom_download_widget.cxx
          src/download_status_tracker.cxx
@@ -51,4 +50,6 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QWidget"]]
          [["QNetworkAccessManager"]]
          [["QDebug"]]
+         [["QString"]]
+         [["QObject"]]
 )

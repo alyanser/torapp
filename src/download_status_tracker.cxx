@@ -109,7 +109,7 @@ void Download_status_tracker::download_progress_update(const int64_t bytes_recei
          assert(!download_progress_bar_.minimum());
 
          if(total_bytes == unknown_bytes){
-                  // sets the bar in waiting state
+                  // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
          }else{
                   download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));

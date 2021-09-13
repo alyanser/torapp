@@ -20,13 +20,17 @@ class Download_status_tracker : public QWidget, public std::enable_shared_from_t
          Q_OBJECT
 public:
          enum class Conversion_Format { Speed, Memory };
-         enum class Misc_State { No_State, File_Write_Error, Unknown_Network_Error, Download_Finished, Custom_State };
+         enum class Error { Null, File_Write, Unknown_Network, Custom };
 
          Download_status_tracker(const QString & package_name,const QString & download_path);
 
-         [[nodiscard]] static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
-         [[nodiscard]] static QString stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
-         [[nodiscard]] uint32_t get_elapsed_seconds() const noexcept;
+         [[nodiscard]] 
+         static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
+         [[nodiscard]] 
+         static QString stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
+         [[nodiscard]] 
+         uint32_t get_elapsed_seconds() const noexcept;
+         
          void bind_lifetime_with_close_button() noexcept;
 
 private:
@@ -35,7 +39,7 @@ private:
          void setup_state_widget() noexcept;
          void update_state_line() noexcept;
 
-         Misc_State misc_state_ = Misc_State::No_State;
+         Error error_ = Error::Null;
 
          QVBoxLayout central_layout_ = QVBoxLayout(this);
          QHBoxLayout file_stat_layout_;
@@ -65,7 +69,7 @@ private:
          QPushButton open_button_ = QPushButton("Open");
 
          QHBoxLayout time_elapsed_layout_;
-         QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent diviosn by zero
+         QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
          QTimer time_elapsed_timer_;
          QLabel time_elapsed_buddy_ = QLabel("Time elapsed: ");
          QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString() + " hh::mm::ss");
@@ -79,8 +83,8 @@ signals:
          void release_lifetime_from_close_button() const;
 
 public slots:
-         void set_misc_state(Misc_State new_misc_state) noexcept;
-         void set_custom_state(const QString & custom_state) noexcept;
+         void set_error(Error new_error) noexcept;
+         void set_error(const QString & custom_error) noexcept;
          void on_download_finished() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
@@ -92,33 +96,37 @@ inline void Download_status_tracker::setup_state_widget() noexcept {
 
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
+         state_line_.setAlignment(Qt::AlignCenter);
 
          assert(state_widget_.currentWidget() == &download_progress_bar_);
 }
 
-inline void Download_status_tracker::set_misc_state(const Misc_State new_misc_state) noexcept {
-         assert(new_misc_state != Misc_State::No_State);
-         assert(new_misc_state != Misc_State::Custom_State);
+inline void Download_status_tracker::set_error(const Error new_error) noexcept {
+         assert(new_error != Error::Null);
+         assert(new_error != Error::Custom);
 
-         misc_state_ = new_misc_state;
+         error_ = new_error;
          update_state_line();
 
          state_widget_.setCurrentWidget(&state_line_);
 }
 
-inline void Download_status_tracker::set_custom_state(const QString & custom_state) noexcept {
-         misc_state_ = Misc_State::Custom_State;
-         state_line_.setText(custom_state);
+inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
+         error_ = Error::Custom;
+         state_line_.setText(custom_error);
 
          state_widget_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::on_download_finished() noexcept {
-         close_button_.setText("Finish");
+
          time_elapsed_buddy_.setText("Time took: ");
+         close_button_.setText("Finish");
          time_elapsed_timer_.stop();
-         //todo only enable if the download was valid
-         open_button_.setEnabled(true);
+         
+         if(error_ == Error::Null){
+                  open_button_.setEnabled(true);
+         }
 }
 
 inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
@@ -126,9 +134,9 @@ inline void Download_status_tracker::upload_progress_update(const int64_t bytes_
 }
 
 inline std::pair<double,std::string_view> Download_status_tracker::stringify_bytes(const double bytes,const Conversion_Format format) noexcept {
-         constexpr double bytes_in_kb = 1000;
-         constexpr double bytes_in_mb = bytes_in_kb * 1000;
-         constexpr double bytes_in_gb = bytes_in_mb * 1000;
+         constexpr double bytes_in_kb = 1024;
+         constexpr double bytes_in_mb = bytes_in_kb * 1024;
+         constexpr double bytes_in_gb = bytes_in_mb * 1024;
 
          if(bytes >= bytes_in_gb){
                   return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec" : "gb(s)"};
@@ -178,17 +186,15 @@ inline uint32_t Download_status_tracker::get_elapsed_seconds() const noexcept {
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {
-         constexpr std::string_view no_state_info("You should not be seeing this right now. Something seriously has gone wrong");
-         constexpr std::string_view file_write_error_info("File could not be opened for writing");
+         constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
+         constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
-         constexpr std::string_view download_finished_info("Download has been finished");
          
-         switch(misc_state_){
-                  case Misc_State::No_State : state_line_.setText(no_state_info.data()); break;
-                  case Misc_State::File_Write_Error : state_line_.setText(file_write_error_info.data()); break;
-                  case Misc_State::Unknown_Network_Error : state_line_.setText(unknown_network_error_info.data()); break;
-                  case Misc_State::Download_Finished : state_line_.setText(download_finished_info.data()); break;
-                  case Misc_State::Custom_State : [[fallthrough]];
+         switch(error_){
+                  case Error::Null : state_line_.setText(null_error_info.data()); break;
+                  case Error::File_Write : state_line_.setText(file_write_error_info.data()); break;
+                  case Error::Unknown_Network : state_line_.setText(unknown_network_error_info.data()); break;
+                  case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();
          }
 }

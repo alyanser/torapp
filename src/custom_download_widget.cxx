@@ -1,15 +1,16 @@
 #include "custom_download_widget.hxx"
+#include <QFileInfo>
 
-Custom_download_widget::Custom_download_widget(QWidget * const parent) : QWidget(parent){
+Custom_download_widget::Custom_download_widget(){
          {
-                  constexpr uint32_t min_width = 500;
-                  constexpr uint32_t min_height = 500;
+                  constexpr uint32_t min_width = 640;
+                  constexpr uint32_t min_height = 200;
+                  constexpr std::string_view widget_title("Custom Download");
 
                   setMinimumSize(QSize(min_width,min_height));
+                  setWindowTitle(widget_title.data());
          }
 
-         setWindowTitle("Custom Download");
-         
          central_layout_.addLayout(&url_layout_);
          central_layout_.addLayout(&path_layout_);
          central_layout_.addLayout(&button_layout_);
@@ -27,7 +28,9 @@ Custom_download_widget::Custom_download_widget(QWidget * const parent) : QWidget
          url_label_.setBuddy(&url_line_);
          path_label_.setBuddy(&path_line_);
          
-         url_line_.setPlaceholderText("Complete url");
+         url_line_.setPlaceholderText("Eg: https://www.google.com");
+         path_line_.setPlaceholderText("Eg: /home/user/Downloads/file.txt");
+         
          path_line_.setText(default_path);
 
          connect(&path_button_,&QToolButton::pressed,[this]{
@@ -49,8 +52,8 @@ Custom_download_widget::Custom_download_widget(QWidget * const parent) : QWidget
 }
 
 void Custom_download_widget::on_input_received() noexcept {
-         const auto current_path = path_line_.text();
-         const auto current_url = QUrl(url_line_.text());
+         const auto current_path = path_line_.text().simplified();
+         const auto current_url = QUrl(url_line_.text().simplified());
 
          if(current_path.isEmpty()){
                   return void(QMessageBox::warning(this,"Invalid Path","Path is invalid"));
@@ -60,7 +63,7 @@ void Custom_download_widget::on_input_received() noexcept {
                   return void(QMessageBox::warning(this,"Invalid Url","Url is invalid"));
          }
 
-         if(QDir().exists(current_path)){
+         if(QFileInfo::exists(current_path)){
                   constexpr std::string_view warning_title("File already exists");
                   constexpr std::string_view warning_body("File already exists. Do you wish to replace the existing file?");
 
