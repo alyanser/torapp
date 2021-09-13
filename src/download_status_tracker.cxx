@@ -11,25 +11,18 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
          central_layout_.addWidget(&state_holder_);
          central_layout_.addLayout(&network_stat_layout_);
 
+         time_elapsed_timer_.start(std::chrono::milliseconds(1000));
+
          setup_file_status_layout();
          setup_state_widget();
          setup_network_status_layout();
 
-         {
-                  using namespace std::chrono_literals;
+         const auto on_timer_timeout = [this]{
+                  time_elapsed_ = time_elapsed_.addSecs(1);
+                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+         };
 
-                  time_elapsed_timer_.setInterval(1000ms);
-                  //? what is start
-                  time_elapsed_timer_.start(1000ms);
-
-                  connect(&time_elapsed_timer_,&QTimer::timeout,&time_elapsed_label_,[this](){
-                           time_elapsed_ = time_elapsed_.addSecs(1);
-                           time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-                  });
-         }
-
-         connect(&open_button_,&QPushButton::clicked,[this,download_path]{
-                  
+         const auto on_open_button_clicked = [this,download_path]{
                   //! if doesn't exist then creates new one
                   if(!QDesktopServices::openUrl(QUrl(download_path))){
                            constexpr std::string_view message_title("Could not open file");
@@ -37,17 +30,17 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
 
                            QMessageBox::warning(this,message_title.data(),message_body.data());
                   }
-         });
+         };
 
-         connect(&retry_button_,&QPushButton::clicked,[this,package_url,download_path](){
+         const auto on_retry_button_clicked = [this,package_url,download_path]{
                   initiate_buttons_holder_.setCurrentWidget(&open_button_);
                   open_button_.setEnabled(false);
 
                   emit retry_download(package_url,download_path);
-                  emit release_lifetime_from_terminate_holder();
-         });
+                  emit release_lifetime();
+         };
 
-         connect(&cancel_button_,&QPushButton::clicked,this,[this]{
+         const auto on_cancel_button_clicked = [this]{
                   constexpr std::string_view question_title("Cancel Download");
                   constexpr std::string_view question_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
@@ -57,8 +50,12 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
                   if(response == QMessageBox::Yes){
                            emit request_satisfied();
                   }
-         });
+         };
 
+         connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
+         connect(&open_button_,&QPushButton::clicked,on_open_button_clicked);
+         connect(&retry_button_,&QPushButton::clicked,this,on_retry_button_clicked,Qt::SingleShotConnection);
+         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked,Qt::SingleShotConnection);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied);
 }
 
@@ -141,6 +138,7 @@ void Download_status_tracker::download_progress_update(const int64_t bytes_recei
          if(total_bytes == unknown_bytes){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
+                  download_progress_bar_.setValue(0); //? necessary?
          }else{
                   download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
                   download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));

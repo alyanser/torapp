@@ -94,7 +94,7 @@ inline void Main_window::handle_custom_url(const QUrl & custom_url,const QString
          auto file_handle = std::make_shared<QFile>(download_path);
          auto tracker = std::make_shared<Download_status_tracker>(custom_url,download_path);
 
-         tracker->bind_lifetime_with_terminate_holder();
+         tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
 
          //! consider the consequences of multiple requests on same file

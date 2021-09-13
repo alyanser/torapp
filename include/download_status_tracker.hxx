@@ -30,8 +30,7 @@ public:
          static QString stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
          [[nodiscard]] 
          uint32_t get_elapsed_seconds() const noexcept;
-         
-         void bind_lifetime_with_terminate_holder() noexcept;
+         void bind_lifetime() noexcept;
 
 private:
          void setup_file_status_layout() noexcept;
@@ -85,7 +84,7 @@ private:
 
 signals:
          void request_satisfied() const;
-         void release_lifetime_from_terminate_holder() const;
+         void release_lifetime() const;
          void retry_download(const QUrl & package_url,const QString & download_path) const;
 
 public slots:
@@ -99,12 +98,10 @@ public slots:
 inline void Download_status_tracker::setup_state_widget() noexcept {
          state_holder_.addWidget(&download_progress_bar_);
          state_holder_.addWidget(&state_line_);
-
+         assert(state_holder_.currentWidget() == &download_progress_bar_);
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
          state_line_.setAlignment(Qt::AlignCenter);
-
-         assert(state_holder_.currentWidget() == &download_progress_bar_);
 }
 
 inline void Download_status_tracker::set_error(const Error new_error) noexcept {
@@ -113,19 +110,16 @@ inline void Download_status_tracker::set_error(const Error new_error) noexcept {
 
          error_ = new_error;
          update_state_line();
-
          state_holder_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          state_line_.setText(custom_error);
-
          state_holder_.setCurrentWidget(&state_line_);
 }
 
 inline void Download_status_tracker::on_download_finished() noexcept {
-
          time_elapsed_buddy_.setText("Time took: ");
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          time_elapsed_timer_.stop();
@@ -161,15 +155,15 @@ inline std::pair<double,std::string_view> Download_status_tracker::stringify_byt
          return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
 }
 
-inline void Download_status_tracker::bind_lifetime_with_terminate_holder() noexcept {
+inline void Download_status_tracker::bind_lifetime() noexcept {
 
          auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
                   self->hide();
          },Qt::SingleShotConnection);
 
-         connect(this,&Download_status_tracker::release_lifetime_from_terminate_holder,[self_lifetime_connection](){
+         connect(this,&Download_status_tracker::release_lifetime,this,[self_lifetime_connection]{
                   disconnect(self_lifetime_connection);
-         });
+         },Qt::SingleShotConnection);
 }
 
 inline uint32_t Download_status_tracker::get_elapsed_seconds() const noexcept {
