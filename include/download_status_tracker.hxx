@@ -23,6 +23,9 @@ public:
 
          Download_status_tracker(const QString & package_name,const QString & download_path);
 
+         //? comment
+         static std::pair<double,std::string_view> convert_bytes(double bytes) noexcept;
+         static QString convert_to_outof_format(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
          void bind_lifetime_with_close_button() noexcept;
 private:
          void setup_file_status_layout() noexcept;
@@ -51,11 +54,11 @@ private:
 
          QHBoxLayout download_quantity_layout_;
          QLabel download_quantity_buddy_ = QLabel("Downloaded: ");
-         QLabel download_quantity_label_ = QLabel("0/0 kb");
+         QLabel download_quantity_label_ = QLabel("0 byte(s) / 0 byte(s)");
 
          QHBoxLayout upload_quantity_layout_;
          QLabel upload_quantity_buddy_ = QLabel("Uploaded: ");
-         QLabel upload_quantity_label_ = QLabel("0/0 kb");
+         QLabel upload_quantity_label_ = QLabel("0 byte(s) / 0 byte(s)");
 
          QPushButton close_button_ = QPushButton("Cancel");
          QPushButton open_button_ = QPushButton("Open");
@@ -68,7 +71,7 @@ private:
 
          QHBoxLayout download_speed_layout_;
          QLabel download_speed_buddy_ = QLabel("Download Speed: ");
-         QLabel download_speed_label_ = QLabel("0 kbps");
+         QLabel download_speed_label_ = QLabel("0 bytes/sec");
 
 signals:
          void request_satisfied() const;
@@ -116,7 +119,27 @@ inline void Download_status_tracker::on_download_finished() noexcept {
 }
 
 inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
-         upload_quantity_label_.setText(QString("%1/%2 kb").arg(bytes_sent / 1000).arg(total_bytes / 1000));
+         upload_quantity_label_.setText(convert_to_outof_format(bytes_sent,total_bytes));
+}
+
+inline std::pair<double,std::string_view> Download_status_tracker::convert_bytes(const double bytes) noexcept {
+         constexpr double bytes_in_kb = 1000;
+         constexpr double bytes_in_mb = bytes_in_kb * 1000;
+         constexpr double bytes_in_gb = bytes_in_mb * 1000;
+
+         if(bytes >= bytes_in_gb){
+                  return {bytes / bytes_in_gb,"gb(s)"};
+         }
+
+         if(bytes >= bytes_in_mb){
+                  return {bytes / bytes_in_mb,"mb(s)"};
+         }
+
+         if(bytes >= bytes_in_kb){
+                  return {bytes / bytes_in_kb,"kb(s)"};
+         }
+
+         return {bytes,"byte(s)"};
 }
 
 inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept {
