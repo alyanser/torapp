@@ -116,9 +116,8 @@ inline void Download_status_tracker::setup_state_widget() noexcept {
          state_widget_.addWidget(&state_line_);
 
          download_progress_bar_.setMinimum(0);
-         download_progress_bar_.setMinimum(100);
 
-         assert(!state_widget_.currentIndex());
+         assert(state_widget_.currentWidget() == &download_progress_bar_);
 }
 
 inline void Download_status_tracker::set_misc_state(const Misc_State new_misc_state) noexcept {
@@ -153,7 +152,7 @@ inline void Download_status_tracker::download_progress_update(const int64_t byte
          }else if(total_bytes){
                   assert(total_bytes > 0);
                   download_quantity_line_.setText(QString("%1/%2 kb").arg(bytes_received / 1000).arg(total_bytes / 1000));
-                  
+
                   download_progress_bar_.setMaximum(total_bytes);
                   download_progress_bar_.setValue(bytes_received);
          }else{

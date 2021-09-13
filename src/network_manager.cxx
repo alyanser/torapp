@@ -32,15 +32,15 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
                   }
          };
 
-         const auto on_finished = [this,&tracker,network_reply,file_handle]{
+         const auto on_finished = [&tracker,network_reply,file_handle]{
                   
                   if(network_reply->error()){
                            tracker.set_custom_state(network_reply->errorString());
                   }else{
                            tracker.set_misc_state(Download_status_tracker::Misc_State::Download_Finished);
                   }
-
-                  emit download_finished();
+                  
+                  tracker.on_download_finished();
          };
 
          connect(&tracker,&Download_status_tracker::request_satisfied,network_reply.get(),on_request_satisfied,Qt::SingleShotConnection);
@@ -50,5 +50,4 @@ void Network_manager::download(const QUrl & address,Download_status_tracker & tr
          connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),on_redirected,Qt::SingleShotConnection);
          connect(network_reply.get(),&QNetworkReply::downloadProgress,&tracker,&Download_status_tracker::download_progress_update);
          connect(network_reply.get(),&QNetworkReply::uploadProgress,&tracker,&Download_status_tracker::upload_progress_update);
-         connect(this,&Network_manager::download_finished,&tracker,&Download_status_tracker::on_download_finished);
 }
