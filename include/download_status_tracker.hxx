@@ -19,14 +19,16 @@
 class Download_status_tracker : public QWidget, public std::enable_shared_from_this<Download_status_tracker> {
          Q_OBJECT
 public:
+         enum class Conversion_Format { Speed, Memory };
          enum class Misc_State { No_State, File_Write_Error, Unknown_Network_Error, Download_Finished, Custom_State };
 
          Download_status_tracker(const QString & package_name,const QString & download_path);
 
-         //? comment
-         static std::pair<double,std::string_view> convert_bytes(double bytes) noexcept;
-         static QString convert_to_outof_format(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
+         [[nodiscard]] static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
+         [[nodiscard]] static QString stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
+         [[nodiscard]] uint32_t get_elapsed_seconds() const noexcept;
          void bind_lifetime_with_close_button() noexcept;
+
 private:
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
@@ -48,7 +50,6 @@ private:
          QLabel download_path_label_;
 
          QStackedWidget state_widget_;
-
          QLineEdit state_line_;
          QProgressBar download_progress_bar_;
 
@@ -64,7 +65,7 @@ private:
          QPushButton open_button_ = QPushButton("Open");
 
          QHBoxLayout time_elapsed_layout_;
-         QTime time_elapsed_ = QTime(0,0,0);
+         QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent diviosn by zero
          QTimer time_elapsed_timer_;
          QLabel time_elapsed_buddy_ = QLabel("Time elapsed: ");
          QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString() + " hh::mm::ss");
@@ -90,6 +91,7 @@ inline void Download_status_tracker::setup_state_widget() noexcept {
          state_widget_.addWidget(&state_line_);
 
          download_progress_bar_.setMinimum(0);
+         download_progress_bar_.setValue(0);
 
          assert(state_widget_.currentWidget() == &download_progress_bar_);
 }
@@ -115,31 +117,32 @@ inline void Download_status_tracker::on_download_finished() noexcept {
          close_button_.setText("Finish");
          time_elapsed_buddy_.setText("Time took: ");
          time_elapsed_timer_.stop();
+         //todo only enable if the download was valid
          open_button_.setEnabled(true);
 }
 
 inline void Download_status_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
-         upload_quantity_label_.setText(convert_to_outof_format(bytes_sent,total_bytes));
+         upload_quantity_label_.setText(stringify_bytes(bytes_sent,total_bytes));
 }
 
-inline std::pair<double,std::string_view> Download_status_tracker::convert_bytes(const double bytes) noexcept {
+inline std::pair<double,std::string_view> Download_status_tracker::stringify_bytes(const double bytes,const Conversion_Format format) noexcept {
          constexpr double bytes_in_kb = 1000;
          constexpr double bytes_in_mb = bytes_in_kb * 1000;
          constexpr double bytes_in_gb = bytes_in_mb * 1000;
 
          if(bytes >= bytes_in_gb){
-                  return {bytes / bytes_in_gb,"gb(s)"};
+                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec" : "gb(s)"};
          }
 
          if(bytes >= bytes_in_mb){
-                  return {bytes / bytes_in_mb,"mb(s)"};
+                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
          }
 
          if(bytes >= bytes_in_kb){
-                  return {bytes / bytes_in_kb,"kb(s)"};
+                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
          }
 
-         return {bytes,"byte(s)"};
+         return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
 }
 
 inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept {
@@ -162,13 +165,16 @@ inline void Download_status_tracker::bind_lifetime_with_close_button() noexcept 
          });
 
          auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  // keep self alive until request satisfied is emitted
                   //? hide self
          },Qt::SingleShotConnection);
 
          connect(this,&Download_status_tracker::release_lifetime_from_close_button,[self_lifetime_connection](){
                   disconnect(self_lifetime_connection);
          });
+}
+
+inline uint32_t Download_status_tracker::get_elapsed_seconds() const noexcept {
+         return static_cast<uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 
 inline void Download_status_tracker::update_state_line() noexcept {

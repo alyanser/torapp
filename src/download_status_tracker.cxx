@@ -40,17 +40,18 @@ Download_status_tracker::Download_status_tracker(const QString & package_name,co
          });
 }
 
-QString Download_status_tracker::convert_to_outof_format(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept {
+QString Download_status_tracker::stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept {
          constexpr auto unknown_bytes = -1;
+         constexpr auto format = Conversion_Format::Memory;
 
          double converted_total_bytes = 0;
          std::string_view total_bytes_postfix("inf");
 
          if(total_updown_bytes != unknown_bytes){
-                  std::tie(converted_total_bytes,total_bytes_postfix) = convert_bytes(static_cast<double>(total_updown_bytes));
+                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_updown_bytes),format);
          }
 
-         auto [converted_received_bytes,received_bytes_postfix] = convert_bytes(static_cast<double>(updown_bytes_received));
+         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(updown_bytes_received),format);
          QString quantity_text("%1 %2 / %3 %4");
 
          quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
@@ -103,6 +104,24 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
 void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
          assert(bytes_received >= 0);
 
-         download_quantity_label_.setText(convert_to_outof_format(bytes_received,total_bytes));
-         [[maybe_unused]] const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
+         constexpr auto unknown_bytes = -1;
+
+         assert(!download_progress_bar_.minimum());
+
+         if(total_bytes == unknown_bytes){
+                  // sets the bar in waiting state
+                  download_progress_bar_.setMaximum(0);
+         }else{
+                  download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
+                  download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));
+         }
+
+         download_quantity_label_.setText(stringify_bytes(bytes_received,total_bytes));
+
+         const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
+         assert(seconds_elapsed);
+         const auto speed = bytes_received / seconds_elapsed;
+         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),Conversion_Format::Speed);
+
+         download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
