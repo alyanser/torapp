@@ -8,7 +8,8 @@ Download_status_tracker::Download_status_tracker(const Download_request & downlo
          package_name_label_.setText(download_request.url.fileName());
          download_path_label_.setText(download_request.download_path);
          time_elapsed_timer_.start(std::chrono::milliseconds(1000));
-
+         open_button_.setEnabled(false);
+         
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -121,22 +122,18 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          terminate_buttons_holder_.addWidget(&cancel_button_);
          terminate_buttons_holder_.addWidget(&finish_button_);
 
-         open_button_.setEnabled(false);
-
-         // open_folder_button_.setEnabled(false);
 }
 
 void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
          assert(bytes_received >= 0);
+         assert(!download_progress_bar_.minimum());
 
          constexpr auto unknown_bytes = -1;
-
-         assert(!download_progress_bar_.minimum());
 
          if(total_bytes == unknown_bytes){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
-                  download_progress_bar_.setValue(0); //? necessary?
+                  // download_progress_bar_.setValue(0); //? necessary?
          }else{
                   download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
                   download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));

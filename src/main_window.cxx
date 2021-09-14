@@ -30,14 +30,15 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
 
-         //! consider the consequences of multiple requests on same file
          if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+                  //! consider the consequences of multiple requests on same file
                   network_manager_.download(download_request.url,tracker,file_handle);
          }else{
                   tracker->set_error(Download_status_tracker::Error::File_Write);
          }
 
          connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(this,&Main_window::quit,tracker.get(),&Download_status_tracker::release_lifetime);
 }
 
 void Main_window::add_top_actions() noexcept {

@@ -7,7 +7,7 @@
 void Network_manager::download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle){
          assert(!address.isEmpty());
 
-         ++downloads_count_;
+         ++download_count_;
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
@@ -34,16 +34,15 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
                   tracker->on_download_finished();
          };
 
-         connect(this,&Network_manager::begin_termination,network_reply.get(),&QNetworkReply::abort);
-         connect(this,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime);
-         connect(tracker.get(),&Download_status_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
+         connect(this,&Network_manager::begin_termination,network_reply.get(),&QNetworkReply::abort,Qt::SingleShotConnection);
+         connect(tracker.get(),&Download_status_tracker::destroyed,this,&Network_manager::on_tracker_destroyed,Qt::SingleShotConnection);
 
          connect(network_reply.get(),&QNetworkReply::readyRead,tracker.get(),on_ready_read);
          connect(network_reply.get(),&QNetworkReply::errorOccurred,tracker.get(),on_error_occured,Qt::SingleShotConnection);
          connect(network_reply.get(),&QNetworkReply::finished,tracker.get(),on_finished,Qt::SingleShotConnection);
 
-         connect(tracker.get(),&Download_status_tracker::request_satisfied,network_reply.get(),&QNetworkReply::abort,Qt::SingleShotConnection);
-         connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),&QNetworkReply::redirectAllowed,Qt::SingleShotConnection);
          connect(network_reply.get(),&QNetworkReply::downloadProgress,tracker.get(),&Download_status_tracker::download_progress_update);
          connect(network_reply.get(),&QNetworkReply::uploadProgress,tracker.get(),&Download_status_tracker::upload_progress_update);
+         connect(tracker.get(),&Download_status_tracker::request_satisfied,network_reply.get(),&QNetworkReply::abort,Qt::SingleShotConnection);
+         connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),&QNetworkReply::redirectAllowed,Qt::SingleShotConnection);
 }

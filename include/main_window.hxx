@@ -40,6 +40,7 @@ private:
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
          QToolBar tool_bar_;
          QMenu file_menu_ = QMenu("File",menuBar());
+
          Custom_url_input_widget custom_download_widget_;
          Network_manager network_manager_;
          
@@ -50,14 +51,14 @@ public slots:
          void initiate_new_download(const Download_request & download_request) noexcept;
 };
 
-inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
-         event->ignore();
-         confirm_quit();
-}
-
 inline void Main_window::configure_default_connections() noexcept {
          connect(&network_manager_,&Network_manager::terminated,this,&Main_window::quit);
          connect(&custom_download_widget_,&Custom_url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
+}
+
+inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
+         event->ignore();
+         confirm_quit();
 }
 
 inline void Main_window::confirm_quit() const noexcept {

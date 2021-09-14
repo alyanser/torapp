@@ -33,7 +33,7 @@ public:
          [[nodiscard]] 
          uint32_t get_elapsed_seconds() const noexcept;
          void bind_lifetime() noexcept;
-
+         
 private:
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
@@ -117,13 +117,13 @@ inline void Download_status_tracker::set_error(const Error new_error) noexcept {
 
          error_ = new_error;
          update_state_line();
-         state_holder_.setCurrentWidget(&error_line_);
+         on_download_finished();
 }
 
 inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          error_line_.setText(custom_error);
-         state_holder_.setCurrentWidget(&error_line_);
+         on_download_finished();
 }
 
 inline void Download_status_tracker::on_download_finished() noexcept {
@@ -198,7 +198,7 @@ inline void Download_status_tracker::configure_default_connections() noexcept {
 
          connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
          connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked,Qt::SingleShotConnection);
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied,Qt::SingleShotConnection);
 }
 
 inline void Download_status_tracker::setup_layout() noexcept {
