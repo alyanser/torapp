@@ -45,7 +45,7 @@ signals:
          void quit() const;
 
 public slots:
-         void initiate_new_download(const QUrl & custom_url,const QString & download_path) noexcept;
+         void initiate_new_download(const QUrl & custom_url,const QString & download_path,const QString & package_name) noexcept;
 };
 
 inline Main_window::Main_window(){
@@ -88,12 +88,12 @@ inline void Main_window::confirm_quit() const noexcept {
          }
 }
 
-inline void Main_window::initiate_new_download(const QUrl & custom_url,const QString & download_path) noexcept {
+inline void Main_window::initiate_new_download(const QUrl & custom_url,const QString & download_path,const QString & package_name) noexcept {
          assert(!download_path.isEmpty());
          assert(!custom_url.toString().isEmpty());
 
-         auto file_handle = std::make_shared<QFile>(download_path);
-         auto tracker = std::make_shared<Download_status_tracker>(custom_url,download_path);
+         auto file_handle = std::make_shared<QFile>(download_path + '/' + package_name);
+         auto tracker = std::make_shared<Download_status_tracker>(custom_url,download_path,package_name);
 
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());

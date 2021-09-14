@@ -21,24 +21,28 @@ private:
          void setup_layout() noexcept;
          void on_input_received() noexcept;
 
-         QString default_path = QDir::currentPath() + "/new_download";
+         QString default_path = QDir::currentPath() + '/';
          QVBoxLayout central_layout_ = QVBoxLayout(this);
+
          QHBoxLayout url_layout_;
-         QHBoxLayout path_layout_;
-         QHBoxLayout button_layout_;
-         
-         QLineEdit url_line_;
-         QLineEdit path_line_ = QLineEdit(default_path);
-
          QLabel url_label_ = QLabel("Url: ");
-         QLabel path_label_ = QLabel("Path: ");
+         QLineEdit url_line_;
 
-         QPushButton download_button_ = QPushButton("Download");
-         QPushButton cancel_button_ = QPushButton("Cancel");
+         QHBoxLayout path_layout_;
+         QLabel path_label_ = QLabel("Path: ");
+         QLineEdit path_line_ = QLineEdit(default_path);
          QToolButton path_button_;
 
+         QHBoxLayout button_layout_;
+         QPushButton download_button_ = QPushButton("Download");
+         QPushButton cancel_button_ = QPushButton("Cancel");
+         
+         QHBoxLayout package_name_layout_;
+         QLabel package_name_label_ = QLabel("File name: ");
+         QLineEdit package_name_line_ = QLineEdit("new_download");
+
 signals:
-         void request_received(const QUrl & custom_url,const QString & path) const;
+         void request_received(const QUrl & custom_url,const QString & path,const QString & package_name) const;
 };
 
 inline Custom_url_input_widget::Custom_url_input_widget(){
@@ -49,8 +53,9 @@ inline Custom_url_input_widget::Custom_url_input_widget(){
                   setMinimumSize(QSize(min_width,min_height));
          }
 
-         url_line_.setPlaceholderText("eg: https://www.google.com/search?q=a+b");
-         path_line_.setPlaceholderText("eg: /home/user/Downloads/file.txt");
+         url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
+         path_line_.setPlaceholderText("eg: /home/user/Downloads/");
+         package_name_line_.setPlaceholderText("eg: my_file");
 
          setWindowTitle("Custom Url");
          setup_layout();

@@ -22,7 +22,7 @@ public:
          enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, Custom };
 
-         Download_status_tracker(const QUrl & package_url,const QString & download_path);
+         Download_status_tracker(const QUrl & package_url,const QString & download_path,const QString & package_name);
 
          [[nodiscard]] 
          static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
@@ -75,6 +75,8 @@ private:
          QPushButton open_button_ = QPushButton("Open");
          QPushButton retry_button_ = QPushButton("Retry");
 
+         QPushButton open_directory_button_ = QPushButton("Open inside directory");
+
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
          QTimer time_elapsed_timer_;
@@ -88,7 +90,7 @@ private:
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
-         void retry_download(const QUrl & package_url,const QString & download_path) const;
+         void retry_download(const QUrl & package_url,const QString & download_path,const QString & package_name) const;
 
 public slots:
          void set_error(Error new_error) noexcept;
@@ -126,6 +128,7 @@ inline void Download_status_tracker::on_download_finished() noexcept {
          time_elapsed_buddy_.setText("Time took: ");
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          time_elapsed_timer_.stop();
+         state_holder_.setCurrentWidget(&error_line_);
          
          if(error_ == Error::Null){
                   open_button_.setEnabled(true);

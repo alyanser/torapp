@@ -1,6 +1,6 @@
 #include "download_status_tracker.hxx"
 
-Download_status_tracker::Download_status_tracker(const QUrl & package_url,const QString & download_path){
+Download_status_tracker::Download_status_tracker(const QUrl & package_url,const QString & download_path,const QString & package_name){
          assert(!package_url.isEmpty());
          assert(!download_path.isEmpty());
 
@@ -12,12 +12,14 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
          setup_file_status_layout();
          setup_network_status_layout();
          setup_state_widget();
+         update_state_line();
          configure_default_connections();
 
          {
-                  const auto on_open_button_clicked = [this,download_path]{
+                  const auto on_open_button_clicked = [this,download_path,package_name]{
+
                            //! if doesn't exist then creates new one
-                           if(!QDesktopServices::openUrl(QUrl(download_path))){
+                           if(!QDesktopServices::openUrl(download_path + package_name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
 
@@ -25,15 +27,29 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
                            }
                   };
 
-                  const auto on_retry_button_clicked = [this,package_url,download_path]{
+                  const auto on_retry_button_clicked = [this,package_url,download_path,package_name]{
                            initiate_buttons_holder_.setCurrentWidget(&open_button_);
                            open_button_.setEnabled(false);
 
-                           emit retry_download(package_url,download_path);
+                           emit retry_download(package_url,download_path,package_name);
                            emit release_lifetime();
                   };
 
+                  const auto on_open_directory_button_clicked = [this,download_path]{
+
+                           if(!QDesktopServices::openUrl(download_path)){
+                                    constexpr std::string_view error_title("Directory open error");
+                                    constexpr std::string_view error_body(
+                                             "Directory could not be opened. Maybe it is deleted or"
+                                             " you don't have the permissions."
+                                    );
+                                    
+                                    QMessageBox::critical(this,error_title.data(),error_body.data());
+                           }
+                  };
+
                   connect(&open_button_,&QPushButton::clicked,on_open_button_clicked);
+                  connect(&open_directory_button_,&QPushButton::clicked,on_open_directory_button_clicked);
                   connect(&retry_button_,&QPushButton::clicked,this,on_retry_button_clicked,Qt::SingleShotConnection);
          }
 }
@@ -82,6 +98,10 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          network_stat_layout_.addLayout(&download_quantity_layout_);
          network_stat_layout_.addLayout(&upload_quantity_layout_);
 
+         network_stat_layout_.addWidget(&open_directory_button_);
+         network_stat_layout_.addWidget(&initiate_buttons_holder_);
+         network_stat_layout_.addWidget(&terminate_buttons_holder_);
+
          download_speed_layout_.addWidget(&download_speed_buddy_);
          download_speed_layout_.addWidget(&download_speed_label_);
          download_speed_buddy_.setBuddy(&download_speed_label_);
@@ -93,9 +113,6 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          upload_quantity_buddy_.setBuddy(&upload_quantity_label_);
          upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
          upload_quantity_layout_.addWidget(&upload_quantity_label_);
-         
-         network_stat_layout_.addWidget(&initiate_buttons_holder_);
-         network_stat_layout_.addWidget(&terminate_buttons_holder_);
 
          initiate_buttons_holder_.addWidget(&open_button_);
          initiate_buttons_holder_.addWidget(&retry_button_);
@@ -103,9 +120,9 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          terminate_buttons_holder_.addWidget(&cancel_button_);
          terminate_buttons_holder_.addWidget(&finish_button_);
 
-         initiate_buttons_holder_.setGeometry(open_button_.geometry());
-
          open_button_.setEnabled(false);
+
+         // open_folder_button_.setEnabled(false);
 }
 
 void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
