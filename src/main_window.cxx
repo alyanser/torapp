@@ -27,6 +27,7 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto tracker = std::make_shared<Download_status_tracker>(download_request);
 
+         network_manager_.increment_connection_count();
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
 
@@ -39,6 +40,7 @@ void Main_window::initiate_new_download(const Download_request & download_reques
 
          connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::initiate_new_download);
          connect(&network_manager_,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime);
+         connect(tracker.get(),&Download_status_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
 }
 
 void Main_window::add_top_actions() noexcept {
