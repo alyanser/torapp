@@ -13,6 +13,8 @@ public:
          void download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle);
 
 private:
+         void configure_default_connections() noexcept;
+
          uint32_t downloads_count_ = 0;
          bool abort_state_ = false;
 
@@ -25,6 +27,10 @@ public slots:
 };
 
 inline Network_manager::Network_manager(){
+         configure_default_connections();
+}
+
+inline void Network_manager::configure_default_connections() noexcept {
 
          connect(this,&Network_manager::begin_termination,[this]{
                   abort_state_ = true;
@@ -37,6 +43,7 @@ inline Network_manager::Network_manager(){
 
 constexpr void Network_manager::on_tracker_destroyed() noexcept {
          assert(downloads_count_ > 0);
+         
          --downloads_count_;
 
          if(abort_state_ && !downloads_count_){

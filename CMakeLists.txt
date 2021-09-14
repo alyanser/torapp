@@ -19,13 +19,13 @@ set(CMAKE_AURORCC on)
 set(SOURCES
          src/main.cxx
          src/network_manager.cxx
-         src/custom_download_widget.cxx
+         src/custom_url_input_widget.cxx
          src/download_status_tracker.cxx
 )
 
 set(MOC_INCLUDES
          include/main_window.hxx
-         include/custom_download_widget.hxx
+         include/custom_url_input_widget.hxx
          include/network_manager.hxx
          include/download_status_tracker.hxx
 )

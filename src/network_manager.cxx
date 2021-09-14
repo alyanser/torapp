@@ -3,7 +3,6 @@
 
 #include <QNetworkReply>
 #include <QFile>
-#include <QMessageBox>
          
 void Network_manager::download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle){
          assert(!address.isEmpty());

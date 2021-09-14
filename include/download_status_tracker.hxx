@@ -33,6 +33,9 @@ public:
          void bind_lifetime() noexcept;
 
 private:
+         void configure_default_connections() noexcept;
+         void setup_layout() noexcept;
+         
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
          void setup_state_widget() noexcept;
@@ -164,6 +167,36 @@ inline void Download_status_tracker::bind_lifetime() noexcept {
          connect(this,&Download_status_tracker::release_lifetime,this,[self_lifetime_connection]{
                   disconnect(self_lifetime_connection);
          },Qt::SingleShotConnection);
+}
+
+inline void Download_status_tracker::configure_default_connections() noexcept {
+
+         const auto on_timer_timeout = [&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+                  time_elapsed_ = time_elapsed_.addSecs(1);
+                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+         };
+
+         const auto on_cancel_button_clicked = [this]{
+                  constexpr std::string_view question_title("Cancel Download");
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All progress will be lost.");
+                  constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
+                  
+                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+
+                  if(response == QMessageBox::Yes){
+                           emit request_satisfied();
+                  }
+         };
+
+         connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
+         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked,Qt::SingleShotConnection);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied);
+}
+
+inline void Download_status_tracker::setup_layout() noexcept {
+         central_layout_.addLayout(&file_stat_layout_);
+         central_layout_.addWidget(&state_holder_);
+         central_layout_.addLayout(&network_stat_layout_);
 }
 
 inline uint32_t Download_status_tracker::get_elapsed_seconds() const noexcept {
