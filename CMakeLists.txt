@@ -18,6 +18,7 @@ set(CMAKE_AURORCC on)
 
 set(SOURCES
          src/main.cxx
+         src/main_window.cxx
          src/network_manager.cxx
          src/custom_url_input_widget.cxx
          src/download_status_tracker.cxx

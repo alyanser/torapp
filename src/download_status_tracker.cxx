@@ -4,7 +4,7 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
          assert(!package_url.isEmpty());
          assert(!download_path.isEmpty());
 
-         package_name_label_.setText(package_url.toString());
+         package_name_label_.setText(package_url.fileName());
          download_path_label_.setText(download_path);
          time_elapsed_timer_.start(std::chrono::milliseconds(1000));
 

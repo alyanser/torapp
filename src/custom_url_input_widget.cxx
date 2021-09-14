@@ -26,31 +26,41 @@ void Custom_url_input_widget::setup_layout() noexcept {
 }
 
 void Custom_url_input_widget::on_input_received() noexcept {
-         //todo do sanity checks on all inputs
-         
-         auto path = path_line_.text().simplified();
          const auto url = QUrl(url_line_.text().simplified());
-         const auto package_name = package_name_line_.text().simplified();
+         
+         if(!url.isValid()){
+                  const QString error_body = QString("Url is invalid. Reason: %1").arg(url.errorString());
+
+                  return void(QMessageBox::critical(this,"Invalid Url",error_body));
+         }
+
+         auto path = path_line_.text().simplified();
 
          if(path.isEmpty()){
-                  return void(QMessageBox::warning(this,"Invalid Path","Path cannot be empty"));
-         }
-
-         // evaluates to true even if there's '\' in the url
-         if(url.toString().isEmpty()){
-                  return void(QMessageBox::warning(this,"Invalid Url","Url is invalid or empty"));
-         }
-
-         if(package_name.isEmpty()){
-                  return void(QMessageBox::critical(this,"Invalid file name","File name cannot be empty"));
+                  return void(QMessageBox::critical(this,"Invalid Path","Path cannot be empty"));
          }
 
          if(path.back() != '/'){
                   path += '/';
          }
 
-         if(QFileInfo::exists(path)){
-                  constexpr std::string_view query_title("File already exists");
+         auto package_name = package_name_line_.text().simplified();
+
+         if(package_name.isEmpty()){
+                  auto name_replacement = url.fileName();
+
+                  if(name_replacement.isEmpty()){ // true when url doesn't contain any file name
+                           constexpr std::string_view error_title("Invalid file name");
+                           constexpr std::string_view error_body("One of package name or url's file name must be non-empty");
+                           
+                           return void(QMessageBox::critical(this,error_title.data(),error_body.data()));
+                  }
+
+                  package_name = std::move(name_replacement);
+         }
+
+         if(QFileInfo::exists(path + package_name)){
+                  constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
 
                   constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
@@ -65,7 +75,7 @@ void Custom_url_input_widget::on_input_received() noexcept {
          
          url_line_.clear();
          package_name_line_.clear();
-         path_line_.setText(default_path);
+         path_line_.setText(default_path_);
 
          hide();
          emit request_received(url,path,package_name);

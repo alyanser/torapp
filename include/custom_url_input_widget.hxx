@@ -21,16 +21,16 @@ private:
          void setup_layout() noexcept;
          void on_input_received() noexcept;
 
-         QString default_path = QDir::currentPath() + '/';
+         QString default_path_ = QDir::currentPath() + '/';
          QVBoxLayout central_layout_ = QVBoxLayout(this);
 
          QHBoxLayout url_layout_;
-         QLabel url_label_ = QLabel("Url: ");
+         QLabel url_label_ = QLabel("Url:");
          QLineEdit url_line_;
 
          QHBoxLayout path_layout_;
-         QLabel path_label_ = QLabel("Path: ");
-         QLineEdit path_line_ = QLineEdit(default_path);
+         QLabel path_label_ = QLabel("Path:");
+         QLineEdit path_line_ = QLineEdit(default_path_);
          QToolButton path_button_;
 
          QHBoxLayout button_layout_;
@@ -38,8 +38,8 @@ private:
          QPushButton cancel_button_ = QPushButton("Cancel");
          
          QHBoxLayout package_name_layout_;
-         QLabel package_name_label_ = QLabel("File name: ");
-         QLineEdit package_name_line_ = QLineEdit("new_download");
+         QLabel package_name_label_ = QLabel("File name:");
+         QLineEdit package_name_line_;
 
 signals:
          void request_received(const QUrl & custom_url,const QString & path,const QString & package_name) const;
@@ -55,7 +55,7 @@ inline Custom_url_input_widget::Custom_url_input_widget(){
 
          url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
          path_line_.setPlaceholderText("eg: /home/user/Downloads/");
-         package_name_line_.setPlaceholderText("eg: my_file");
+         package_name_line_.setPlaceholderText("leaving it empty will use the file name from url if any");
 
          setWindowTitle("Custom Url");
          setup_layout();
@@ -68,13 +68,13 @@ inline void Custom_url_input_widget::configure_default_connections() noexcept {
                   const auto selected_directory = QFileDialog::getExistingDirectory(this);
 
                   if(!selected_directory.isEmpty()){
-                           path_line_.setText(selected_directory + "/new_download");
+                           path_line_.setText(selected_directory);
                   }
          };
 
          const auto on_cancel_button_clicked = [this]{
                   url_line_.clear();
-                  path_line_.setText(default_path);
+                  path_line_.setText(default_path_);
                   hide();
          };
 
