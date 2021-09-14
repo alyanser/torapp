@@ -62,6 +62,7 @@ void Custom_url_input_widget::on_input_received() noexcept {
          if(QFileInfo::exists(path + package_name)){
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
+         
 
                   constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
                   constexpr auto default_button = QMessageBox::Yes;
@@ -73,10 +74,7 @@ void Custom_url_input_widget::on_input_received() noexcept {
                   }
          }
          
-         url_line_.clear();
-         package_name_line_.clear();
-         path_line_.setText(default_path_);
-
+         reset_lines();
          hide();
          emit request_received(url,path,package_name);
 }

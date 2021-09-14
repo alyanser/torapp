@@ -41,15 +41,20 @@ void Main_window::initiate_new_download(const QUrl & url,const QString & downloa
 
 void Main_window::add_top_actions() noexcept {
          auto * const search_action = tool_bar_.addAction("Search");
-         auto * const custom_url_action = tool_bar_.addAction("Custom Url");
+         auto * const url_action = tool_bar_.addAction("Custom Url");
          auto * const torrent_action = tool_bar_.addAction("Torrent Url");
          auto * const exit_action = tool_bar_.addAction("Quit");
 
-         file_menu_.addAction(custom_url_action);
-         file_menu_.addAction(exit_action);
-         file_menu_.addAction(torrent_action);
          file_menu_.addAction(search_action);
+         file_menu_.addAction(url_action);
+         file_menu_.addAction(torrent_action);
+         file_menu_.addAction(exit_action);
 
-         connect(custom_url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::show);
+         search_action->setToolTip("Search for files");
+         url_action->setToolTip("Download a file from custom url");
+         torrent_action->setToolTip("Download a torrent file");
+         exit_action->setToolTip("Exit Torapp");
+
+         connect(url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::show);
          connect(exit_action,&QAction::triggered,this,&Main_window::quit);
 }

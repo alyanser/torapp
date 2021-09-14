@@ -18,6 +18,8 @@ public:
          Custom_url_input_widget();
 private:
          void configure_default_connections() noexcept;
+         void reset_lines() noexcept;
+         void setup_tab_order() noexcept;
          void setup_layout() noexcept;
          void on_input_received() noexcept;
 
@@ -59,6 +61,7 @@ inline Custom_url_input_widget::Custom_url_input_widget(){
 
          setWindowTitle("Custom Url");
          setup_layout();
+         setup_tab_order();
          configure_default_connections();
 }
 
@@ -73,15 +76,29 @@ inline void Custom_url_input_widget::configure_default_connections() noexcept {
          };
 
          const auto on_cancel_button_clicked = [this]{
-                  url_line_.clear();
-                  path_line_.setText(default_path_);
+                  reset_lines();
                   hide();
          };
 
          connect(&path_button_,&QToolButton::clicked,on_path_button_clicked);
          connect(&cancel_button_,&QPushButton::clicked,on_cancel_button_clicked);
          connect(&url_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
-         connect(&download_button_,&QPushButton::clicked,this,&Custom_url_input_widget::on_input_received);
+         connect(&package_name_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
+         connect(&path_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
+}
+
+inline void Custom_url_input_widget::reset_lines() noexcept {
+         url_line_.clear();
+         package_name_line_.clear();
+         path_line_.setText(default_path_);
+}
+
+inline void Custom_url_input_widget::setup_tab_order() noexcept {
+         setTabOrder(&url_line_,&path_line_);
+         setTabOrder(&path_line_,&path_button_);
+         setTabOrder(&path_button_,&package_name_line_);
+         setTabOrder(&package_name_line_,&download_button_);
+         setTabOrder(&download_button_,&cancel_button_);
 }
 
 #endif // CUSTOM_URL_INPUT_WIDGET_HXX
