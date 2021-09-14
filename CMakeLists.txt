@@ -13,8 +13,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-p
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
-set(CMAKE_AUTOUIC on)
-set(CMAKE_AURORCC on)
 
 set(SOURCES
          src/main.cxx

@@ -10,7 +10,6 @@
 #include <QTextEdit>
 #include <QProgressBar>
 #include <QStackedWidget>
-#include <utility>
 #include <QMessageBox>
 #include <QTimer>
 #include <QTime>
@@ -23,17 +22,24 @@ class Download_status_tracker : public QWidget, public std::enable_shared_from_t
 public:
          enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, Custom };
+         Q_ENUM(Error);
 
          explicit Download_status_tracker(const Download_request & download_request);
 
-         [[nodiscard]] 
-         static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
-         [[nodiscard]] 
-         static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
-         [[nodiscard]] 
-         uint32_t get_elapsed_seconds() const noexcept;
+         [[nodiscard]] static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
+         [[nodiscard]] static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
+         [[nodiscard]] uint32_t get_elapsed_seconds() const noexcept;
          void bind_lifetime() noexcept;
-         
+signals:
+         void request_satisfied() const;
+         void release_lifetime() const;
+         void retry_download(const Download_request & download_request) const;
+public slots:
+         void set_error_and_finish(Error new_error) noexcept;
+         void set_error_and_finish(const QString & custom_error) noexcept;
+         void on_download_finished() noexcept;
+         void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
+         void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 private:
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
@@ -42,9 +48,8 @@ private:
          void setup_network_status_layout() noexcept;
          void setup_state_widget() noexcept;
          void update_state_line() noexcept;
-
+         ///
          Error error_ = Error::Null;
-
          QVBoxLayout central_layout_ = QVBoxLayout(this);
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
@@ -88,18 +93,6 @@ private:
          QHBoxLayout download_speed_layout_;
          QLabel download_speed_buddy_ = QLabel("Download Speed: ");
          QLabel download_speed_label_ = QLabel("0 bytes/sec");
-
-signals:
-         void request_satisfied() const;
-         void release_lifetime() const;
-         void retry_download(const Download_request & download_request) const;
-
-public slots:
-         void set_error(Error new_error) noexcept;
-         void set_error(const QString & custom_error) noexcept;
-         void on_download_finished() noexcept;
-         void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
-         void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 };
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
@@ -111,7 +104,7 @@ inline void Download_status_tracker::setup_state_widget() noexcept {
          error_line_.setAlignment(Qt::AlignCenter);
 }
 
-inline void Download_status_tracker::set_error(const Error new_error) noexcept {
+inline void Download_status_tracker::set_error_and_finish(const Error new_error) noexcept {
          assert(new_error != Error::Null);
          assert(new_error != Error::Custom);
 
@@ -120,7 +113,7 @@ inline void Download_status_tracker::set_error(const Error new_error) noexcept {
          on_download_finished();
 }
 
-inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
+inline void Download_status_tracker::set_error_and_finish(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          error_line_.setText(custom_error);
          on_download_finished();
@@ -166,14 +159,11 @@ inline std::pair<double,std::string_view> Download_status_tracker::stringify_byt
 inline void Download_status_tracker::bind_lifetime() noexcept {
 
          auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  assert(self.use_count() <= 2); // other possibly at Network_manager::download::on_finished
-                  self->hide();
-
+                  assert(self.use_count() <= 2); // other will be held by the associated network request
          },Qt::SingleShotConnection);
 
          connect(this,&Download_status_tracker::release_lifetime,this,[self_lifetime_connection]{
                   disconnect(self_lifetime_connection);
-                  
          },Qt::SingleShotConnection);
 }
 

@@ -34,11 +34,11 @@ void Main_window::initiate_new_download(const Download_request & download_reques
                   //! consider the consequences of multiple requests on same file
                   network_manager_.download(download_request.url,tracker,file_handle);
          }else{
-                  tracker->set_error(Download_status_tracker::Error::File_Write);
+                  tracker->set_error_and_finish(Download_status_tracker::Error::File_Write);
          }
 
          connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(this,&Main_window::quit,tracker.get(),&Download_status_tracker::release_lifetime);
+         connect(&network_manager_,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime);
 }
 
 void Main_window::add_top_actions() noexcept {

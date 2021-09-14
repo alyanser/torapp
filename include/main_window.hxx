@@ -25,17 +25,19 @@ public:
          Main_window & operator = (const Main_window & rhs) = delete;
          Main_window & operator = (Main_window && rhs) = delete;
          ~Main_window() override = default;
-
+signals:
+         void quit() const;
+public slots:
+         void initiate_new_download(const Download_request & download_request) noexcept;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
-
 private:
          void configure_default_connections() noexcept;
          void setup_menu_bar() noexcept;
          void add_top_actions() noexcept;
          void input_custom_link() noexcept;
          void confirm_quit() const noexcept;
-         
+         ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
          QToolBar tool_bar_;
@@ -43,12 +45,6 @@ private:
 
          Custom_url_input_widget custom_download_widget_;
          Network_manager network_manager_;
-         
-signals:
-         void quit() const;
-
-public slots:
-         void initiate_new_download(const Download_request & download_request) noexcept;
 };
 
 inline void Main_window::configure_default_connections() noexcept {
@@ -68,7 +64,7 @@ inline void Main_window::confirm_quit() const noexcept {
          const auto response_button = QMessageBox::question(nullptr,warning_title.data(),warning_body.data());
 
          if(response_button == QMessageBox::Yes){
-                  network_manager_.begin_termination();
+                  emit network_manager_.begin_termination();
          }
 }
 

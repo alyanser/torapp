@@ -18,14 +18,15 @@ class Custom_url_input_widget : public QWidget {
          Q_OBJECT
 public:
          Custom_url_input_widget();
-
+signals:
+         void new_request_received(const Download_request & download_request) const;
 private:
          void configure_default_connections() noexcept;
          void reset_lines() noexcept;
          void setup_tab_order() noexcept;
          void setup_layout() noexcept;
          void on_input_received() noexcept;
-
+         ///
          QString default_path_ = QDir::currentPath() + '/';
          QVBoxLayout central_layout_ = QVBoxLayout(this);
 
@@ -45,9 +46,6 @@ private:
          QHBoxLayout package_name_layout_;
          QLabel package_name_label_ = QLabel("File name:");
          QLineEdit package_name_line_;
-
-signals:
-         void new_request_received(const Download_request & download_request) const;
 };
 
 inline Custom_url_input_widget::Custom_url_input_widget(){
