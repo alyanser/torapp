@@ -27,17 +27,31 @@ void Custom_url_input_widget::setup_layout() noexcept {
 
 void Custom_url_input_widget::on_input_received() noexcept {
          const auto url = QUrl(url_line_.text().simplified());
+
+         if(url.isEmpty()){
+                  constexpr std::string_view error_title("Empty URL");
+                  constexpr std::string_view error_body("URL field cannot be empty");
+
+                  return void(QMessageBox::critical(this,error_title.data(),error_body.data()));
+         }
          
          if(!url.isValid()){
-                  const QString error_body = QString("Url is invalid. Reason: %1").arg(url.errorString());
+                  const QString error_body("URL is invalid. Reason: %1");
+                  auto error_reason = url.errorString();
 
-                  return void(QMessageBox::critical(this,"Invalid Url",error_body));
+                  if(error_reason.isEmpty()){
+                           error_reason = "Unkown";
+                  }
+                  
+                  constexpr std::string_view error_title("Invalid URL");
+
+                  return void(QMessageBox::critical(this,error_title.data(),error_body.arg(error_reason)));
          }
 
          auto path = path_line_.text().simplified();
 
          if(path.isEmpty()){
-                  return void(QMessageBox::critical(this,"Invalid Path","Path cannot be empty"));
+                  return void(QMessageBox::critical(this,"Invalid Path","Path field cannot be empty"));
          }
 
          if(path.back() != '/'){
@@ -49,9 +63,9 @@ void Custom_url_input_widget::on_input_received() noexcept {
          if(package_name.isEmpty()){
                   auto name_replacement = url.fileName();
 
-                  if(name_replacement.isEmpty()){ // true when url doesn't contain any file name
+                  if(name_replacement.isEmpty()){
                            constexpr std::string_view error_title("Invalid file name");
-                           constexpr std::string_view error_body("One of package name or url's file name must be non-empty");
+                           constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
                            
                            return void(QMessageBox::critical(this,error_title.data(),error_body.data()));
                   }
@@ -63,7 +77,6 @@ void Custom_url_input_widget::on_input_received() noexcept {
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
          
-
                   constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
                   constexpr auto default_button = QMessageBox::Yes;
 

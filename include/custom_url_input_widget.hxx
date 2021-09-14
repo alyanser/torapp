@@ -82,6 +82,7 @@ inline void Custom_url_input_widget::configure_default_connections() noexcept {
 
          connect(&path_button_,&QToolButton::clicked,on_path_button_clicked);
          connect(&cancel_button_,&QPushButton::clicked,on_cancel_button_clicked);
+         connect(&download_button_,&QPushButton::clicked,this,&Custom_url_input_widget::on_input_received);
          connect(&url_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
          connect(&package_name_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
          connect(&path_line_,&QLineEdit::returnPressed,this,&Custom_url_input_widget::on_input_received);
