@@ -27,7 +27,7 @@ public:
          [[nodiscard]] 
          static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
          [[nodiscard]] 
-         static QString stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept;
+         static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
          [[nodiscard]] 
          uint32_t get_elapsed_seconds() const noexcept;
          void bind_lifetime() noexcept;
@@ -56,7 +56,7 @@ private:
          QLabel download_path_label_;
 
          QStackedWidget state_holder_;
-         QLineEdit state_line_;
+         QLineEdit error_line_;
          QProgressBar download_progress_bar_;
 
          QHBoxLayout download_quantity_layout_;
@@ -100,11 +100,11 @@ public slots:
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
          state_holder_.addWidget(&download_progress_bar_);
-         state_holder_.addWidget(&state_line_);
+         state_holder_.addWidget(&error_line_);
          assert(state_holder_.currentWidget() == &download_progress_bar_);
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
-         state_line_.setAlignment(Qt::AlignCenter);
+         error_line_.setAlignment(Qt::AlignCenter);
 }
 
 inline void Download_status_tracker::set_error(const Error new_error) noexcept {
@@ -113,13 +113,13 @@ inline void Download_status_tracker::set_error(const Error new_error) noexcept {
 
          error_ = new_error;
          update_state_line();
-         state_holder_.setCurrentWidget(&state_line_);
+         state_holder_.setCurrentWidget(&error_line_);
 }
 
 inline void Download_status_tracker::set_error(const QString & custom_error) noexcept {
          error_ = Error::Custom;
-         state_line_.setText(custom_error);
-         state_holder_.setCurrentWidget(&state_line_);
+         error_line_.setText(custom_error);
+         state_holder_.setCurrentWidget(&error_line_);
 }
 
 inline void Download_status_tracker::on_download_finished() noexcept {
@@ -161,11 +161,14 @@ inline std::pair<double,std::string_view> Download_status_tracker::stringify_byt
 inline void Download_status_tracker::bind_lifetime() noexcept {
 
          auto self_lifetime_connection = connect(this,&Download_status_tracker::request_satisfied,this,[self = shared_from_this()]{
+                  assert(self.use_count() <= 2); // other possibly at Network_manager::download::on_finished
                   self->hide();
+
          },Qt::SingleShotConnection);
 
          connect(this,&Download_status_tracker::release_lifetime,this,[self_lifetime_connection]{
                   disconnect(self_lifetime_connection);
+                  
          },Qt::SingleShotConnection);
 }
 
@@ -209,9 +212,9 @@ inline void Download_status_tracker::update_state_line() noexcept {
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
          
          switch(error_){
-                  case Error::Null : state_line_.setText(null_error_info.data()); break;
-                  case Error::File_Write : state_line_.setText(file_write_error_info.data()); break;
-                  case Error::Unknown_Network : state_line_.setText(unknown_network_error_info.data()); break;
+                  case Error::Null : error_line_.setText(null_error_info.data()); break;
+                  case Error::File_Write : error_line_.setText(file_write_error_info.data()); break;
+                  case Error::Unknown_Network : error_line_.setText(unknown_network_error_info.data()); break;
                   case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();
          }

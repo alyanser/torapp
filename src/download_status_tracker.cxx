@@ -38,17 +38,19 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
          }
 }
 
-QString Download_status_tracker::stringify_bytes(int64_t updown_bytes_received,int64_t total_updown_bytes) noexcept {
-         constexpr auto unknown_bound = -1;
+QString Download_status_tracker::stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
+         constexpr auto unknown_bound = -1;
+
          double converted_total_bytes = 0;
          std::string_view total_bytes_postfix("inf");
 
-         if(total_updown_bytes != unknown_bound){
-                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_updown_bytes),format);
+         if(total_bytes != unknown_bound){
+                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_bytes),format);
          }
 
-         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(updown_bytes_received),format);
+         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
+         
          QString quantity_text("%1 %2 / %3 %4");
 
          quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
