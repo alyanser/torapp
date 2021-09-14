@@ -14,6 +14,8 @@
 #include <QFile>
 #include <QCloseEvent>
 
+struct Download_request;
+
 class Main_window : public QMainWindow {
          Q_OBJECT
 public:
@@ -45,7 +47,7 @@ signals:
          void quit() const;
 
 public slots:
-         void initiate_new_download(const QUrl & custom_url,const QString & download_path,const QString & package_name) noexcept;
+         void initiate_new_download(const Download_request & download_request) noexcept;
 };
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -55,7 +57,7 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
 
 inline void Main_window::configure_default_connections() noexcept {
          connect(&network_manager_,&Network_manager::terminated,this,&Main_window::quit);
-         connect(&custom_download_widget_,&Custom_url_input_widget::request_received,this,&Main_window::initiate_new_download);
+         connect(&custom_download_widget_,&Custom_url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
 }
 
 inline void Main_window::confirm_quit() const noexcept {

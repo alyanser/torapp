@@ -12,10 +12,13 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
+struct Download_request;
+
 class Custom_url_input_widget : public QWidget {
          Q_OBJECT
 public:
          Custom_url_input_widget();
+
 private:
          void configure_default_connections() noexcept;
          void reset_lines() noexcept;
@@ -44,7 +47,7 @@ private:
          QLineEdit package_name_line_;
 
 signals:
-         void request_received(const QUrl & custom_url,const QString & path,const QString & package_name) const;
+         void new_request_received(const Download_request & download_request) const;
 };
 
 inline Custom_url_input_widget::Custom_url_input_widget(){

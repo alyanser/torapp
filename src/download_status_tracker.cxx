@@ -1,11 +1,12 @@
 #include "download_status_tracker.hxx"
+#include "download_request.hxx"
 
-Download_status_tracker::Download_status_tracker(const QUrl & package_url,const QString & download_path,const QString & package_name){
-         assert(!package_url.isEmpty());
-         assert(!download_path.isEmpty());
+Download_status_tracker::Download_status_tracker(const Download_request & download_request){
+         assert(!download_request.url.isEmpty());
+         assert(!download_request.download_path.isEmpty());
 
-         package_name_label_.setText(package_url.fileName());
-         download_path_label_.setText(download_path);
+         package_name_label_.setText(download_request.url.fileName());
+         download_path_label_.setText(download_request.download_path);
          time_elapsed_timer_.start(std::chrono::milliseconds(1000));
 
          setup_layout();
@@ -16,10 +17,10 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
          configure_default_connections();
 
          {
-                  const auto on_open_button_clicked = [this,download_path,package_name]{
+                  const auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
 
                            //! if doesn't exist then creates new one
-                           if(!QDesktopServices::openUrl(download_path + package_name)){
+                           if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
 
@@ -27,15 +28,15 @@ Download_status_tracker::Download_status_tracker(const QUrl & package_url,const 
                            }
                   };
 
-                  const auto on_retry_button_clicked = [this,package_url,download_path,package_name]{
+                  const auto on_retry_button_clicked = [this,download_request]{
                            initiate_buttons_holder_.setCurrentWidget(&open_button_);
                            open_button_.setEnabled(false);
 
-                           emit retry_download(package_url,download_path,package_name);
+                           emit retry_download(download_request);
                            emit release_lifetime();
                   };
 
-                  const auto on_open_directory_button_clicked = [this,download_path]{
+                  const auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
 
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");

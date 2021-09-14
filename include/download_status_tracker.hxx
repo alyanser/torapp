@@ -16,13 +16,15 @@
 #include <QTime>
 #include <QDesktopServices>
 
+struct Download_request;
+
 class Download_status_tracker : public QWidget, public std::enable_shared_from_this<Download_status_tracker> {
          Q_OBJECT
 public:
          enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, Custom };
 
-         Download_status_tracker(const QUrl & package_url,const QString & download_path,const QString & package_name);
+         explicit Download_status_tracker(const Download_request & download_request);
 
          [[nodiscard]] 
          static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
@@ -90,7 +92,7 @@ private:
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
-         void retry_download(const QUrl & package_url,const QString & download_path,const QString & package_name) const;
+         void retry_download(const Download_request & download_request) const;
 
 public slots:
          void set_error(Error new_error) noexcept;

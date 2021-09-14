@@ -1,4 +1,6 @@
 #include "custom_url_input_widget.hxx"
+#include "download_request.hxx"
+
 #include <QFileInfo>
 
 void Custom_url_input_widget::setup_layout() noexcept {
@@ -42,7 +44,7 @@ void Custom_url_input_widget::on_input_received() noexcept {
                   if(error_reason.isEmpty()){
                            error_reason = "Unkown";
                   }
-                  
+
                   constexpr std::string_view error_title("Invalid URL");
 
                   return void(QMessageBox::critical(this,error_title.data(),error_body.arg(error_reason)));
@@ -89,5 +91,5 @@ void Custom_url_input_widget::on_input_received() noexcept {
          
          reset_lines();
          hide();
-         emit request_received(url,path,package_name);
+         emit new_request_received(Download_request{url,path,package_name});
 }
