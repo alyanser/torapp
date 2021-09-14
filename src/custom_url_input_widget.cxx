@@ -91,5 +91,5 @@ void Custom_url_input_widget::on_input_received() noexcept {
          
          reset_lines();
          hide();
-         emit new_request_received(Download_request{url,path,package_name});
+         emit new_request_received(Download_request{url,package_name,path});
 }

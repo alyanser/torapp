@@ -16,7 +16,7 @@ private:
          void configure_default_connections() noexcept;
 
          uint32_t download_count_ = 0;
-         bool abort_state_ = false;
+         bool aborting_ = false;
 
 signals:
          void begin_termination() const;
@@ -33,7 +33,7 @@ inline Network_manager::Network_manager(){
 inline void Network_manager::configure_default_connections() noexcept {
 
          connect(this,&Network_manager::begin_termination,[this]{
-                  abort_state_ = true;
+                  aborting_ = true;
 
                   if(!download_count_){
                            emit terminated();
@@ -46,7 +46,7 @@ constexpr void Network_manager::on_tracker_destroyed() noexcept {
          
          --download_count_;
 
-         if(abort_state_ && !download_count_){
+         if(aborting_ && !download_count_){
                   emit terminated();
          }
 }
