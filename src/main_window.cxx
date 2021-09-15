@@ -28,31 +28,31 @@ void Main_window::initiate_new_download(const Download_request & download_reques
 
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto file_lock = std::make_shared<QLockFile>(file_handle->fileName());
-         auto tracker = std::make_shared<Download_status_tracker>(download_request);
+         auto tracker = std::make_shared<Download_tracker>(download_request);
 
-         connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(&network_manager_,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime);
-         connect(tracker.get(),&Download_status_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
+         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
+         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
 
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
          network_manager_.increment_connection_count();
 
          if(!file_lock->tryLock()){
-                  return void(tracker->set_error_and_finish(Download_status_tracker::Error::File_Lock));
+                  return void(tracker->set_error_and_finish(Download_tracker::Error::File_Lock));
          }
 
          if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
                   network_manager_.download(Network_manager::Download_resources{file_handle,file_lock,tracker,download_request.url});
          }else{
-                  tracker->set_error_and_finish(Download_status_tracker::Error::File_Write);
+                  tracker->set_error_and_finish(Download_tracker::Error::File_Write);
          }
 }
 
 void Main_window::add_top_actions() noexcept {
          auto * const search_action = tool_bar_.addAction("Search");
          auto * const url_action = tool_bar_.addAction("Custom Url");
-         auto * const torrent_action = tool_bar_.addAction("Torrent Url");
+         auto * const torrent_action = tool_bar_.addAction("Torrent File");
          auto * const exit_action = new QAction("Exit",&file_menu_);
 
          file_menu_.addAction(search_action);
@@ -65,7 +65,7 @@ void Main_window::add_top_actions() noexcept {
          torrent_action->setToolTip("Download a torrent file");
          exit_action->setToolTip("Exit Torapp");
 
-         connect(url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::show);
-         connect(url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::raise);
+         connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::show);
+         connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::raise);
          connect(exit_action,&QAction::triggered,this,&Main_window::quit);
 }

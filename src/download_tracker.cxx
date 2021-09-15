@@ -1,7 +1,7 @@
-#include "download_status_tracker.hxx"
+#include "download_tracker.hxx"
 #include "download_request.hxx"
 
-Download_status_tracker::Download_status_tracker(const Download_request & download_request){
+Download_tracker::Download_tracker(const Download_request & download_request){
          assert(!download_request.url.isEmpty());
          assert(!download_request.download_path.isEmpty());
 
@@ -57,7 +57,7 @@ Download_status_tracker::Download_status_tracker(const Download_request & downlo
          }
 }
 
-QString Download_status_tracker::stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept {
+QString Download_tracker::stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
 
@@ -78,7 +78,7 @@ QString Download_status_tracker::stringify_bytes(int64_t bytes_received,int64_t 
          return quantity_text;
 }
 
-void Download_status_tracker::setup_file_status_layout() noexcept {
+void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
          file_stat_layout_.addLayout(&download_path_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
@@ -97,7 +97,7 @@ void Download_status_tracker::setup_file_status_layout() noexcept {
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
 }
 
-void Download_status_tracker::setup_network_status_layout() noexcept {
+void Download_tracker::setup_network_status_layout() noexcept {
          network_stat_layout_.addLayout(&download_speed_layout_);
          network_stat_layout_.addLayout(&download_quantity_layout_);
          network_stat_layout_.addLayout(&upload_quantity_layout_);
@@ -126,7 +126,7 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
 
 }
 
-void Download_status_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
+void Download_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
          assert(bytes_received >= 0);
          assert(!download_progress_bar_.minimum());
 

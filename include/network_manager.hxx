@@ -3,7 +3,7 @@
 
 #include <QNetworkAccessManager>
 
-class Download_status_tracker;
+class Download_tracker;
 class QFile;
 class QLockFile;
 
@@ -13,7 +13,7 @@ public:
          struct Download_resources {
                   std::shared_ptr<QFile> file_handle;
                   std::shared_ptr<QLockFile> file_lock;
-                  std::shared_ptr<Download_status_tracker> tracker;
+                  std::shared_ptr<Download_tracker> tracker;
                   QUrl address;
          };
 
@@ -22,15 +22,15 @@ public:
          void download(const Download_resources & resources);
          constexpr void increment_connection_count() noexcept;
 signals:
-         void begin_termination() const;
-         void terminated() const;
+         void terminate() const;
+         void all_trackers_destroyed() const;
 public slots:
          constexpr void on_tracker_destroyed() noexcept;
 private:
          void configure_default_connections() noexcept;
          ///
          uint32_t connection_count_ = 0;
-         bool aborting_ = false;
+         bool terminating_ = false;
 };
 
 inline Network_manager::Network_manager(){
@@ -43,11 +43,11 @@ constexpr void Network_manager::increment_connection_count() noexcept {
 
 inline void Network_manager::configure_default_connections() noexcept {
 
-         connect(this,&Network_manager::begin_termination,[this]{
-                  aborting_ = true;
+         connect(this,&Network_manager::terminate,[this]{
+                  terminating_ = true;
 
                   if(!connection_count_){
-                           emit terminated();
+                           emit all_trackers_destroyed();
                   }
          });
 }
@@ -57,8 +57,8 @@ constexpr void Network_manager::on_tracker_destroyed() noexcept {
          
          --connection_count_;
 
-         if(aborting_ && !connection_count_){
-                  emit terminated();
+         if(terminating_ && !connection_count_){
+                  emit all_trackers_destroyed();
          }
 }
 

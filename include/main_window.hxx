@@ -1,9 +1,9 @@
 #ifndef MAIN_WINDOW_HXX
 #define MAIN_WINDOW_HXX
 
-#include "custom_url_input_widget.hxx"
+#include "url_input_widget.hxx"
 #include "network_manager.hxx"
-#include "download_status_tracker.hxx"
+#include "download_tracker.hxx"
 
 #include <QMainWindow>
 #include <QMessageBox>
@@ -46,13 +46,13 @@ private:
          QMenu sort_menu_ = QMenu("Sort",menuBar());
          QActionGroup sort_action_group_ = QActionGroup(this);
 
-         Custom_url_input_widget custom_download_widget_;
+         Url_input_widget url_input_widget_;
          Network_manager network_manager_;
 };
 
 inline void Main_window::configure_default_connections() noexcept {
-         connect(&network_manager_,&Network_manager::terminated,this,&Main_window::quit);
-         connect(&custom_download_widget_,&Custom_url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
+         connect(&url_input_widget_,&Url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
 }
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -67,7 +67,7 @@ inline void Main_window::confirm_quit() const noexcept {
          const auto response_button = QMessageBox::question(nullptr,warning_title.data(),warning_body.data());
 
          if(response_button == QMessageBox::Yes){
-                  emit network_manager_.begin_termination();
+                  emit network_manager_.terminate();
          }
 }
 

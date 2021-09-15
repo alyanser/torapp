@@ -1,12 +1,12 @@
-#include "custom_url_input_widget.hxx"
+#include "url_input_widget.hxx"
 #include "download_request.hxx"
 
 #include <QFileInfo>
 
-void Custom_url_input_widget::setup_layout() noexcept {
+void Url_input_widget::setup_layout() noexcept {
          central_layout_.addLayout(&url_layout_);
-         central_layout_.addLayout(&path_layout_);
          central_layout_.addLayout(&package_name_layout_);
+         central_layout_.addLayout(&path_layout_);
          central_layout_.addLayout(&button_layout_);
 
          url_layout_.addWidget(&url_label_);
@@ -27,7 +27,7 @@ void Custom_url_input_widget::setup_layout() noexcept {
          path_label_.setBuddy(&path_line_);
 }
 
-void Custom_url_input_widget::on_input_received() noexcept {
+void Url_input_widget::on_input_received() noexcept {
          const auto url = QUrl(url_line_.text().simplified());
 
          if(url.isEmpty()){

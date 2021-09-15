@@ -18,15 +18,15 @@ set(SOURCES
          src/main.cxx
          src/main_window.cxx
          src/network_manager.cxx
-         src/custom_url_input_widget.cxx
-         src/download_status_tracker.cxx
+         src/url_input_widget.cxx
+         src/download_tracker.cxx
 )
 
 set(MOC_INCLUDES
          include/main_window.hxx
-         include/custom_url_input_widget.hxx
+         include/url_input_widget.hxx
          include/network_manager.hxx
-         include/download_status_tracker.hxx
+         include/download_tracker.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
