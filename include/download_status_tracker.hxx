@@ -37,7 +37,7 @@ signals:
 public slots:
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
-         void on_download_finished() noexcept;
+         void download_finished() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 private:
@@ -110,16 +110,16 @@ inline void Download_status_tracker::set_error_and_finish(const Error new_error)
 
          error_ = new_error;
          update_state_line();
-         on_download_finished();
+         download_finished();
 }
 
 inline void Download_status_tracker::set_error_and_finish(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          error_line_.setText(custom_error);
-         on_download_finished();
+         download_finished();
 }
 
-inline void Download_status_tracker::on_download_finished() noexcept {
+inline void Download_status_tracker::download_finished() noexcept {
          time_elapsed_buddy_.setText("Time took: ");
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          time_elapsed_timer_.stop();

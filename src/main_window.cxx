@@ -27,11 +27,11 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto tracker = std::make_shared<Download_status_tracker>(download_request);
 
-         network_manager_.increment_connection_count();
          tracker->bind_lifetime();
+         network_manager_.increment_connection_count();
          central_layout_.addWidget(tracker.get());
 
-         if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+         if(file_handle->open(QFile::WriteOnly | QFile::Truncate | QFile::ReadOnly)){
                   //! consider the consequences of multiple requests on same file
                   network_manager_.download(download_request.url,tracker,file_handle);
          }else{
@@ -47,7 +47,7 @@ void Main_window::add_top_actions() noexcept {
          auto * const search_action = tool_bar_.addAction("Search");
          auto * const url_action = tool_bar_.addAction("Custom Url");
          auto * const torrent_action = tool_bar_.addAction("Torrent Url");
-         auto * const exit_action = tool_bar_.addAction("Quit");
+         auto * const exit_action = new QAction("Exit",&file_menu_);
 
          file_menu_.addAction(search_action);
          file_menu_.addAction(url_action);

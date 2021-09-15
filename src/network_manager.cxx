@@ -6,6 +6,7 @@
          
 void Network_manager::download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle){
          assert(!address.isEmpty());
+         assert(file_handle->exists());
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
@@ -25,10 +26,10 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
 
          const auto on_finished = [tracker,network_reply,file_handle]{
                   
-                  if(network_reply->error() != QNetworkReply::NoError){
-                           tracker->set_error_and_finish(network_reply->errorString());
+                  if(network_reply->error() == QNetworkReply::NoError){
+                           tracker->download_finished();
                   }else{
-                           tracker->on_download_finished();
+                           tracker->set_error_and_finish(network_reply->errorString());
                   }
          };
 
