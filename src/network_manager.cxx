@@ -37,8 +37,8 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
          connect(network_reply.get(),&QNetworkReply::finished,tracker.get(),on_finished,Qt::SingleShotConnection);
 
          connect(this,&Network_manager::begin_termination,network_reply.get(),&QNetworkReply::abort);
-         connect(network_reply.get(),&QNetworkReply::downloadProgress,tracker.get(),&Download_status_tracker::download_progress_update);
-         connect(network_reply.get(),&QNetworkReply::uploadProgress,tracker.get(),&Download_status_tracker::upload_progress_update);
          connect(tracker.get(),&Download_status_tracker::request_satisfied,network_reply.get(),&QNetworkReply::abort);
          connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),&QNetworkReply::redirectAllowed);
+         connect(network_reply.get(),&QNetworkReply::downloadProgress,tracker.get(),&Download_status_tracker::download_progress_update);
+         connect(network_reply.get(),&QNetworkReply::uploadProgress,tracker.get(),&Download_status_tracker::upload_progress_update);
 }

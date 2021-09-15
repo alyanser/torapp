@@ -12,7 +12,7 @@ public:
          Network_manager();
 
          void download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle);
-         void increment_connection_count() noexcept;
+         constexpr void increment_connection_count() noexcept;
 signals:
          void begin_termination() const;
          void terminated() const;
@@ -29,8 +29,8 @@ inline Network_manager::Network_manager(){
          configure_default_connections();
 }
 
-inline void Network_manager::increment_connection_count() noexcept {
-         connection_count_++;
+constexpr void Network_manager::increment_connection_count() noexcept {
+         ++connection_count_;
 }
 
 inline void Network_manager::configure_default_connections() noexcept {

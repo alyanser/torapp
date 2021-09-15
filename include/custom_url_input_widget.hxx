@@ -27,7 +27,7 @@ private:
          void setup_layout() noexcept;
          void on_input_received() noexcept;
          ///
-         QString default_path_ = QDir::currentPath() + '/';
+         QString default_path_ = QDir::currentPath();
          QVBoxLayout central_layout_ = QVBoxLayout(this);
 
          QHBoxLayout url_layout_;
@@ -58,7 +58,7 @@ inline Custom_url_input_widget::Custom_url_input_widget(){
 
          url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
          path_line_.setPlaceholderText("eg: /home/user/Downloads/");
-         package_name_line_.setPlaceholderText("leaving it empty will use the file name from url if any");
+         package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
 
          setWindowTitle("Custom Url");
          setup_layout();
