@@ -65,5 +65,6 @@ void Main_window::add_top_actions() noexcept {
          exit_action->setToolTip("Exit Torapp");
 
          connect(url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::show);
+         connect(url_action,&QAction::triggered,&custom_download_widget_,&Custom_url_input_widget::raise);
          connect(exit_action,&QAction::triggered,this,&Main_window::quit);
 }

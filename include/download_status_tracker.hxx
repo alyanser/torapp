@@ -34,6 +34,8 @@ signals:
          void request_satisfied() const;
          void release_lifetime() const;
          void retry_download(const Download_request & download_request) const;
+         void delete_file_permanently() const;
+         void move_file_to_trash() const;
 public slots:
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
@@ -82,7 +84,6 @@ private:
          QPushButton open_button_ = QPushButton("Open");
          QPushButton retry_button_ = QPushButton("Retry");
 
-         QPushButton open_directory_button_ = QPushButton("Open inside directory");
 
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
@@ -93,6 +94,9 @@ private:
          QHBoxLayout download_speed_layout_;
          QLabel download_speed_buddy_ = QLabel("Download Speed: ");
          QLabel download_speed_label_ = QLabel("0 bytes/sec");
+
+         QPushButton delete_button_ = QPushButton("Delete");
+         QPushButton open_directory_button_ = QPushButton("Open inside directory");
 };
 
 inline void Download_status_tracker::setup_state_widget() noexcept {
@@ -126,6 +130,7 @@ inline void Download_status_tracker::download_finished() noexcept {
          state_holder_.setCurrentWidget(&error_line_);
          
          if(error_ == Error::Null){
+                  delete_button_.setEnabled(true);
                   open_button_.setEnabled(true);
          }else{
                   initiate_buttons_holder_.setCurrentWidget(&retry_button_);
@@ -187,7 +192,21 @@ inline void Download_status_tracker::configure_default_connections() noexcept {
                   }
          };
 
+         const auto on_delete_button_clicked = [this]{
+                  QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::NoButton,this);
+
+                  auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
+                  auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
+                  [[maybe_unused]] auto * const cancel_button = query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
+
+                  connect(delete_permanently_button,&QPushButton::clicked,this,&Download_status_tracker::delete_file_permanently);
+                  connect(move_to_trash_button,&QPushButton::clicked,this,&Download_status_tracker::move_file_to_trash);
+
+                  query_box.exec();
+         };
+
          connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
+         connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
          connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked,Qt::SingleShotConnection);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_status_tracker::request_satisfied,Qt::SingleShotConnection);
 }

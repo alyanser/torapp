@@ -9,6 +9,7 @@ Download_status_tracker::Download_status_tracker(const Download_request & downlo
          download_path_label_.setText(download_request.download_path);
          time_elapsed_timer_.start(std::chrono::milliseconds(1000));
          open_button_.setEnabled(false);
+         delete_button_.setEnabled(false);
          
          setup_layout();
          setup_file_status_layout();
@@ -88,6 +89,7 @@ void Download_status_tracker::setup_file_status_layout() noexcept {
 
          download_path_layout_.addWidget(&download_path_buddy_);
          download_path_layout_.addWidget(&download_path_label_);
+         download_path_layout_.addWidget(&open_directory_button_);
          download_path_buddy_.setBuddy(&download_path_label_);
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
@@ -100,7 +102,7 @@ void Download_status_tracker::setup_network_status_layout() noexcept {
          network_stat_layout_.addLayout(&download_quantity_layout_);
          network_stat_layout_.addLayout(&upload_quantity_layout_);
 
-         network_stat_layout_.addWidget(&open_directory_button_);
+         network_stat_layout_.addWidget(&delete_button_);
          network_stat_layout_.addWidget(&initiate_buttons_holder_);
          network_stat_layout_.addWidget(&terminate_buttons_holder_);
 
