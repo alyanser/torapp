@@ -49,26 +49,21 @@ private:
 };
 
 inline Url_input_widget::Url_input_widget(){
-         {
-                  constexpr uint32_t min_width = 640;
-                  constexpr uint32_t min_height = 200;
-
-                  setMinimumSize(QSize(min_width,min_height));
-         }
+         setMinimumSize(QSize(640,480));
+         setWindowTitle("Custom Url");
+         
+         setup_layout();
+         setup_tab_order();
+         configure_default_connections();
 
          url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
          path_line_.setPlaceholderText("eg: /home/user/Downloads/");
          package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
-
-         setWindowTitle("Custom Url");
-         setup_layout();
-         setup_tab_order();
-         configure_default_connections();
 }
 
 inline void Url_input_widget::configure_default_connections() noexcept {
 
-         const auto on_path_button_clicked = [this]{
+         auto on_path_button_clicked = [this]{
                   const auto selected_directory = QFileDialog::getExistingDirectory(this);
 
                   if(!selected_directory.isEmpty()){
@@ -76,9 +71,10 @@ inline void Url_input_widget::configure_default_connections() noexcept {
                   }
          };
 
-         const auto on_cancel_button_clicked = [this]{
+         auto on_cancel_button_clicked = [this]{
                   reset_lines();
-                  hide();
+                  //! doesn't it mask some issues?
+                  // hide();
          };
 
          connect(&path_button_,&QToolButton::clicked,on_path_button_clicked);

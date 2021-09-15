@@ -3,23 +3,19 @@
 #include <QLockFile>
 
 Main_window::Main_window(){
-         {
-                  constexpr size_t min_width = 1024;
-                  constexpr size_t min_height = 400;
-
-                  setMinimumSize(QSize(min_width,min_height));
-         }
-
-         central_layout_.setAlignment(Qt::AlignTop);
-         tool_bar_.setFloatable(false);
-         
+         setMinimumSize(QSize(1024,400));
          setWindowTitle("Torapp");
+
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
+         
          setup_menu_bar();
          setup_sort_menu();
          add_top_actions();
          configure_default_connections();
+
+         central_layout_.setAlignment(Qt::AlignTop);
+         tool_bar_.setFloatable(false);
 }
 
 void Main_window::initiate_new_download(const Download_request & download_request) noexcept {
@@ -30,23 +26,32 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          auto file_lock = std::make_shared<QLockFile>(file_handle->fileName());
          auto tracker = std::make_shared<Download_tracker>(download_request);
 
-         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
-         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
-
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
          network_manager_.increment_connection_count();
 
-         if(!file_lock->tryLock()){
-                  return void(tracker->set_error_and_finish(Download_tracker::Error::File_Lock));
+         if(!download_request.retry_existing_request && open_files_.contains(file_handle->fileName())){
+                  tracker->set_error(Download_tracker::Error::File_Lock);
+                  return void(tracker->on_download_finished());
          }
 
          if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                  network_manager_.download(Network_manager::Download_resources{file_handle,file_lock,tracker,download_request.url});
+                  
+                  if(!download_request.retry_existing_request){
+                           open_files_.insert(file_handle->fileName());
+                  }else{
+                           assert(open_files_.contains(file_handle->fileName()));
+                  }
+
+                  network_manager_.download({file_handle,tracker,download_request.url});
          }else{
-                  tracker->set_error_and_finish(Download_tracker::Error::File_Write);
+                  tracker->set_error(Download_tracker::Error::File_Write);
+                  tracker->on_download_finished();
          }
+
+         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
+         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
 }
 
 void Main_window::add_top_actions() noexcept {
@@ -68,4 +73,23 @@ void Main_window::add_top_actions() noexcept {
          connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::show);
          connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::raise);
          connect(exit_action,&QAction::triggered,this,&Main_window::quit);
+}
+
+void Main_window::setup_sort_menu() noexcept {
+         auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
+
+         const auto sort_actions = sort_action_group_.actions();
+
+         for(auto * const sort_action : sort_actions){
+                  sort_action->setCheckable(true);
+         }
+
+         sort_by_name_action->setChecked(true);
+         sort_menu_.addActions(sort_actions);
+
+         //todo add connections and implementation
 }

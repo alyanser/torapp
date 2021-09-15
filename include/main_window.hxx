@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QCloseEvent>
 #include <QActionGroup>
+#include <QSet>
 
 struct Download_request;
 
@@ -48,6 +49,7 @@ private:
 
          Url_input_widget url_input_widget_;
          Network_manager network_manager_;
+         QSet<QString> open_files_;
 };
 
 inline void Main_window::configure_default_connections() noexcept {
@@ -73,27 +75,9 @@ inline void Main_window::confirm_quit() const noexcept {
 
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
+         
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
-}
-
-inline void Main_window::setup_sort_menu() noexcept {
-         auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
-
-         const auto sort_actions = sort_action_group_.actions();
-
-         for(auto * const sort_action : sort_actions){
-                  sort_action->setCheckable(true);
-         }
-
-         sort_by_name_action->setChecked(true);
-         sort_menu_.addActions(sort_actions);
-
-         //todo add connections and implementation
 }
 
 #endif // MAIN_WINDOW_HXX

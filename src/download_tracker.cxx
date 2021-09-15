@@ -5,12 +5,6 @@ Download_tracker::Download_tracker(const Download_request & download_request){
          assert(!download_request.url.isEmpty());
          assert(!download_request.download_path.isEmpty());
 
-         package_name_label_.setText(download_request.url.fileName());
-         download_path_label_.setText(download_request.download_path);
-         time_elapsed_timer_.start(std::chrono::milliseconds(1000));
-         open_button_.setEnabled(false);
-         delete_button_.setEnabled(false);
-         
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -18,10 +12,15 @@ Download_tracker::Download_tracker(const Download_request & download_request){
          update_state_line();
          configure_default_connections();
 
-         {
-                  const auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
+         package_name_label_.setText(download_request.url.fileName());
+         download_path_label_.setText(download_request.download_path);
+         time_elapsed_timer_.start(std::chrono::milliseconds(1000));
+         open_button_.setEnabled(false);
+         delete_button_.setEnabled(false);
 
-                           //! if doesn't exist then creates new one
+         {
+                  auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
+
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
@@ -30,22 +29,18 @@ Download_tracker::Download_tracker(const Download_request & download_request){
                            }
                   };
 
-                  const auto on_retry_button_clicked = [this,download_request]{
-                           initiate_buttons_holder_.setCurrentWidget(&open_button_);
-                           open_button_.setEnabled(false);
-
+                  auto on_retry_button_clicked = [this,download_request = download_request]() mutable {
+                           download_request.retry_existing_request = true;
+                           
                            emit retry_download(download_request);
                            emit release_lifetime();
                   };
 
-                  const auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
+                  auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
 
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");
-                                    constexpr std::string_view error_body(
-                                             "Directory could not be opened. Maybe it is deleted or"
-                                             " you don't have the permissions."
-                                    );
+                                    constexpr std::string_view error_body("Directory could not be opened");
                                     
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
@@ -60,7 +55,6 @@ Download_tracker::Download_tracker(const Download_request & download_request){
 QString Download_tracker::stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
-
          double converted_total_bytes = 0;
          std::string_view total_bytes_postfix("inf");
 
@@ -69,7 +63,6 @@ QString Download_tracker::stringify_bytes(int64_t bytes_received,int64_t total_b
          }
 
          const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
-         
          QString quantity_text("%1 %2 / %3 %4");
 
          quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
@@ -123,7 +116,6 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          terminate_buttons_holder_.addWidget(&cancel_button_);
          terminate_buttons_holder_.addWidget(&finish_button_);
-
 }
 
 void Download_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {

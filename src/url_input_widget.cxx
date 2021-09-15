@@ -28,7 +28,7 @@ void Url_input_widget::setup_layout() noexcept {
 }
 
 void Url_input_widget::on_input_received() noexcept {
-         const auto url = QUrl(url_line_.text().simplified());
+         const QUrl url(url_line_.text().simplified());
 
          if(url.isEmpty()){
                   constexpr std::string_view error_title("Empty URL");
@@ -42,7 +42,7 @@ void Url_input_widget::on_input_received() noexcept {
                   auto error_reason = url.errorString();
 
                   if(error_reason.isEmpty()){
-                           error_reason = "Unkown";
+                           error_reason = "Unknown";
                   }
 
                   constexpr std::string_view error_title("Invalid URL");
@@ -91,5 +91,5 @@ void Url_input_widget::on_input_received() noexcept {
          
          reset_lines();
          hide();
-         emit new_request_received(Download_request{package_name,path,url});
+         emit new_request_received({package_name,path,url});
 }

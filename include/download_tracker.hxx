@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QTime>
 #include <QDesktopServices>
+#include <utility>
 
 struct Download_request;
 
@@ -22,13 +23,13 @@ class Download_tracker : public QWidget, public std::enable_shared_from_this<Dow
 public:
          enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
-         Q_ENUM(Error);
 
          explicit Download_tracker(const Download_request & download_request);
 
          [[nodiscard]] static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
          [[nodiscard]] static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
          [[nodiscard]] uint32_t get_elapsed_seconds() const noexcept;
+         [[nodiscard]] constexpr Error error() const noexcept;
          void bind_lifetime() noexcept;
 signals:
          void request_satisfied() const;
@@ -37,9 +38,9 @@ signals:
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 public slots:
-         void set_error_and_finish(Error new_error) noexcept;
-         void set_error_and_finish(const QString & custom_error) noexcept;
-         void download_finished() noexcept;
+         void set_error(Error new_error) noexcept;
+         void set_error(const QString & custom_error) noexcept;
+         void on_download_finished() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 private:
@@ -57,7 +58,7 @@ private:
          QHBoxLayout network_stat_layout_;
 
          QHBoxLayout package_name_layout_;
-         QLabel package_name_buddy_ = QLabel("Name: ");
+         QLabel package_name_buddy_ = QLabel("Name: "); 
          QLabel package_name_label_;
 
          QHBoxLayout download_path_layout_;
@@ -84,7 +85,6 @@ private:
          QPushButton open_button_ = QPushButton("Open");
          QPushButton retry_button_ = QPushButton("Retry");
 
-
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
          QTimer time_elapsed_timer_;
@@ -96,7 +96,7 @@ private:
          QLabel download_speed_label_ = QLabel("0 bytes/sec");
 
          QPushButton delete_button_ = QPushButton("Delete");
-         QPushButton open_directory_button_ = QPushButton("Open inside directory");
+         QPushButton open_directory_button_ = QPushButton("Open directory");
 };
 
 inline void Download_tracker::setup_state_widget() noexcept {
@@ -108,22 +108,18 @@ inline void Download_tracker::setup_state_widget() noexcept {
          error_line_.setAlignment(Qt::AlignCenter);
 }
 
-inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
-         assert(new_error != Error::Null);
-         assert(new_error != Error::Custom);
-
+inline void Download_tracker::set_error(const Error new_error) noexcept {
+         assert(new_error != Error::Null && new_error != Error::Custom);
          error_ = new_error;
          update_state_line();
-         download_finished();
 }
 
-inline void Download_tracker::set_error_and_finish(const QString & custom_error) noexcept {
+inline void Download_tracker::set_error(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          error_line_.setText(custom_error);
-         download_finished();
 }
 
-inline void Download_tracker::download_finished() noexcept {
+inline void Download_tracker::on_download_finished() noexcept {
          time_elapsed_buddy_.setText("Time took: ");
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          time_elapsed_timer_.stop();
@@ -154,18 +150,17 @@ inline std::pair<double,std::string_view> Download_tracker::stringify_bytes(cons
                   return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
          }
 
-         
          if(bytes >= bytes_in_kb){
                   return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
          }
 
-         return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
+         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)");
 }
 
 inline void Download_tracker::bind_lifetime() noexcept {
 
          auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  assert(self.use_count() <= 2); // other will be held by the associated network request
+                  assert(self.use_count() <= 2); // other could  be held by the associated network request
          },Qt::SingleShotConnection);
 
          connect(this,&Download_tracker::release_lifetime,this,[self_lifetime_connection]{
@@ -175,27 +170,25 @@ inline void Download_tracker::bind_lifetime() noexcept {
 
 inline void Download_tracker::configure_default_connections() noexcept {
 
-         const auto on_timer_timeout = [&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+         auto on_timer_timeout = [&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
                   time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
          };
 
-         const auto on_cancel_button_clicked = [this]{
+         auto on_cancel_button_clicked = [this]{
                   constexpr std::string_view question_title("Cancel Download");
-                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All progress will be lost.");
-                  constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All download progress will be lost.");
+                  constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   
                   const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
-                  if(response == QMessageBox::Yes){
+                  if(response == QMessageBox::StandardButton::Yes){
                            emit request_satisfied();
                   }
          };
 
-         const auto on_delete_button_clicked = [this]{
+         auto on_delete_button_clicked = [this]{
                   QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::NoButton);
-
-                  qInfo() << query_box.parent();
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
                   auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
@@ -211,8 +204,8 @@ inline void Download_tracker::configure_default_connections() noexcept {
 
          connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
          connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
-         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked,Qt::SingleShotConnection);
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied,Qt::SingleShotConnection);
+         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 }
 
 inline void Download_tracker::setup_layout() noexcept {
@@ -223,6 +216,10 @@ inline void Download_tracker::setup_layout() noexcept {
 
 inline uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
          return static_cast<uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
+}
+
+constexpr Download_tracker::Error Download_tracker::error() const noexcept {
+         return error_;
 }
 
 inline void Download_tracker::update_state_line() noexcept {
