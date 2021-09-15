@@ -13,6 +13,7 @@
 #include <QMenu>
 #include <QFile>
 #include <QCloseEvent>
+#include <QActionGroup>
 
 struct Download_request;
 
@@ -34,14 +35,16 @@ protected:
 private:
          void configure_default_connections() noexcept;
          void setup_menu_bar() noexcept;
+         void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
-         void input_custom_link() noexcept;
          void confirm_quit() const noexcept;
          ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
          QToolBar tool_bar_;
          QMenu file_menu_ = QMenu("File",menuBar());
+         QMenu sort_menu_ = QMenu("Sort",menuBar());
+         QActionGroup sort_action_group_ = QActionGroup(this);
 
          Custom_url_input_widget custom_download_widget_;
          Network_manager network_manager_;
@@ -71,7 +74,26 @@ inline void Main_window::confirm_quit() const noexcept {
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
          menu_bar->addMenu(&file_menu_);
-         //todo add more menus
+         menu_bar->addMenu(&sort_menu_);
+}
+
+inline void Main_window::setup_sort_menu() noexcept {
+         auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
+
+         const auto sort_actions = sort_action_group_.actions();
+
+         for(auto * const sort_action : sort_actions){
+                  sort_action->setCheckable(true);
+         }
+
+         sort_by_name_action->setChecked(true);
+         sort_menu_.addActions(sort_actions);
+
+         //todo add connections and implementation
 }
 
 #endif // MAIN_WINDOW_HXX

@@ -17,6 +17,7 @@ Main_window::Main_window(){
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
          setup_menu_bar();
+         setup_sort_menu();
          add_top_actions();
          configure_default_connections();
 }
