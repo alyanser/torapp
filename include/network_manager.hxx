@@ -5,13 +5,21 @@
 
 class Download_status_tracker;
 class QFile;
+class QLockFile;
 
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT
 public:
+         struct Download_resources {
+                  std::shared_ptr<QFile> file_handle;
+                  std::shared_ptr<QLockFile> file_lock;
+                  std::shared_ptr<Download_status_tracker> tracker;
+                  QUrl address;
+         };
+
          Network_manager();
 
-         void download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle);
+         void download(const Download_resources & resources);
          constexpr void increment_connection_count() noexcept;
 signals:
          void begin_termination() const;

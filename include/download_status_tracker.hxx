@@ -21,7 +21,7 @@ class Download_status_tracker : public QWidget, public std::enable_shared_from_t
          Q_OBJECT
 public:
          enum class Conversion_Format { Speed, Memory };
-         enum class Error { Null, File_Write, Unknown_Network, Custom };
+         enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
          Q_ENUM(Error);
 
          explicit Download_status_tracker(const Download_request & download_request);
@@ -149,6 +149,7 @@ inline std::pair<double,std::string_view> Download_status_tracker::stringify_byt
                   return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
          }
 
+         
          if(bytes >= bytes_in_kb){
                   return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
          }
@@ -205,11 +206,13 @@ inline void Download_status_tracker::update_state_line() noexcept {
          constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
          constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
+         constexpr std::string_view file_lock_error_info("Same file is held by another download. Finish that download and retry");
          
          switch(error_){
                   case Error::Null : error_line_.setText(null_error_info.data()); break;
                   case Error::File_Write : error_line_.setText(file_write_error_info.data()); break;
                   case Error::Unknown_Network : error_line_.setText(unknown_network_error_info.data()); break;
+                  case Error::File_Lock : error_line_.setText(file_lock_error_info.data()); break;
                   case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();
          }

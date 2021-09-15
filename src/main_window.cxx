@@ -1,5 +1,6 @@
 #include "main_window.hxx"
 #include "download_request.hxx"
+#include <QLockFile>
 
 Main_window::Main_window(){
          {
@@ -25,22 +26,26 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          assert(!download_request.url.toString().isEmpty());
 
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
+         auto file_lock = std::make_shared<QLockFile>(file_handle->fileName());
          auto tracker = std::make_shared<Download_status_tracker>(download_request);
-
-         tracker->bind_lifetime();
-         network_manager_.increment_connection_count();
-         central_layout_.addWidget(tracker.get());
-
-         if(file_handle->open(QFile::WriteOnly | QFile::Truncate | QFile::ReadOnly)){
-                  //! consider the consequences of multiple requests on same file
-                  network_manager_.download(download_request.url,tracker,file_handle);
-         }else{
-                  tracker->set_error_and_finish(Download_status_tracker::Error::File_Write);
-         }
 
          connect(tracker.get(),&Download_status_tracker::retry_download,this,&Main_window::initiate_new_download);
          connect(&network_manager_,&Network_manager::begin_termination,tracker.get(),&Download_status_tracker::release_lifetime);
          connect(tracker.get(),&Download_status_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
+
+         tracker->bind_lifetime();
+         central_layout_.addWidget(tracker.get());
+         network_manager_.increment_connection_count();
+
+         if(!file_lock->tryLock()){
+                  return void(tracker->set_error_and_finish(Download_status_tracker::Error::File_Lock));
+         }
+
+         if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+                  network_manager_.download(Network_manager::Download_resources{file_handle,file_lock,tracker,download_request.url});
+         }else{
+                  tracker->set_error_and_finish(Download_status_tracker::Error::File_Write);
+         }
 }
 
 void Main_window::add_top_actions() noexcept {

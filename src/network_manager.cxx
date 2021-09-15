@@ -3,10 +3,14 @@
 
 #include <QNetworkReply>
 #include <QFile>
+#include <QLockFile>
          
-void Network_manager::download(const QUrl & address,std::shared_ptr<Download_status_tracker> tracker,std::shared_ptr<QFile> file_handle){
+void Network_manager::download(const Download_resources & resources){
+         const auto & [file_handle,file_lock,tracker,address] = resources;
+
          assert(!address.isEmpty());
          assert(file_handle->exists());
+         assert(file_lock->isLocked());
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(address)));
 
@@ -24,7 +28,7 @@ void Network_manager::download(const QUrl & address,std::shared_ptr<Download_sta
                   }
          };
 
-         const auto on_finished = [tracker,network_reply,file_handle]{
+         const auto on_finished = [network_reply,tracker = tracker,file_handle = file_handle,file_lock = file_lock]{
                   
                   if(network_reply->error() == QNetworkReply::NoError){
                            tracker->download_finished();
