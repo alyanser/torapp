@@ -49,6 +49,7 @@ private:
 
          Url_input_widget url_input_widget_;
          Network_manager network_manager_;
+         QSet<QString> open_files_;
 };
 
 inline void Main_window::configure_default_connections() noexcept {

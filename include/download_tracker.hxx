@@ -14,7 +14,6 @@
 #include <QTimer>
 #include <QTime>
 #include <QDesktopServices>
-#include <utility>
 
 struct Download_request;
 
@@ -27,6 +26,9 @@ public:
          explicit Download_tracker(const Download_request & download_request);
 
          void bind_lifetime() noexcept;
+         void set_error_and_finish(Error new_error) noexcept;
+         void set_error_and_finish(const QString & custom_error) noexcept;
+         void switch_to_finished_state() noexcept;
          [[nodiscard]] auto get_elapsed_seconds() const noexcept;
          [[nodiscard]] constexpr auto error() const noexcept;
          [[nodiscard]] static auto stringify_bytes(double bytes,Conversion_Format format) noexcept;
@@ -38,9 +40,6 @@ signals:
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 public slots:
-         void set_error(Error new_error) noexcept;
-         void set_error(const QString & custom_error) noexcept;
-         void switch_to_finished_state() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 private:
@@ -107,15 +106,17 @@ inline void Download_tracker::setup_state_widget() noexcept {
          error_line_.setAlignment(Qt::AlignCenter);
 }
 
-inline void Download_tracker::set_error(const Error new_error) noexcept {
+inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
          assert(new_error != Error::Null && new_error != Error::Custom);
          error_ = new_error;
          update_error_line();
+         switch_to_finished_state();
 }
 
-inline void Download_tracker::set_error(const QString & custom_error) noexcept {
+inline void Download_tracker::set_error_and_finish(const QString & custom_error) noexcept {
          error_ = Error::Custom;
          error_line_.setText(custom_error);
+         switch_to_finished_state();
 }
 
 inline void Download_tracker::switch_to_finished_state() noexcept {
@@ -226,7 +227,7 @@ inline void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
          constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
-         constexpr std::string_view file_lock_error_info("Same file is held by another download. Finish that download and retry");
+         constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
 
          switch(error_){
                   case Error::Null : error_line_.setText(null_error_info.data()); break;

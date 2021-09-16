@@ -4,6 +4,7 @@
 Download_tracker::Download_tracker(const Download_request & download_request){
          assert(!download_request.url.isEmpty());
          assert(!download_request.download_path.isEmpty());
+         
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -124,7 +125,7 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
          if(total_bytes == unknown_bytes){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
-                  download_progress_bar_.setValue(0); //? necessary?
+                  download_progress_bar_.setValue(0);
          }else{
                   download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
                   download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));

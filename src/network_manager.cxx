@@ -17,7 +17,7 @@ void Network_manager::download(const Download_resources & resources) noexcept {
                   if(network_reply->error() == QNetworkReply::NoError){
                            file_handle->write(network_reply->readAll());
                   }else{
-                           tracker->set_error(network_reply->errorString());
+                           tracker->set_error_and_finish(network_reply->errorString());
                   }
          };
 
@@ -27,15 +27,15 @@ void Network_manager::download(const Download_resources & resources) noexcept {
                   assert(tracker.use_count() <= 2);
 
                   if(network_reply->error() != QNetworkReply::NoError){
-                           tracker->set_error(network_reply->errorString());
+                           tracker->set_error_and_finish(network_reply->errorString());
                            file_handle->remove();
+                  }else{
+                           tracker->switch_to_finished_state();
                   }
-
-                  tracker->switch_to_finished_state();
          };
 
          auto on_error_occured = [tracker = tracker.get(),network_reply = network_reply.get()](const auto /* error_code */){
-                  tracker->set_error(network_reply->errorString());
+                  tracker->set_error_and_finish(network_reply->errorString());
          };
 
          connect(network_reply.get(),&QNetworkReply::finished,tracker.get(),on_download_finished,Qt::SingleShotConnection);

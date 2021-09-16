@@ -23,20 +23,28 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto tracker = std::make_shared<Download_tracker>(download_request);
 
+         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
+         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
+
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
          network_manager_.increment_connection_count();
 
-         if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                  network_manager_.download({file_handle,tracker,download_request.url});
+         if(open_files_.contains(file_handle->fileName())){
+                  tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
+         }else if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+                  tracker->set_error_and_finish(Download_tracker::Error::File_Write);
          }else{
-                  tracker->set_error(Download_tracker::Error::File_Write);
-                  tracker->switch_to_finished_state();
-         }
+                  open_files_.insert(file_handle->fileName());
+                  network_manager_.download({file_handle,tracker,download_request.url});
 
-         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
-         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
+                  connect(file_handle.get(),&QFile::destroyed,[&open_files_ = open_files_,file_name = file_handle->fileName()]{
+                           const auto file_itr = open_files_.find(file_name);
+                           assert(file_itr != open_files_.end());
+                           open_files_.erase(file_itr);
+                  });
+         }
 }
 
 void Main_window::add_top_actions() noexcept {
