@@ -11,7 +11,7 @@ void Url_input_widget::setup_layout() noexcept {
 
          url_layout_.addWidget(&url_label_);
          url_layout_.addWidget(&url_line_);
-         
+
          button_layout_.addWidget(&download_button_);
          button_layout_.addWidget(&cancel_button_);
 
@@ -45,9 +45,7 @@ void Url_input_widget::on_input_received() noexcept {
                            error_reason = "Unknown";
                   }
 
-                  constexpr std::string_view error_title("Invalid URL");
-
-                  return void(QMessageBox::critical(this,error_title.data(),error_body.arg(error_reason)));
+                  return void(QMessageBox::critical(this,"Invalid URL",error_body.arg(error_reason)));
          }
 
          auto path = path_line_.text().simplified();
@@ -63,22 +61,21 @@ void Url_input_widget::on_input_received() noexcept {
          auto package_name = package_name_line_.text().simplified();
 
          if(package_name.isEmpty()){
-                  auto name_replacement = url.fileName();
+                  auto package_name_replacement = url.fileName();
 
-                  if(name_replacement.isEmpty()){
+                  if(package_name_replacement.isEmpty()){
                            constexpr std::string_view error_title("Invalid file name");
                            constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
                            
                            return void(QMessageBox::critical(this,error_title.data(),error_body.data()));
                   }
 
-                  package_name = std::move(name_replacement);
+                  package_name = std::move(package_name_replacement);
          }
 
          if(QFileInfo::exists(path + package_name)){
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
-         
                   constexpr auto buttons = QMessageBox::Yes | QMessageBox::No;
                   constexpr auto default_button = QMessageBox::Yes;
 
@@ -88,7 +85,7 @@ void Url_input_widget::on_input_received() noexcept {
                            return;
                   }
          }
-         
+
          reset_lines();
          hide();
          emit new_request_received({package_name,path,url});

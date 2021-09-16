@@ -26,11 +26,11 @@ public:
 
          explicit Download_tracker(const Download_request & download_request);
 
-         [[nodiscard]] static std::pair<double,std::string_view> stringify_bytes(double bytes,Conversion_Format format) noexcept;
-         [[nodiscard]] static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
-         [[nodiscard]] uint32_t get_elapsed_seconds() const noexcept;
-         [[nodiscard]] constexpr Error error() const noexcept;
          void bind_lifetime() noexcept;
+         [[nodiscard]] auto get_elapsed_seconds() const noexcept;
+         [[nodiscard]] constexpr auto error() const noexcept;
+         [[nodiscard]] static auto stringify_bytes(double bytes,Conversion_Format format) noexcept;
+         [[nodiscard]] static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
@@ -40,17 +40,16 @@ signals:
 public slots:
          void set_error(Error new_error) noexcept;
          void set_error(const QString & custom_error) noexcept;
-         void on_download_finished() noexcept;
+         void switch_to_finished_state() noexcept;
          void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
          void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
 private:
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
-         
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
          void setup_state_widget() noexcept;
-         void update_state_line() noexcept;
+         void update_error_line() noexcept;
          ///
          Error error_ = Error::Null;
          QVBoxLayout central_layout_ = QVBoxLayout(this);
@@ -111,7 +110,7 @@ inline void Download_tracker::setup_state_widget() noexcept {
 inline void Download_tracker::set_error(const Error new_error) noexcept {
          assert(new_error != Error::Null && new_error != Error::Custom);
          error_ = new_error;
-         update_state_line();
+         update_error_line();
 }
 
 inline void Download_tracker::set_error(const QString & custom_error) noexcept {
@@ -119,10 +118,10 @@ inline void Download_tracker::set_error(const QString & custom_error) noexcept {
          error_line_.setText(custom_error);
 }
 
-inline void Download_tracker::on_download_finished() noexcept {
+inline void Download_tracker::switch_to_finished_state() noexcept {
+         time_elapsed_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
-         time_elapsed_timer_.stop();
          state_holder_.setCurrentWidget(&error_line_);
          
          if(error_ == Error::Null){
@@ -137,30 +136,32 @@ inline void Download_tracker::upload_progress_update(const int64_t bytes_sent,co
          upload_quantity_label_.setText(stringify_bytes(bytes_sent,total_bytes));
 }
 
-inline std::pair<double,std::string_view> Download_tracker::stringify_bytes(const double bytes,const Conversion_Format format) noexcept {
+inline auto Download_tracker::stringify_bytes(const double bytes,const Conversion_Format format) noexcept {
          constexpr double bytes_in_kb = 1024;
          constexpr double bytes_in_mb = bytes_in_kb * 1024;
          constexpr double bytes_in_gb = bytes_in_mb * 1024;
 
+         using namespace std::string_view_literals;
+
          if(bytes >= bytes_in_gb){
-                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec" : "gb(s)"};
+                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec"sv : "gb(s)"sv);
          }
 
          if(bytes >= bytes_in_mb){
-                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
+                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec"sv : "mb(s)"sv);
          }
 
          if(bytes >= bytes_in_kb){
-                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
+                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec"sv : "kb(s)"sv);
          }
 
-         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)");
+         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec"sv : "byte(s)"sv);
 }
 
 inline void Download_tracker::bind_lifetime() noexcept {
 
-         auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  assert(self.use_count() <= 2); // other could  be held by the associated network request
+         const auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
+                  assert(self.use_count() <= 2); // other could be held by the associated network request
          },Qt::SingleShotConnection);
 
          connect(this,&Download_tracker::release_lifetime,this,[self_lifetime_connection]{
@@ -169,11 +170,6 @@ inline void Download_tracker::bind_lifetime() noexcept {
 }
 
 inline void Download_tracker::configure_default_connections() noexcept {
-
-         auto on_timer_timeout = [&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
-                  time_elapsed_ = time_elapsed_.addSecs(1);
-                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-         };
 
          auto on_cancel_button_clicked = [this]{
                   constexpr std::string_view question_title("Cancel Download");
@@ -196,13 +192,17 @@ inline void Download_tracker::configure_default_connections() noexcept {
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
-                  connect(this,&Download_tracker::delete_file_permanently,&Download_tracker::release_lifetime);
-                  connect(this,&Download_tracker::move_file_to_trash,&Download_tracker::release_lifetime);
+                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::release_lifetime);
+                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::release_lifetime);
                   
-                  query_box.exec();
+                  [[maybe_unused]] const auto response = query_box.exec();
          };
 
-         connect(&time_elapsed_timer_,&QTimer::timeout,on_timer_timeout);
+         connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+                  time_elapsed_ = time_elapsed_.addSecs(1);
+                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+         });
+
          connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
          connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
@@ -214,20 +214,20 @@ inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&network_stat_layout_);
 }
 
-inline uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
+inline auto Download_tracker::get_elapsed_seconds() const noexcept {
          return static_cast<uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 
-constexpr Download_tracker::Error Download_tracker::error() const noexcept {
+constexpr auto Download_tracker::error() const noexcept {
          return error_;
 }
 
-inline void Download_tracker::update_state_line() noexcept {
+inline void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
          constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
          constexpr std::string_view file_lock_error_info("Same file is held by another download. Finish that download and retry");
-         
+
          switch(error_){
                   case Error::Null : error_line_.setText(null_error_info.data()); break;
                   case Error::File_Write : error_line_.setText(file_write_error_info.data()); break;

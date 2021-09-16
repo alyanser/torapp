@@ -1,6 +1,5 @@
 #include "main_window.hxx"
 #include "download_request.hxx"
-#include <QLockFile>
 
 Main_window::Main_window(){
          setMinimumSize(QSize(1024,400));
@@ -14,7 +13,6 @@ Main_window::Main_window(){
          add_top_actions();
          configure_default_connections();
 
-         central_layout_.setAlignment(Qt::AlignTop);
          tool_bar_.setFloatable(false);
 }
 
@@ -23,30 +21,17 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          assert(!download_request.url.toString().isEmpty());
 
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
-         auto file_lock = std::make_shared<QLockFile>(file_handle->fileName());
          auto tracker = std::make_shared<Download_tracker>(download_request);
 
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
          network_manager_.increment_connection_count();
 
-         if(!download_request.retry_existing_request && open_files_.contains(file_handle->fileName())){
-                  tracker->set_error(Download_tracker::Error::File_Lock);
-                  return void(tracker->on_download_finished());
-         }
-
          if(file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                  
-                  if(!download_request.retry_existing_request){
-                           open_files_.insert(file_handle->fileName());
-                  }else{
-                           assert(open_files_.contains(file_handle->fileName()));
-                  }
-
                   network_manager_.download({file_handle,tracker,download_request.url});
          }else{
                   tracker->set_error(Download_tracker::Error::File_Write);
-                  tracker->on_download_finished();
+                  tracker->switch_to_finished_state();
          }
 
          connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);

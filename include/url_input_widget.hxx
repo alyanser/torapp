@@ -1,8 +1,8 @@
 #ifndef URL_INPUT_WIDGET_HXX
 #define URL_INPUT_WIDGET_HXX
 
-#include <QLineEdit>
 #include <QUrl>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -49,7 +49,7 @@ private:
 };
 
 inline Url_input_widget::Url_input_widget(){
-         setMinimumSize(QSize(640,480));
+         setMinimumSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
          setup_layout();
@@ -63,22 +63,19 @@ inline Url_input_widget::Url_input_widget(){
 
 inline void Url_input_widget::configure_default_connections() noexcept {
 
-         auto on_path_button_clicked = [this]{
+         connect(&path_button_,&QToolButton::clicked,[this]{
                   const auto selected_directory = QFileDialog::getExistingDirectory(this);
 
                   if(!selected_directory.isEmpty()){
                            path_line_.setText(selected_directory);
                   }
-         };
+         });
 
-         auto on_cancel_button_clicked = [this]{
+         connect(&cancel_button_,&QPushButton::clicked,[this]{
                   reset_lines();
-                  //! doesn't it mask some issues?
-                  // hide();
-         };
+                  hide();
+         });
 
-         connect(&path_button_,&QToolButton::clicked,on_path_button_clicked);
-         connect(&cancel_button_,&QPushButton::clicked,on_cancel_button_clicked);
          connect(&download_button_,&QPushButton::clicked,this,&Url_input_widget::on_input_received);
          connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
          connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);

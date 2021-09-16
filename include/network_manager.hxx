@@ -17,8 +17,9 @@ public:
 
          Network_manager();
 
+         [[nodiscard]] constexpr auto connection_count() const noexcept;
          constexpr void increment_connection_count() noexcept;
-         void download(const Download_resources & resources);
+         void download(const Download_resources & resources) noexcept;
 signals:
          void terminate() const;
          void all_trackers_destroyed() const;
@@ -33,6 +34,10 @@ private:
 
 inline Network_manager::Network_manager(){
          configure_default_connections();
+}
+
+constexpr auto Network_manager::connection_count() const noexcept {
+         return connection_count_;
 }
 
 constexpr void Network_manager::increment_connection_count() noexcept {

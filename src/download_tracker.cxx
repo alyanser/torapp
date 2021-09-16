@@ -4,12 +4,11 @@
 Download_tracker::Download_tracker(const Download_request & download_request){
          assert(!download_request.url.isEmpty());
          assert(!download_request.download_path.isEmpty());
-
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
          setup_state_widget();
-         update_state_line();
+         update_error_line();
          configure_default_connections();
 
          package_name_label_.setText(download_request.url.fileName());
@@ -18,7 +17,7 @@ Download_tracker::Download_tracker(const Download_request & download_request){
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
 
-         {
+         {        // paramenter dependent connections
                   auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){
@@ -29,9 +28,7 @@ Download_tracker::Download_tracker(const Download_request & download_request){
                            }
                   };
 
-                  auto on_retry_button_clicked = [this,download_request = download_request]() mutable {
-                           download_request.retry_existing_request = true;
-                           
+                  auto on_retry_button_clicked = [this,download_request = download_request]{
                            emit retry_download(download_request);
                            emit release_lifetime();
                   };
@@ -127,7 +124,7 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
          if(total_bytes == unknown_bytes){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
-                  // download_progress_bar_.setValue(0); //? necessary?
+                  download_progress_bar_.setValue(0); //? necessary?
          }else{
                   download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
                   download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));
@@ -136,7 +133,7 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
          download_quantity_label_.setText(stringify_bytes(bytes_received,total_bytes));
 
          const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
-         assert(seconds_elapsed);
+         assert(seconds_elapsed > 0);
          const auto speed = bytes_received / seconds_elapsed;
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),Conversion_Format::Speed);
 
