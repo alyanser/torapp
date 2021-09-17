@@ -18,7 +18,7 @@ Download_tracker::Download_tracker(const Download_request & download_request){
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
 
-         {        // paramenter dependent connections
+         {
                   auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){

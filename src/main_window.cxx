@@ -23,13 +23,13 @@ void Main_window::initiate_new_download(const Download_request & download_reques
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto tracker = std::make_shared<Download_tracker>(download_request);
 
-         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
-         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
-
          tracker->bind_lifetime();
          central_layout_.addWidget(tracker.get());
          network_manager_.increment_connection_count();
+
+         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
+         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
 
          if(open_files_.contains(file_handle->fileName())){
                   tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
