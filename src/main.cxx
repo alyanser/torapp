@@ -6,6 +6,6 @@ int main(int argc,char ** argv){
          Main_window window;
          
          QObject::connect(&window,&Main_window::quit,&application,&QApplication::quit);
-         window.show();
+	window.showMaximized();
          return QApplication::exec();
 }

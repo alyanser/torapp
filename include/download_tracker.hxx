@@ -29,10 +29,10 @@ public:
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
-         [[nodiscard]] auto get_elapsed_seconds() const noexcept;
-         [[nodiscard]] constexpr auto error() const noexcept;
-         [[nodiscard]] static auto stringify_bytes(double bytes,Conversion_Format format) noexcept;
-         [[nodiscard]] static QString stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept;
+         auto get_elapsed_seconds [[nodiscard]] () const noexcept;
+	constexpr auto error [[nodiscard]]() const noexcept;
+	static auto stringify_bytes [[nodiscard]] (double bytes,Conversion_Format format) noexcept;
+	static QString stringify_bytes [[nodiscard]] (int64_t bytes_received,int64_t total_bytes) noexcept;
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
@@ -230,10 +230,18 @@ inline void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
 
          switch(error_){
-                  case Error::Null : error_line_.setText(null_error_info.data()); break;
-                  case Error::File_Write : error_line_.setText(file_write_error_info.data()); break;
-                  case Error::Unknown_Network : error_line_.setText(unknown_network_error_info.data()); break;
-                  case Error::File_Lock : error_line_.setText(file_lock_error_info.data()); break;
+                  case Error::Null :
+			error_line_.setText(null_error_info.data()); 
+			break;
+                  case Error::File_Write :
+			error_line_.setText(file_write_error_info.data()); 
+			break;
+                  case Error::Unknown_Network :
+			error_line_.setText(unknown_network_error_info.data()); 
+			break;
+                  case Error::File_Lock :
+			error_line_.setText(file_lock_error_info.data()); 
+			break;
                   case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();
          }

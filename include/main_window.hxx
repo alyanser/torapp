@@ -38,7 +38,7 @@ private:
          void setup_menu_bar() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
-         void confirm_quit() const noexcept;
+         void confirm_quit() noexcept;
          ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
@@ -62,11 +62,12 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          confirm_quit();
 }
 
-inline void Main_window::confirm_quit() const noexcept {
+inline void Main_window::confirm_quit() noexcept {
          constexpr std::string_view warning_title("Quit");
+	//todo change the warning when serialization is implemented
          constexpr std::string_view warning_body("Are you sure you want to quit? All of your downloads will be terminated.");
 
-         const auto response_button = QMessageBox::question(nullptr,warning_title.data(),warning_body.data());
+         const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
 
          if(response_button == QMessageBox::Yes){
                   emit network_manager_.terminate();

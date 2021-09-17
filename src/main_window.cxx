@@ -48,9 +48,10 @@ void Main_window::initiate_new_download(const Download_request & download_reques
 }
 
 void Main_window::add_top_actions() noexcept {
+	//todo switch to icons from text
          auto * const search_action = tool_bar_.addAction("Search");
-         auto * const url_action = tool_bar_.addAction("Custom Url");
          auto * const torrent_action = tool_bar_.addAction("Torrent File");
+         auto * const url_action = tool_bar_.addAction("Custom Url");
          auto * const exit_action = new QAction("Exit",&file_menu_);
 
          file_menu_.addAction(search_action);
@@ -63,18 +64,17 @@ void Main_window::add_top_actions() noexcept {
          torrent_action->setToolTip("Download a torrent file");
          exit_action->setToolTip("Exit Torapp");
 
-         connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::show);
-         connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::raise);
+         connect(url_action,&QAction::triggered,&url_input_widget_,&Url_input_widget::exec);
          connect(exit_action,&QAction::triggered,this,&Main_window::quit);
 }
 
 void Main_window::setup_sort_menu() noexcept {
          auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
-
+         auto * const sort_by_time_action [[maybe_unused]] = new QAction("By time",&sort_action_group_);
+         auto * const sort_by_size_action [[maybe_unused]] = new QAction("By size",&sort_action_group_);
+         auto * const sort_by_progress_action [[maybe_unused]] = new QAction("By progress",&sort_action_group_);
+         auto * const sort_by_activity_action [[maybe_unused]] = new QAction("By activity",&sort_action_group_);
+	
          const auto sort_actions = sort_action_group_.actions();
 
          for(auto * const sort_action : sort_actions){

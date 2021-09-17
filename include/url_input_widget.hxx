@@ -1,20 +1,20 @@
 #ifndef URL_INPUT_WIDGET_HXX
 #define URL_INPUT_WIDGET_HXX
 
-#include <QUrl>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QHBoxLayout>
-#include <QLabel>
 #include <QVBoxLayout>
 #include <QToolButton>
-#include <QDir>
 #include <QFileDialog>
+#include <QLabel>
 #include <QMessageBox>
+#include <QDir>
+#include <QUrl>
 
 struct Download_request;
 
-class Url_input_widget : public QWidget {
+class Url_input_widget : public QDialog {
          Q_OBJECT
 public:
          Url_input_widget();

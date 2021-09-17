@@ -17,7 +17,7 @@ public:
 
          Network_manager();
 
-         [[nodiscard]] constexpr auto connection_count() const noexcept;
+ 	constexpr auto connection_count [[nodiscard]] () const noexcept;
          constexpr void increment_connection_count() noexcept;
          void download(const Download_resources & resources) noexcept;
 signals:
