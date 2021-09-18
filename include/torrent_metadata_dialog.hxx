@@ -3,12 +3,11 @@
 
 #include <bencode_parser.hxx>
 #include <QDialog>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
 #include <QFormLayout>
+#include <QGridLayout>
 
 struct Torrent_metadata {
 	std::string name = "N/A";
@@ -18,7 +17,6 @@ struct Torrent_metadata {
 	std::string creation_date = "N/A";
 	std::string comment = "N/A";
 	std::string encoding = "N/A";
-	std::string path = "N/A";
 	std::string length = "N/A";
 	std::string pieces = "N/A";
 	std::vector<std::string> info_dict;
@@ -33,14 +31,15 @@ private:
 	void setup_display(const Torrent_metadata & metadata) noexcept;
 	void configure_default_connections() noexcept;
 	///
-	QHBoxLayout central_layout_ = QHBoxLayout(this);
-	QFormLayout form_layout_;
+	QGridLayout central_layout_ = QGridLayout(this);
+	QFormLayout central_form_layout_;
+
 	QLabel torrent_name_label_;
 	QLabel created_by_label_;
 	QLabel creation_date_label_;
 	QLabel comment_label_;
 	QLabel encoding_label_;
-	QLabel torrent_path_label_;
+	QLabel torrent_length_label_;
 
 	QPushButton show_announce_button_ = QPushButton("Show announace");
 
@@ -54,6 +53,17 @@ inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & file_pat
 	extract_metadata(file_path);
 }
 
+inline void Torrent_metadata_dialog::setup_layout() noexcept {
+	central_layout_.addLayout(&central_form_layout_,0,0);
+
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Name",&torrent_name_label_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Created by",&created_by_label_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Creation date",&creation_date_label_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Comment",&comment_label_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Encoding",&encoding_label_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Size",&torrent_length_label_);
+}
+
 inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path) noexcept {
 	const auto parsed_content = bencode::parse_file(file_path.toStdString());
 	Torrent_metadata metadata;
@@ -61,7 +71,7 @@ inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path)
 	if(auto itr = parsed_content.find("name");itr != parsed_content.end()){
 		metadata.name = std::any_cast<std::string>(itr->second);
 	}
-
+	//! fix the format
 	if(auto itr = parsed_content.find("creation date");itr != parsed_content.end()){
 		metadata.creation_date = std::to_string(std::any_cast<std::int64_t>(itr->second));
 	}
@@ -82,26 +92,18 @@ inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path)
 		metadata.comment = std::any_cast<std::string>(itr->second);
 	}
 
+	if(auto itr = parsed_content.find("length");itr != parsed_content.end()){
+		metadata.length = std::any_cast<std::string>(itr->second);
+	}
+
 	if(auto itr = parsed_content.find("announce-list");itr != parsed_content.end()){
 		//todo
-		// result.name = std::any_cast<std::string>(itr->second);
 	}
 
 	if(auto itr = parsed_content.find("info");itr != parsed_content.end()){
-		// result.name = std::any_cast<std::string>(itr->second);
 	}
 
 	setup_display(metadata);
-}
-
-inline void Torrent_metadata_dialog::setup_layout() noexcept {
-	central_layout_.addLayout(&form_layout_);
-
-	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
-	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
-	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
-	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
-	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
 }
 
 inline void Torrent_metadata_dialog::setup_display(const Torrent_metadata & metadata) noexcept {

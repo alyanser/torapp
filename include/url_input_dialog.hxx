@@ -46,7 +46,7 @@ private:
 };
 
 inline Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
-         setMinimumSize(QSize(600,200));
+         setFixedSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
          setup_layout();
