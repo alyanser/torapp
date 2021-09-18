@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QDir>
 #include <QUrl>
+#include <QFormLayout>
 
 struct Download_request;
 
@@ -28,24 +29,20 @@ private:
          void on_input_received() noexcept;
          ///
          QString default_path_ = QDir::currentPath();
+
          QVBoxLayout central_layout_ = QVBoxLayout(this);
+	QFormLayout central_form_layout_;
 
-         QHBoxLayout url_layout_;
-         QLabel url_label_ = QLabel("Url:");
-         QLineEdit url_line_;
+	QLineEdit url_line_;
+	QLineEdit package_name_line_;
 
-         QHBoxLayout path_layout_;
-         QLabel path_label_ = QLabel("Path:");
-         QLineEdit path_line_ = QLineEdit(default_path_);
-         QToolButton path_button_;
+	QHBoxLayout path_layout_;
+	QLineEdit path_line_;
+	QToolButton path_button_;
 
-         QHBoxLayout button_layout_;
-         QPushButton download_button_ = QPushButton("Download");
-         QPushButton cancel_button_ = QPushButton("Cancel");
-         
-         QHBoxLayout package_name_layout_;
-         QLabel package_name_label_ = QLabel("File name:");
-         QLineEdit package_name_line_;
+	QHBoxLayout button_layout_;
+	QPushButton download_button_ = QPushButton("Download");
+	QPushButton cancel_button_ = QPushButton("Cancel");
 };
 
 inline Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){

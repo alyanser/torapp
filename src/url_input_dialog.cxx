@@ -4,27 +4,19 @@
 #include <QFileInfo>
 
 void Url_input_widget::setup_layout() noexcept {
-         central_layout_.addLayout(&url_layout_);
-         central_layout_.addLayout(&package_name_layout_);
-         central_layout_.addLayout(&path_layout_);
-         central_layout_.addLayout(&button_layout_);
+	central_layout_.addLayout(&central_form_layout_);
+	central_form_layout_.setSpacing(25);
 
-         url_layout_.addWidget(&url_label_);
-         url_layout_.addWidget(&url_line_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"URL:",&url_line_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Name:",&package_name_line_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Path",&path_layout_);
+	central_form_layout_.insertRow(central_form_layout_.rowCount(),&button_layout_);
 
-         button_layout_.addWidget(&download_button_);
-         button_layout_.addWidget(&cancel_button_);
+	path_layout_.addWidget(&path_line_);
+	path_layout_.addWidget(&path_button_);
 
-         path_layout_.addWidget(&path_label_);
-         path_layout_.addWidget(&path_line_);
-         path_layout_.addWidget(&path_button_);
-
-         package_name_layout_.addWidget(&package_name_label_);
-         package_name_layout_.addWidget(&package_name_line_);
-         package_name_label_.setBuddy(&package_name_line_);
-
-         url_label_.setBuddy(&url_line_);
-         path_label_.setBuddy(&path_line_);
+	button_layout_.addWidget(&download_button_);
+	button_layout_.addWidget(&cancel_button_);
 }
 
 void Url_input_widget::on_input_received() noexcept {

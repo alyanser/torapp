@@ -8,18 +8,19 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QFormLayout>
 
 struct Torrent_metadata {
-	std::string name;
-	std::string announce;
-	std::string announce_list;
-	std::string created_by;
-	std::string creation_date;
-	std::string comment;
-	std::string encoding;
-	std::string path;
-	std::string length;
-	std::string pieces;
+	std::string name = "N/A";
+	std::string announce = "N/A";
+	std::string announce_list = "N/A";
+	std::string created_by = "N/A";
+	std::string creation_date = "N/A";
+	std::string comment = "N/A";
+	std::string encoding = "N/A";
+	std::string path = "N/A";
+	std::string length = "N/A";
+	std::string pieces = "N/A";
 	std::vector<std::string> info_dict;
 };
 
@@ -30,28 +31,21 @@ private:
 	void extract_metadata(const QString & file_path) noexcept;
 	void setup_layout() noexcept;
 	void setup_display(const Torrent_metadata & metadata) noexcept;
+	void configure_default_connections() noexcept;
 	///
-	QVBoxLayout central_layout_ = QVBoxLayout(this);
+	QHBoxLayout central_layout_ = QHBoxLayout(this);
+	QFormLayout form_layout_;
+	QLabel torrent_name_label_;
+	QLabel created_by_label_;
+	QLabel creation_date_label_;
+	QLabel comment_label_;
+	QLabel encoding_label_;
+	QLabel torrent_path_label_;
 
-	QHBoxLayout name_layout_;
-	QLabel name_buddy_ = QLabel("Name:");
-	QLabel name_label_ = QLabel("N/A");
+	QPushButton show_announce_button_ = QPushButton("Show announace");
 
-	QHBoxLayout created_by_layout_;
-	QLabel created_by_buddy_ = QLabel("Created by:");
-	QLabel created_by_label_ = QLabel("N/A");
-
-	QHBoxLayout creation_date_layout_;
-	QLabel creation_date_buddy_ = QLabel("Creation Date:");
-	QLabel creation_date_label_ = QLabel("N/A");
-
-	QHBoxLayout comment_layout_;
-	QLabel comment_buddy_ = QLabel("Comment:");
-	QLabel comment_label_ = QLabel("N/A");
-
-	QHBoxLayout torrent_path_layout_;
-	QLabel torrent_path_buddy_ = QLabel("Torrent Path:");
-	QLabel torrent_path_label_ = QLabel("N/A");
+	QPushButton begin_button_ = QPushButton("Begin Download");
+	QPushButton cancel_button_ = QPushButton("Cancel");
 };
 
 inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & file_path,QWidget * const parent) : QDialog(parent){
@@ -73,16 +67,19 @@ inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path)
 	}
 
 	if(auto itr = parsed_content.find("created by");itr != parsed_content.end()){
-		metadata.name = std::any_cast<std::string>(itr->second);
+		metadata.created_by = std::any_cast<std::string>(itr->second);
 	}
 
 	if(auto itr = parsed_content.find("encoding");itr != parsed_content.end()){
-		metadata.name = std::any_cast<std::string>(itr->second);
+		metadata.encoding = std::any_cast<std::string>(itr->second);
 	}
 	
 	if(auto itr = parsed_content.find("announce");itr != parsed_content.end()){
-		//todo
-		// result.name = std::any_cast<std::string>(itr->second);
+		metadata.announce = std::any_cast<std::string>(itr->second);
+	}
+
+	if(auto itr = parsed_content.find("comment");itr != parsed_content.end()){
+		metadata.comment = std::any_cast<std::string>(itr->second);
 	}
 
 	if(auto itr = parsed_content.find("announce-list");itr != parsed_content.end()){
@@ -90,44 +87,34 @@ inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path)
 		// result.name = std::any_cast<std::string>(itr->second);
 	}
 
-	if(auto itr = parsed_content.find("comment");itr != parsed_content.end()){
-		//todo
-		// result.name = std::any_cast<std::string>(itr->second);
-	}
-
 	if(auto itr = parsed_content.find("info");itr != parsed_content.end()){
-		//todo
 		// result.name = std::any_cast<std::string>(itr->second);
 	}
 
 	setup_display(metadata);
 }
 
-inline void Torrent_metadata_dialog::setup_display(const Torrent_metadata & metadata) noexcept {
-	name_label_.setText(metadata.name.data());
+inline void Torrent_metadata_dialog::setup_layout() noexcept {
+	central_layout_.addLayout(&form_layout_);
+
+	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
+	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
+	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
+	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
+	form_layout_.insertRow(form_layout_.rowCount(),"Name",&torrent_name_label_);
 }
 
-inline void Torrent_metadata_dialog::setup_layout() noexcept {
-	central_layout_.addLayout(&name_layout_);
-	central_layout_.addLayout(&comment_layout_);
-	central_layout_.addLayout(&created_by_layout_);
-	central_layout_.addLayout(&creation_date_layout_);
-	central_layout_.addLayout(&torrent_path_layout_);
+inline void Torrent_metadata_dialog::setup_display(const Torrent_metadata & metadata) noexcept {
+	torrent_name_label_.setText(metadata.name.data());
+	comment_label_.setText(metadata.comment.data());
+	created_by_label_.setText(metadata.created_by.data());
+	creation_date_label_.setText(metadata.creation_date.data());
+	comment_label_.setText(metadata.comment.data());
+	encoding_label_.setText(metadata.encoding.data());
+}
 
-	name_layout_.addWidget(&name_buddy_);
-	name_layout_.addWidget(&name_label_);
-
-	comment_layout_.addWidget(&comment_buddy_);
-	comment_layout_.addWidget(&comment_label_);
-
-	created_by_layout_.addWidget(&created_by_buddy_);
-	created_by_layout_.addWidget(&created_by_label_);
-
-	creation_date_layout_.addWidget(&creation_date_buddy_);
-	creation_date_layout_.addWidget(&creation_date_label_);
-
-	torrent_path_layout_.addWidget(&torrent_path_buddy_);
-	torrent_path_layout_.addWidget(&torrent_path_label_);
+inline void Torrent_metadata_dialog::configure_default_connections() noexcept {
+	connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::close);
 }
 
 #endif // TORRENT_METADATA_DIALOG_HXX
