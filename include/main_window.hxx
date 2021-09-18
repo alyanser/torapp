@@ -1,7 +1,7 @@
 #ifndef MAIN_WINDOW_HXX
 #define MAIN_WINDOW_HXX
 
-#include "url_input_widget.hxx"
+#include "url_input_dialog.hxx"
 #include "network_manager.hxx"
 #include "download_tracker.hxx"
 
@@ -47,14 +47,12 @@ private:
          QMenu sort_menu_ = QMenu("Sort",menuBar());
          QActionGroup sort_action_group_ = QActionGroup(this);
 
-         Url_input_widget url_input_widget_;
          Network_manager network_manager_;
          QSet<QString> open_files_;
 };
 
 inline void Main_window::configure_default_connections() noexcept {
          connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
-         connect(&url_input_widget_,&Url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
 }
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -76,7 +74,6 @@ inline void Main_window::confirm_quit() noexcept {
 
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
-         
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
 }

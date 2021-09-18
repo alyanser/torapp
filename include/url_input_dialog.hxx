@@ -1,5 +1,5 @@
-#ifndef URL_INPUT_WIDGET_HXX
-#define URL_INPUT_WIDGET_HXX
+#ifndef URL_INPUT_DIALOG_HXX
+#define URL_INPUT_DIALOG_HXX
 
 #include <QLineEdit>
 #include <QPushButton>
@@ -17,7 +17,7 @@ struct Download_request;
 class Url_input_widget : public QDialog {
          Q_OBJECT
 public:
-         Url_input_widget();
+         explicit Url_input_widget(QWidget * parent = nullptr);
 signals:
          void new_request_received(const Download_request & download_request) const;
 private:
@@ -48,7 +48,7 @@ private:
          QLineEdit package_name_line_;
 };
 
-inline Url_input_widget::Url_input_widget(){
+inline Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
          setMinimumSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
@@ -96,4 +96,4 @@ inline void Url_input_widget::setup_tab_order() noexcept {
          setTabOrder(&download_button_,&cancel_button_);
 }
 
-#endif // URL_INPUT_WIDGET_HXX
+#endif // URL_INPUT_DIALOG_HXX

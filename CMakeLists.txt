@@ -16,13 +16,13 @@ set(SOURCES
          src/main.cxx
          src/main_window.cxx
          src/network_manager.cxx
-         src/url_input_widget.cxx
+         src/url_input_dialog.cxx
          src/download_tracker.cxx
 )
 
 set(MOC_INCLUDES
          include/main_window.hxx
-         include/url_input_widget.hxx
+         include/url_input_dialog.hxx
          include/network_manager.hxx
          include/download_tracker.hxx
 )
@@ -31,6 +31,7 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
 include_directories(
          "include"
+	SYSTEM "ext"
 )
 
 find_package(Qt6 COMPONENTS Core Network Widgets REQUIRED)
