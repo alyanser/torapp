@@ -25,6 +25,7 @@ set(MOC_INCLUDES
          include/url_input_dialog.hxx
          include/network_manager.hxx
          include/download_tracker.hxx
+	include/torrent_metadata_dialog.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
@@ -51,4 +52,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QString"]]
          [["QObject"]]
 	[["QGridLayout"]]
+	[["bencode_parser.hxx"]]
 )

@@ -1,0 +1,65 @@
+#ifndef UTILITY_HXX
+#define UTILITY_HXX
+
+#include <QString>
+#include <QUrl>
+#include <string_view>
+
+namespace util {
+
+struct Download_request {
+         QString package_name;
+         QString download_path;
+         QUrl url;
+};
+
+namespace conversion {
+
+enum class Conversion_Format { Speed, Memory };
+
+template<typename T>
+[[nodiscard]]
+constexpr std::pair<T,std::string_view> stringify_bytes(const T bytes,const Conversion_Format format) noexcept {
+         constexpr auto bytes_in_kb = 1024;
+         constexpr auto bytes_in_mb = bytes_in_kb * 1024;
+         constexpr auto bytes_in_gb = bytes_in_mb * 1024;
+
+         if(bytes >= bytes_in_gb){
+                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec" : "gb(s)"};
+         }
+
+         if(bytes >= bytes_in_mb){
+                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
+         }
+
+         if(bytes >= bytes_in_kb){
+                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
+         }
+
+         return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
+}
+
+template<typename T>
+[[nodiscard]]
+inline QString stringify_bytes(const T bytes_received,const T total_bytes) noexcept {
+         constexpr auto format = Conversion_Format::Memory;
+         constexpr auto unknown_bound = -1;
+         double converted_total_bytes = 0;
+         std::string_view total_bytes_postfix("inf");
+
+         if(total_bytes != unknown_bound){
+                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_bytes),format);
+         }
+
+         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
+         QString quantity_text("%1 %2 / %3 %4");
+         quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
+         quantity_text = quantity_text.arg(converted_total_bytes).arg(total_bytes_postfix.data());
+         return quantity_text;
+}
+
+} // namespace conversion
+
+} // namespace util
+
+#endif // UTILITY_HXX

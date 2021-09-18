@@ -13,14 +13,16 @@
 #include <QUrl>
 #include <QFormLayout>
 
-struct Download_request;
+namespace util {
+	struct Download_request;
+} // namespace util
 
 class Url_input_widget : public QDialog {
          Q_OBJECT
 public:
          explicit Url_input_widget(QWidget * parent = nullptr);
 signals:
-         void new_request_received(const Download_request & download_request) const;
+         void new_request_received(const util::Download_request & download_request) const;
 private:
          void configure_default_connections() noexcept;
          void reset_lines() noexcept;

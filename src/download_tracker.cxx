@@ -1,7 +1,7 @@
 #include "download_tracker.hxx"
-#include "download_request.hxx"
+#include "utility.hxx"
 
-Download_tracker::Download_tracker(const Download_request & download_request){
+Download_tracker::Download_tracker(const util::Download_request & download_request){
          assert(!download_request.url.isEmpty());
          assert(!download_request.download_path.isEmpty());
          
@@ -24,7 +24,7 @@ Download_tracker::Download_tracker(const Download_request & download_request){
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
-
+				
                                     QMessageBox::warning(this,message_title.data(),message_body.data());
                            }
                   };
@@ -39,7 +39,7 @@ Download_tracker::Download_tracker(const Download_request & download_request){
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
-                                    
+
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
                   };
@@ -48,25 +48,6 @@ Download_tracker::Download_tracker(const Download_request & download_request){
                   connect(&open_directory_button_,&QPushButton::clicked,on_open_directory_button_clicked);
                   connect(&retry_button_,&QPushButton::clicked,this,on_retry_button_clicked,Qt::SingleShotConnection);
          }
-}
-
-QString Download_tracker::stringify_bytes(int64_t bytes_received,int64_t total_bytes) noexcept {
-         constexpr auto format = Conversion_Format::Memory;
-         constexpr auto unknown_bound = -1;
-         double converted_total_bytes = 0;
-         std::string_view total_bytes_postfix("inf");
-
-         if(total_bytes != unknown_bound){
-                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_bytes),format);
-         }
-
-         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
-         QString quantity_text("%1 %2 / %3 %4");
-
-         quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
-         quantity_text = quantity_text.arg(converted_total_bytes).arg(total_bytes_postfix.data());
-
-         return quantity_text;
 }
 
 void Download_tracker::setup_file_status_layout() noexcept {
@@ -131,12 +112,13 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
                   download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));
          }
 
-         download_quantity_label_.setText(stringify_bytes(bytes_received,total_bytes));
+         download_quantity_label_.setText(util::conversion::stringify_bytes(bytes_received,total_bytes));
 
          const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
          assert(seconds_elapsed > 0);
          const auto speed = bytes_received / seconds_elapsed;
-         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),Conversion_Format::Speed);
+	constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
+         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
          download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }

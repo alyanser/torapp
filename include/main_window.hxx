@@ -30,7 +30,7 @@ public:
 signals:
          void quit() const;
 public slots:
-         void initiate_new_download(const Download_request & download_request) noexcept;
+         void initiate_new_download(const util::Download_request & download_request) noexcept;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:

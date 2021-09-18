@@ -1,6 +1,8 @@
 #ifndef DOWNLOAD_TRACKER_HXX
 #define DOWNLOAD_TRACKER_HXX
 
+#include "utility.hxx"
+
 #include <QString>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -20,23 +22,20 @@ struct Download_request;
 class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
          Q_OBJECT
 public:
-         enum class Conversion_Format { Speed, Memory };
          enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
 
-         explicit Download_tracker(const Download_request & download_request);
+         explicit Download_tracker(const util::Download_request & download_request);
 
          void bind_lifetime() noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
-         auto get_elapsed_seconds [[nodiscard]] () const noexcept;
-	constexpr auto error [[nodiscard]]() const noexcept;
-	static auto stringify_bytes [[nodiscard]] (double bytes,Conversion_Format format) noexcept;
-	static QString stringify_bytes [[nodiscard]] (int64_t bytes_received,int64_t total_bytes) noexcept;
+         std::uint32_t get_elapsed_seconds() const noexcept;
+	constexpr Error error() const noexcept;
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
-         void retry_download(const Download_request & download_request) const;
+         void retry_download(const util::Download_request & download_request) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 public slots:
@@ -134,29 +133,7 @@ inline void Download_tracker::switch_to_finished_state() noexcept {
 }
 
 inline void Download_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
-         upload_quantity_label_.setText(stringify_bytes(bytes_sent,total_bytes));
-}
-
-inline auto Download_tracker::stringify_bytes(const double bytes,const Conversion_Format format) noexcept {
-         constexpr double bytes_in_kb = 1024;
-         constexpr double bytes_in_mb = bytes_in_kb * 1024;
-         constexpr double bytes_in_gb = bytes_in_mb * 1024;
-
-         using namespace std::string_view_literals;
-
-         if(bytes >= bytes_in_gb){
-                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec"sv : "gb(s)"sv);
-         }
-
-         if(bytes >= bytes_in_mb){
-                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec"sv : "mb(s)"sv);
-         }
-
-         if(bytes >= bytes_in_kb){
-                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec"sv : "kb(s)"sv);
-         }
-
-         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec"sv : "byte(s)"sv);
+         upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
 }
 
 inline void Download_tracker::bind_lifetime() noexcept {
@@ -215,11 +192,13 @@ inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&network_stat_layout_);
 }
 
-inline auto Download_tracker::get_elapsed_seconds() const noexcept {
-         return static_cast<uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
+[[nodiscard]]
+inline std::uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
+         return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 
-constexpr auto Download_tracker::error() const noexcept {
+[[nodiscard]]
+constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 

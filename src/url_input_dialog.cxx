@@ -1,5 +1,5 @@
 #include "url_input_dialog.hxx"
-#include "download_request.hxx"
+#include "utility.hxx"
 
 #include <QFileInfo>
 

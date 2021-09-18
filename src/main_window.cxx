@@ -1,5 +1,5 @@
 #include "main_window.hxx"
-#include "download_request.hxx"
+#include "utility.hxx"
 #include "torrent_metadata_dialog.hxx"
 
 Main_window::Main_window(){
@@ -40,7 +40,7 @@ void Main_window::add_top_actions() noexcept {
 		const auto file_path = QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
 
 		if(!file_path.isEmpty()){
-			Torrent_metadata_dialog metadata_displayer(file_path);
+			Torrent_metadata_dialog metadata_displayer(file_path,this);
 			metadata_displayer.exec();
 		}
 	});
@@ -73,7 +73,7 @@ void Main_window::setup_sort_menu() noexcept {
          //todo add connections and implementation
 }
 
-void Main_window::initiate_new_download(const Download_request & download_request) noexcept {
+void Main_window::initiate_new_download(const util::Download_request & download_request) noexcept {
          assert(!download_request.download_path.isEmpty());
          assert(!download_request.url.toString().isEmpty());
 
