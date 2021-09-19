@@ -2,6 +2,7 @@
 
 void Torrent_metadata_dialog::setup_layout() noexcept {
 	central_layout_.addLayout(&central_form_layout_,0,0);
+	
 	central_form_layout_.setSpacing(10);
 	
 	central_form_layout_.addRow("Name",&torrent_name_label_);
@@ -30,10 +31,14 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & metadata) 
 	encoding_label_.setText(metadata.encoding.data());
 
 	for(const auto & [file_path,file_size_kbs] : metadata.file_info){
-		constexpr auto format = util::conversion::Conversion_Format::Memory;
+		constexpr auto conversion_format = util::conversion::Conversion_Format::Memory;
+		
 		const auto file_size_bytes = file_size_kbs * 1024;
-		const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_bytes,format);
+		const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_bytes,conversion_format);
+
+		//! cnosider alt
 		auto * const file_label = new QLabel(this);
+
 		file_label->setText(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data());
 		file_layout_.addWidget(file_label);
 	}

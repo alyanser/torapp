@@ -5,15 +5,13 @@
 #include "network_manager.hxx"
 #include "download_tracker.hxx"
 
-#include <QMainWindow>
+#include <QActionGroup>
+#include <QCloseEvent>
 #include <QMessageBox>
+#include <QMainWindow>
 #include <QToolBar>
-#include <string_view>
 #include <QMenuBar>
 #include <QMenu>
-#include <QFile>
-#include <QCloseEvent>
-#include <QActionGroup>
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -46,17 +44,6 @@ private:
          Network_manager network_manager_;
 };
 
-inline void Main_window::configure_default_connections() noexcept {
-
-	connect(&network_manager_,&Network_manager::tracker_added,[&central_layout_ = central_layout_](Download_tracker & new_tracker){
-		central_layout_.addWidget(&new_tracker);
-	});
-
-         connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
-	connect(this,&Main_window::forward_url_download_request,&network_manager_,&Network_manager::initiate_url_download);
-	connect(this,&Main_window::forward_torrent_download_request,&network_manager_,&Network_manager::initiate_torrent_download);
-}
-
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          event->ignore();
          confirm_quit();
@@ -75,6 +62,7 @@ inline void Main_window::confirm_quit() noexcept {
 
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
+
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
 }

@@ -4,8 +4,10 @@
 #include "utility.hxx"
 
 #include <QNetworkAccessManager>
+#include <QSet>
 
 class Download_tracker;
+class QString;
 class QFile;
 
 class Network_manager : public QNetworkAccessManager {
@@ -17,30 +19,26 @@ public:
                   QUrl url;
          };
 
-	struct Torrent_download_resources {
-
-	};
-
 	Network_manager();
-	
+
  	constexpr auto connection_count() const noexcept;
 signals:
          void terminate() const;
-	void tracker_added(Download_tracker & new_tracker);
+	void tracker_added(Download_tracker & new_tracker) const;
          void all_trackers_destroyed() const;
+	void respond_client(QNetworkReply & reply) const;
 public slots:
-	void initiate_url_download(const util::Download_request & request);
-	void initiate_torrent_download(const bencode::Metadata & torrent_metadata);
+	void initiate_url_download(const util::Download_request & request) noexcept;
+	void initiate_torrent_download(const bencode::Metadata & torrent_metadata) noexcept;
 private:
          void configure_default_connections() noexcept;
-	void setup_tracker(Download_tracker & tracker) noexcept;
-	bool open_file_handle(QFile & file,Download_tracker & tracker);
-         constexpr void on_tracker_destroyed() noexcept;
+	void configure_tracker_connections(Download_tracker & tracker) const noexcept;
+	bool open_file_handle(QFile & file,Download_tracker & tracker) noexcept;
          void download_url(const Url_download_resources & resources) noexcept;
-         void download_torrent(const Torrent_download_resources & torrent_metadata) noexcept;
+         constexpr void on_tracker_destroyed() noexcept;
          ///
 	QSet<QString> open_files_;
-         uint32_t connection_count_ = 0;
+         std::uint32_t connection_count_ = 0;
          bool terminating_ = false;
 };
 
@@ -52,6 +50,7 @@ inline Network_manager::Network_manager(){
 constexpr auto Network_manager::connection_count() const noexcept {
          return connection_count_;
 }
+
 
 constexpr void Network_manager::on_tracker_destroyed() noexcept {
          assert(connection_count_ > 0);

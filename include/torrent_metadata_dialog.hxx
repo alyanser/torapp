@@ -4,15 +4,13 @@
 #include "utility.hxx"
 
 #include <bencode_parser.hxx>
-#include <QDialog>
-#include <QLabel>
 #include <QPushButton>
-#include <QLineEdit>
 #include <QFormLayout>
 #include <QGridLayout>
+#include <QLineEdit>
 #include <QCheckBox>
-#include <string>
-#include <vector>
+#include <QDialog>
+#include <QLabel>
 
 class Torrent_metadata_dialog : public QDialog {
 	Q_OBJECT
@@ -54,11 +52,14 @@ inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & file_pat
 
 inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path) noexcept {
 	auto metadata = bencode::extract_metadata(bencode::parse_file(file_path.toStdString()));
+	
 	setup_display(metadata);
 
 	connect(&begin_download_button_,&QPushButton::clicked,this,[this,metadata = std::move(metadata)]{
 		emit new_request_received(metadata);
 	});
+
+	//! metadta moved
 }
 
 inline void Torrent_metadata_dialog::configure_default_connections() noexcept {

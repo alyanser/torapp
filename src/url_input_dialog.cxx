@@ -1,7 +1,8 @@
 #include "url_input_dialog.hxx"
 #include "utility.hxx"
 
-#include <QFileInfo>
+#include <QFileDialog>
+#include <QMessageBox>
 
 Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
          setFixedSize(QSize(600,200));

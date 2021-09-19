@@ -1,6 +1,9 @@
 #include "download_tracker.hxx"
 #include "utility.hxx"
 
+#include <QDesktopServices>
+#include <QMessageBox>
+
 Download_tracker::Download_tracker(){
          setup_layout();
          setup_file_status_layout();
@@ -21,18 +24,18 @@ Download_tracker::Download_tracker(const util::Download_request & url_download_r
          package_name_label_.setText(url_download_request.url.fileName());
          download_path_label_.setText(url_download_request.download_path);
 
-         {
+         {	
                   auto on_open_button_clicked = [this,path = url_download_request.download_path,name = url_download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
 				
-                                    QMessageBox::warning(this,message_title.data(),message_body.data());
+                                    QMessageBox::critical(this,message_title.data(),message_body.data());
                            }
                   };
 
-                  auto on_retry_button_clicked = [this,url_download_request = url_download_request]{
+                  auto on_retry_button_clicked = [this,url_download_request]{
                            emit retry_url_download(url_download_request);
                            emit release_lifetime();
                   };
@@ -56,10 +59,13 @@ Download_tracker::Download_tracker(const util::Download_request & url_download_r
 void Download_tracker::setup_state_widget() noexcept {
          state_holder_.addWidget(&download_progress_bar_);
          state_holder_.addWidget(&error_line_);
-         assert(state_holder_.currentWidget() == &download_progress_bar_);
+
+         error_line_.setAlignment(Qt::AlignCenter);
+
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
-         error_line_.setAlignment(Qt::AlignCenter);
+
+         assert(state_holder_.currentWidget() == &download_progress_bar_);
 }
 
 void Download_tracker::setup_file_status_layout() noexcept {
@@ -109,7 +115,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
          terminate_buttons_holder_.addWidget(&finish_button_);
 }
 
-void Download_tracker::download_progress_update(const int64_t bytes_received,const int64_t total_bytes) noexcept {
+void Download_tracker::download_progress_update(const std::int64_t bytes_received,const std::int64_t total_bytes) noexcept {
          assert(bytes_received >= 0);
          assert(!download_progress_bar_.minimum());
 
@@ -120,8 +126,8 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
                   download_progress_bar_.setMaximum(0);
                   download_progress_bar_.setValue(0);
          }else{
-                  download_progress_bar_.setMaximum(static_cast<int32_t>(total_bytes));
-                  download_progress_bar_.setValue(static_cast<int32_t>(bytes_received));
+                  download_progress_bar_.setMaximum(static_cast<std::int32_t>(total_bytes));
+                  download_progress_bar_.setValue(static_cast<std::int32_t>(bytes_received));
          }
 
          download_quantity_label_.setText(util::conversion::stringify_bytes(bytes_received,total_bytes));
@@ -129,12 +135,13 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
          const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
          assert(seconds_elapsed > 0);
          const auto speed = bytes_received / seconds_elapsed;
+
 	constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
+
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
          download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
-
 
 void Download_tracker::configure_default_connections() noexcept {
 
@@ -162,7 +169,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::release_lifetime);
                   connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::release_lifetime);
                   
-                  [[maybe_unused]] const auto response = query_box.exec();
+                  query_box.exec();
          };
 
          connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
@@ -178,14 +185,14 @@ void Download_tracker::configure_default_connections() noexcept {
 void Download_tracker::switch_to_finished_state() noexcept {
          time_elapsed_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
-         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          state_holder_.setCurrentWidget(&error_line_);
+         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          
-         if(error_ == Error::Null){
+         if(static_cast<bool>(error_)){
+                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
+         }else{
                   delete_button_.setEnabled(true);
                   open_button_.setEnabled(true);
-         }else{
-                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
          }
 }
 

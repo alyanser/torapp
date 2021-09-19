@@ -3,19 +3,16 @@
 
 #include "utility.hxx"
 
-#include <QString>
-#include <QPushButton>
+#include <QStackedWidget>
+#include <QProgressBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QLabel>
+#include <QPushButton>
 #include <QLineEdit>
-#include <QTextEdit>
-#include <QProgressBar>
-#include <QStackedWidget>
-#include <QMessageBox>
+#include <QWidget>
+#include <QLabel>
 #include <QTimer>
 #include <QTime>
-#include <QDesktopServices>
 
 class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
          Q_OBJECT
@@ -27,7 +24,7 @@ public:
 
 	constexpr auto error() const noexcept;
          auto get_elapsed_seconds() const noexcept;
-         void bind_lifetime() noexcept;
+         auto bind_lifetime() noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
@@ -56,11 +53,11 @@ private:
          QHBoxLayout network_stat_layout_;
 
          QHBoxLayout package_name_layout_;
-         QLabel package_name_buddy_ = QLabel("Name: "); 
+         QLabel package_name_buddy_ = QLabel("Name:");
          QLabel package_name_label_;
 
          QHBoxLayout download_path_layout_;
-         QLabel download_path_buddy_ = QLabel("Path: ");
+         QLabel download_path_buddy_ = QLabel("Path:");
          QLabel download_path_label_;
 
          QStackedWidget state_holder_;
@@ -68,12 +65,12 @@ private:
          QProgressBar download_progress_bar_;
 
          QHBoxLayout download_quantity_layout_;
-         QLabel download_quantity_buddy_ = QLabel("Downloaded: ");
-         QLabel download_quantity_label_ = QLabel("0 byte(s) / 0 byte(s)");
+         QLabel download_quantity_buddy_ = QLabel("Downloaded:");
+         QLabel download_quantity_label_ = QLabel("0 byte (s) / 0 byte (s)");
 
          QHBoxLayout upload_quantity_layout_;
-         QLabel upload_quantity_buddy_ = QLabel("Uploaded: ");
-         QLabel upload_quantity_label_ = QLabel("0 byte(s) / 0 byte(s)");
+         QLabel upload_quantity_buddy_ = QLabel("Uploaded:");
+         QLabel upload_quantity_label_ = QLabel("0 byte (s) / 0 byte (s)");
 
          QStackedWidget terminate_buttons_holder_;
          QPushButton finish_button_ = QPushButton("Finish");
@@ -86,43 +83,30 @@ private:
          QHBoxLayout time_elapsed_layout_;
          QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
          QTimer time_elapsed_timer_;
-         QLabel time_elapsed_buddy_ = QLabel("Time elapsed: ");
+         QLabel time_elapsed_buddy_ = QLabel("Time elapsed:");
          QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString() + " hh::mm::ss");
 
          QHBoxLayout download_speed_layout_;
-         QLabel download_speed_buddy_ = QLabel("Download Speed: ");
+         QLabel download_speed_buddy_ = QLabel("Download Speed:");
          QLabel download_speed_label_ = QLabel("0 bytes/sec");
 
          QPushButton delete_button_ = QPushButton("Delete");
          QPushButton open_directory_button_ = QPushButton("Open directory");
 };
 
-inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
-         assert(new_error != Error::Null && new_error != Error::Custom);
-         error_ = new_error;
-         update_error_line();
-         switch_to_finished_state();
-}
-
-inline void Download_tracker::set_error_and_finish(const QString & custom_error) noexcept {
-         error_ = Error::Custom;
-         error_line_.setText(custom_error);
-         switch_to_finished_state();
-}
-
-inline void Download_tracker::upload_progress_update(const std::int64_t bytes_sent,const std::int64_t total_bytes) noexcept {
-         upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
-}
-
-inline void Download_tracker::bind_lifetime() noexcept {
+inline auto Download_tracker::bind_lifetime() noexcept {
 
          const auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
                   assert(self.use_count() <= 2); // other could be held by the associated network request
          },Qt::SingleShotConnection);
 
+	assert(self_lifetime_connection);
+
          connect(this,&Download_tracker::release_lifetime,this,[self_lifetime_connection]{
                   disconnect(self_lifetime_connection);
-         },Qt::SingleShotConnection);
+         });
+
+	return shared_from_this();
 }
 
 inline void Download_tracker::setup_layout() noexcept {
@@ -139,6 +123,23 @@ constexpr auto Download_tracker::error() const noexcept {
 [[nodiscard]]
 inline auto Download_tracker::get_elapsed_seconds() const noexcept {
          return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
+}
+
+inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
+         assert(new_error != Error::Null && new_error != Error::Custom);
+         error_ = new_error;
+         update_error_line();
+         switch_to_finished_state();
+}
+
+inline void Download_tracker::set_error_and_finish(const QString & custom_error) noexcept {
+         error_ = Error::Custom;
+         error_line_.setText(custom_error);
+         switch_to_finished_state();
+}
+
+inline void Download_tracker::upload_progress_update(const std::int64_t bytes_sent,const std::int64_t total_bytes) noexcept {
+         upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
 }
 
 #endif // DOWNLOAD_TRACKER_HXX

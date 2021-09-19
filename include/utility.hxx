@@ -8,12 +8,6 @@
 #include <string_view>
 
 namespace util {
-	
-struct Download_request {
-         QString package_name;
-         QString download_path;
-         QUrl url;
-};
 
 namespace conversion {
 
@@ -29,25 +23,26 @@ constexpr auto stringify_bytes(const Byte bytes,const Conversion_Format format) 
 	using namespace std::string_view_literals;
 
          if(bytes >= bytes_in_gb){
-                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec"sv : "gb(s)"sv);
+                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb (s) /sec"sv : "gb (s)"sv);
          }
 
          if(bytes >= bytes_in_mb){
-                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec"sv : "mb(s)"sv);
+                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb (s) / sec"sv : "mb (s)"sv);
          }
 
          if(bytes >= bytes_in_kb){
-                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec"sv : "kb(s)"sv);
+                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb (s) / sec"sv : "kb (s)"sv);
          }
 
-         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec"sv : "byte(s)"sv);
+         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte (s) / sec"sv : "byte (s)"sv);
 }
 
-template<typename T>
+template<typename Byte>
 [[nodiscard]]
-inline auto stringify_bytes(const T bytes_received,const T total_bytes) noexcept {
+inline auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
+
          double converted_total_bytes = 0;
          std::string_view total_bytes_postfix("inf");
 
@@ -56,13 +51,22 @@ inline auto stringify_bytes(const T bytes_received,const T total_bytes) noexcept
          }
 
          const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
-         QString quantity_text("%1 %2 / %3 %4");
-         quantity_text = quantity_text.arg(converted_received_bytes).arg(received_bytes_postfix.data());
-         quantity_text = quantity_text.arg(converted_total_bytes).arg(total_bytes_postfix.data());
-         return quantity_text;
+
+         QString converted_str("%1 %2 / %3 %4");
+
+         converted_str = converted_str.arg(converted_received_bytes).arg(received_bytes_postfix.data());
+         converted_str = converted_str.arg(converted_total_bytes).arg(total_bytes_postfix.data());
+
+         return converted_str;
 }
 
 } // namespace conversion
+
+struct Download_request {
+         QString package_name;
+         QString download_path;
+         QUrl url;
+};
 
 } // namespace util
 

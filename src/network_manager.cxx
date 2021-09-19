@@ -1,10 +1,15 @@
 #include "network_manager.hxx"
 #include "download_tracker.hxx"
+#include "torrent_client.hxx"
 
 #include <QNetworkReply>
+#include <QNetworkProxy>
+#include <QHostAddress>
+#include <QUdpSocket>
+#include <QUrlQuery>
 #include <QFile>
 
-bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker){
+bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept {
 	constexpr auto failure = false;
 	constexpr auto success = true;
 	
@@ -29,24 +34,23 @@ bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tr
 	return success;
 }
 
-void Network_manager::setup_tracker(Download_tracker & tracker) noexcept {
-	++connection_count_;
-	tracker.bind_lifetime();
-
+void Network_manager::configure_tracker_connections(Download_tracker & tracker) const noexcept {
          connect(this,&Network_manager::terminate,&tracker,&Download_tracker::release_lifetime);
          connect(&tracker,&Download_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
 	connect(&tracker,&Download_tracker::retry_url_download,this,&Network_manager::initiate_url_download);
 	connect(&tracker,&Download_tracker::retry_torrent_download,this,&Network_manager::initiate_torrent_download);
 }
 
-void Network_manager::initiate_url_download(const util::Download_request & download_request){
+void Network_manager::initiate_url_download(const util::Download_request & download_request) noexcept {
 	assert(!download_request.download_path.isEmpty());
          assert(!download_request.url.toString().isEmpty());
 
+	++connection_count_;
+	
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
-         auto tracker = std::make_shared<Download_tracker>(download_request);
+         auto tracker = std::make_shared<Download_tracker>(download_request)->bind_lifetime();
 
-	setup_tracker(*tracker);
+	configure_tracker_connections(*tracker);
 	emit tracker_added(*tracker);
 
 	if(open_file_handle(*file_handle,*tracker)){
@@ -54,13 +58,9 @@ void Network_manager::initiate_url_download(const util::Download_request & downl
 	}
 }
 
-void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata){
-}
-         
 void Network_manager::download_url(const Url_download_resources & resources) noexcept {
          const auto & [file_handle,tracker,url] = resources;
 
-         assert(!url.isEmpty());
          assert(file_handle->exists());
 
          auto network_reply = std::shared_ptr<QNetworkReply>(get(QNetworkRequest(url)));
@@ -104,4 +104,15 @@ void Network_manager::download_url(const Url_download_resources & resources) noe
          connect(network_reply.get(),&QNetworkReply::redirected,network_reply.get(),&QNetworkReply::redirectAllowed);
          connect(network_reply.get(),&QNetworkReply::downloadProgress,tracker.get(),&Download_tracker::download_progress_update);
          connect(network_reply.get(),&QNetworkReply::uploadProgress,tracker.get(),&Download_tracker::upload_progress_update);
+}
+
+void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata) noexcept {
+	auto torrent_client = std::make_shared<Torrent_client>(torrent_metadata)->bind_lifetime();
+
+	connect(torrent_client.get(),&Torrent_client::send_request,[this,torrent_client = torrent_client.get()](auto && request){
+		auto network_reply = std::unique_ptr<QNetworkReply>(get(request));
+		emit respond_client(*network_reply);
+	});
+
+	connect(this,&Network_manager::respond_client,torrent_client.get(),&Torrent_client::on_response_arrived);
 }

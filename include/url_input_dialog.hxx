@@ -1,21 +1,17 @@
 #ifndef URL_INPUT_DIALOG_HXX
 #define URL_INPUT_DIALOG_HXX
 
-#include <QLineEdit>
-#include <QPushButton>
-#include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QToolButton>
-#include <QFileDialog>
-#include <QLabel>
-#include <QMessageBox>
-#include <QDir>
-#include <QUrl>
 #include <QFormLayout>
+#include <QToolButton>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QDialog>
+#include <QDir>
 
 namespace util {
 	struct Download_request;
-} // namespace util
+}
 
 class Url_input_widget : public QDialog {
          Q_OBJECT
@@ -51,6 +47,9 @@ inline void Url_input_widget::reset_lines() noexcept {
          url_line_.clear();
          package_name_line_.clear();
          path_line_.setText(default_path_);
+
+	assert(!url_line_.placeholderText().isEmpty());
+	assert(!package_name_line_.placeholderText().isEmpty());
 }
 
 inline void Url_input_widget::setup_tab_order() noexcept {
