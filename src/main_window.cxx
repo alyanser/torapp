@@ -40,8 +40,10 @@ void Main_window::add_top_actions() noexcept {
 		const auto file_path = QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
 
 		if(!file_path.isEmpty()){
-			Torrent_metadata_dialog metadata_displayer(file_path,this);
-			metadata_displayer.exec();
+			Torrent_metadata_dialog torrent_dialog(file_path,this);
+			const auto forward_request = qOverload<const bencode::Metadata &>(&Main_window::forward_torrent_download_request);
+			connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,forward_request);
+			torrent_dialog.exec();
 		}
 	});
 

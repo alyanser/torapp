@@ -4,24 +4,6 @@
 #include <QNetworkReply>
 #include <QFile>
 
-void Network_manager::initiate_url_download(const util::Download_request & download_request){
-	assert(!download_request.download_path.isEmpty());
-         assert(!download_request.url.toString().isEmpty());
-
-         auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
-         auto tracker = std::make_shared<Download_tracker>(download_request);
-
-	setup_tracker(*tracker);
-	emit tracker_added(*tracker);
-
-	if(open_file_handle(*file_handle,*tracker)){
-                  download_url({file_handle,tracker,download_request.url});
-	}
-}
-
-void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata){
-}
-
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker){
 	constexpr auto failure = false;
 	constexpr auto success = true;
@@ -55,6 +37,24 @@ void Network_manager::setup_tracker(Download_tracker & tracker) noexcept {
          connect(&tracker,&Download_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
 	connect(&tracker,&Download_tracker::retry_url_download,this,&Network_manager::initiate_url_download);
 	connect(&tracker,&Download_tracker::retry_torrent_download,this,&Network_manager::initiate_torrent_download);
+}
+
+void Network_manager::initiate_url_download(const util::Download_request & download_request){
+	assert(!download_request.download_path.isEmpty());
+         assert(!download_request.url.toString().isEmpty());
+
+         auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
+         auto tracker = std::make_shared<Download_tracker>(download_request);
+
+	setup_tracker(*tracker);
+	emit tracker_added(*tracker);
+
+	if(open_file_handle(*file_handle,*tracker)){
+                  download_url({file_handle,tracker,download_request.url});
+	}
+}
+
+void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata){
 }
          
 void Network_manager::download_url(const Url_download_resources & resources) noexcept {
