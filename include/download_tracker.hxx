@@ -19,12 +19,11 @@
 
 class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
          Q_OBJECT
-	Download_tracker();
 public:
          enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
 
          explicit Download_tracker(const util::Download_request & download_request);
-	explicit Download_tracker(const util::Metadata & metadata);
+	explicit Download_tracker(const bencode::Metadata & metadata);
 
 	constexpr auto error() const noexcept;
          auto get_elapsed_seconds() const noexcept;
@@ -36,13 +35,14 @@ signals:
          void request_satisfied() const;
          void release_lifetime() const;
          void retry_url_download(const util::Download_request & download_request) const;
-         void retry_torrent_download(const util::Metadata & metadata) const;
+         void retry_torrent_download(const bencode::Metadata & metadata) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 public slots:
          void download_progress_update(std::int64_t bytes_received,std::int64_t total_bytes) noexcept;
          void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
 private:
+	Download_tracker();
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
          void setup_file_status_layout() noexcept;

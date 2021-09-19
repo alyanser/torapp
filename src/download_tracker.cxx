@@ -1,4 +1,5 @@
 #include "download_tracker.hxx"
+#include "utility.hxx"
 
 Download_tracker::Download_tracker(){
          setup_layout();

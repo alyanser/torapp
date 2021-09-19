@@ -28,7 +28,7 @@ signals:
          void all_trackers_destroyed() const;
 public slots:
 	void initiate_new_url_download(const util::Download_request & request);
-	void initiate_new_torrent_download(const util::Metadata & metadata); 
+	void initiate_new_torrent_download(const bencode::Metadata & metadata); 
          constexpr void on_tracker_destroyed() noexcept;
 private:
          void configure_default_connections() noexcept;

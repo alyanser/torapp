@@ -27,7 +27,7 @@ public:
 signals:
          void quit() const;
 	void forward_url_download_request(const util::Download_request & download_request) const;
-	void forward_torrent_download_request(const util::Metadata & metadata) const;
+	void forward_torrent_download_request(const bencode::Metadata & metadata) const;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:

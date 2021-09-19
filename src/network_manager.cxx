@@ -21,7 +21,7 @@ void Network_manager::initiate_new_url_download(const util::Download_request & d
 	}
 }
 
-void Network_manager::initiate_new_torrent_download(const util::Metadata & metadata) {
+void Network_manager::initiate_new_torrent_download(const bencode::Metadata & metadata) {
 }
 
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker){
