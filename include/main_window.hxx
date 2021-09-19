@@ -15,6 +15,11 @@
 #include <QCloseEvent>
 #include <QActionGroup>
 #include <QSet>
+#include <vector>
+
+namespace bencode {
+	struct Metadata;
+} // namespace bencode
 
 struct Download_request;
 
@@ -31,14 +36,17 @@ signals:
          void quit() const;
 public slots:
          void initiate_new_download(const util::Download_request & download_request) noexcept;
+	void initate_new_download(const bencode::Metadata & metadata) noexcept;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
          void configure_default_connections() noexcept;
+	void setup_tracker(Download_tracker & tracker) noexcept;
          void setup_menu_bar() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
          void confirm_quit() noexcept;
+	auto open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept;
          ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
@@ -62,7 +70,6 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
 
 inline void Main_window::confirm_quit() noexcept {
          constexpr std::string_view warning_title("Quit");
-	//todo change the warning when serialization is implemented
          constexpr std::string_view warning_body("Are you sure you want to quit? All of your downloads will be terminated.");
 
          const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());

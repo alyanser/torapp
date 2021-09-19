@@ -18,6 +18,7 @@ set(SOURCES
          src/network_manager.cxx
          src/url_input_dialog.cxx
          src/download_tracker.cxx
+	src/torrent_metadata_dialog.cxx
 )
 
 set(MOC_INCLUDES
@@ -43,14 +44,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Widgets
 )
 
-target_precompile_headers(${PROJECT_NAME} PRIVATE
-         [["QApplication"]]
-         [["QMainWindow"]]
-         [["QWidget"]]
-         [["QNetworkAccessManager"]]
-         [["QDebug"]]
-         [["QString"]]
-         [["QObject"]]
-	[["QGridLayout"]]
-	[["bencode_parser.hxx"]]
-)
+# target_precompile_headers(${PROJECT_NAME} PRIVATE
+#          [["QApplication"]]
+#          [["QMainWindow"]]
+#          [["QWidget"]]
+#          [["QNetworkAccessManager"]]
+#          [["QDebug"]]
+#          [["QString"]]
+#          [["QObject"]]
+# 	[["QGridLayout"]]
+# 	[["bencode_parser.hxx"]]
+# )

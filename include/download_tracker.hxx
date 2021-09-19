@@ -26,12 +26,12 @@ public:
 
          explicit Download_tracker(const util::Download_request & download_request);
 
+	constexpr auto error() const noexcept;
+         auto get_elapsed_seconds() const noexcept;
          void bind_lifetime() noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
-         std::uint32_t get_elapsed_seconds() const noexcept;
-	constexpr Error error() const noexcept;
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
@@ -96,15 +96,6 @@ private:
          QPushButton open_directory_button_ = QPushButton("Open directory");
 };
 
-inline void Download_tracker::setup_state_widget() noexcept {
-         state_holder_.addWidget(&download_progress_bar_);
-         state_holder_.addWidget(&error_line_);
-         assert(state_holder_.currentWidget() == &download_progress_bar_);
-         download_progress_bar_.setMinimum(0);
-         download_progress_bar_.setValue(0);
-         error_line_.setAlignment(Qt::AlignCenter);
-}
-
 inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
          assert(new_error != Error::Null && new_error != Error::Custom);
          error_ = new_error;
@@ -116,20 +107,6 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
          error_ = Error::Custom;
          error_line_.setText(custom_error);
          switch_to_finished_state();
-}
-
-inline void Download_tracker::switch_to_finished_state() noexcept {
-         time_elapsed_timer_.stop();
-         time_elapsed_buddy_.setText("Time took: ");
-         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
-         state_holder_.setCurrentWidget(&error_line_);
-         
-         if(error_ == Error::Null){
-                  delete_button_.setEnabled(true);
-                  open_button_.setEnabled(true);
-         }else{
-                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
-         }
 }
 
 inline void Download_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
@@ -147,45 +124,6 @@ inline void Download_tracker::bind_lifetime() noexcept {
          },Qt::SingleShotConnection);
 }
 
-inline void Download_tracker::configure_default_connections() noexcept {
-
-         auto on_cancel_button_clicked = [this]{
-                  constexpr std::string_view question_title("Cancel Download");
-                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All download progress will be lost.");
-                  constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
-                  
-                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
-
-                  if(response == QMessageBox::StandardButton::Yes){
-                           emit request_satisfied();
-                  }
-         };
-
-         auto on_delete_button_clicked = [this]{
-                  QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::NoButton);
-
-                  auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
-                  auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
-                  [[maybe_unused]] auto * const cancel_button = query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
-
-                  connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
-                  connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
-                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::release_lifetime);
-                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::release_lifetime);
-                  
-                  [[maybe_unused]] const auto response = query_box.exec();
-         };
-
-         connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
-                  time_elapsed_ = time_elapsed_.addSecs(1);
-                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-         });
-
-         connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
-         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked);
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
-}
-
 inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&state_holder_);
@@ -193,37 +131,13 @@ inline void Download_tracker::setup_layout() noexcept {
 }
 
 [[nodiscard]]
-inline std::uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
-         return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
-}
-
-[[nodiscard]]
-constexpr Download_tracker::Error Download_tracker::error() const noexcept {
+constexpr auto Download_tracker::error() const noexcept {
          return error_;
 }
 
-inline void Download_tracker::update_error_line() noexcept {
-         constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
-         constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
-         constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
-         constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
-
-         switch(error_){
-                  case Error::Null :
-			error_line_.setText(null_error_info.data()); 
-			break;
-                  case Error::File_Write :
-			error_line_.setText(file_write_error_info.data()); 
-			break;
-                  case Error::Unknown_Network :
-			error_line_.setText(unknown_network_error_info.data()); 
-			break;
-                  case Error::File_Lock :
-			error_line_.setText(file_lock_error_info.data()); 
-			break;
-                  case Error::Custom : [[fallthrough]];
-                  default : __builtin_unreachable();
-         }
+[[nodiscard]]
+inline auto Download_tracker::get_elapsed_seconds() const noexcept {
+         return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 
 #endif // DOWNLOAD_TRACKER_HXX

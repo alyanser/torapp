@@ -47,7 +47,7 @@ void Main_window::add_top_actions() noexcept {
 
 	connect(url_action,&QAction::triggered,[this]{
 		Url_input_widget url_input_widget(this);
-		connect(&url_input_widget,&Url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
+		// connect(&url_input_widget,&Url_input_widget::new_request_received,this,&Main_window::initiate_new_download);
 		url_input_widget.exec();
 	});
 
@@ -56,11 +56,11 @@ void Main_window::add_top_actions() noexcept {
 
 void Main_window::setup_sort_menu() noexcept {
          auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
-         auto * const sort_by_time_action [[maybe_unused]] = new QAction("By time",&sort_action_group_);
-         auto * const sort_by_size_action [[maybe_unused]] = new QAction("By size",&sort_action_group_);
-         auto * const sort_by_progress_action [[maybe_unused]] = new QAction("By progress",&sort_action_group_);
-         auto * const sort_by_activity_action [[maybe_unused]] = new QAction("By activity",&sort_action_group_);
-	
+         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
+         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
+
          const auto sort_actions = sort_action_group_.actions();
 
          for(auto * const sort_action : sort_actions){
@@ -69,8 +69,41 @@ void Main_window::setup_sort_menu() noexcept {
 
          sort_by_name_action->setChecked(true);
          sort_menu_.addActions(sort_actions);
+}
 
-         //todo add connections and implementation
+auto Main_window::open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept {
+	constexpr auto failure = false;
+	constexpr auto success = true;
+	
+	if(open_files_.contains(file_handle.fileName())){
+		tracker.set_error_and_finish(Download_tracker::Error::File_Lock);
+		return failure;
+	}
+
+	if(!file_handle.open(QFile::WriteOnly | QFile::Truncate)){
+		tracker.set_error_and_finish(Download_tracker::Error::File_Write);
+		return failure;
+	}
+
+	open_files_.insert(file_handle.fileName());
+
+	connect(&file_handle,&QFile::destroyed,[&open_files_ = open_files_,file_name = file_handle.fileName()]{
+		const auto file_itr = open_files_.find(file_name);
+		assert(file_itr != open_files_.end());
+		open_files_.erase(file_itr);
+	});
+
+	return success;
+}
+
+void Main_window::setup_tracker(Download_tracker & tracker) noexcept {
+	central_layout_.addWidget(&tracker);
+	network_manager_.increment_connection_count();
+	tracker.bind_lifetime();
+	
+	connect(&tracker,&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
+         connect(&network_manager_,&Network_manager::terminate,&tracker,&Download_tracker::release_lifetime);
+         connect(&tracker,&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
 }
 
 void Main_window::initiate_new_download(const util::Download_request & download_request) noexcept {
@@ -80,26 +113,22 @@ void Main_window::initiate_new_download(const util::Download_request & download_
          auto file_handle = std::make_shared<QFile>(download_request.download_path + '/' + download_request.package_name);
          auto tracker = std::make_shared<Download_tracker>(download_request);
 
-         tracker->bind_lifetime();
-         central_layout_.addWidget(tracker.get());
-         network_manager_.increment_connection_count();
+	setup_tracker(*tracker);
 
-         connect(tracker.get(),&Download_tracker::retry_download,this,&Main_window::initiate_new_download);
-         connect(&network_manager_,&Network_manager::terminate,tracker.get(),&Download_tracker::release_lifetime);
-         connect(tracker.get(),&Download_tracker::destroyed,&network_manager_,&Network_manager::on_tracker_destroyed);
-
-         if(open_files_.contains(file_handle->fileName())){
-                  tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
-         }else if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                  tracker->set_error_and_finish(Download_tracker::Error::File_Write);
-         }else{
-                  open_files_.insert(file_handle->fileName());
+	if(open_file_handle(*file_handle,*tracker)){
                   network_manager_.download({file_handle,tracker,download_request.url});
+	}
+}
 
-                  connect(file_handle.get(),&QFile::destroyed,[&open_files_ = open_files_,file_name = file_handle->fileName()]{
-                           const auto file_itr = open_files_.find(file_name);
-                           assert(file_itr != open_files_.end());
-                           open_files_.erase(file_itr);
-                  });
-         }
+void Main_window::initate_new_download(const bencode::Metadata & metadata) noexcept {
+	assert(!metadata.name.empty());
+	
+	const auto & file_name = metadata.name;
+	auto file_handle = std::make_shared<QFile>(file_name.data());
+	// auto tracker = std::make_shared<Download_tracker>();
+
+	// setup_tracker(*tracker);
+
+	// if(open_file_handle(*file_handle,*tracker)){
+	// }
 }

@@ -50,6 +50,15 @@ Download_tracker::Download_tracker(const util::Download_request & download_reque
          }
 }
 
+void Download_tracker::setup_state_widget() noexcept {
+         state_holder_.addWidget(&download_progress_bar_);
+         state_holder_.addWidget(&error_line_);
+         assert(state_holder_.currentWidget() == &download_progress_bar_);
+         download_progress_bar_.setMinimum(0);
+         download_progress_bar_.setValue(0);
+         error_line_.setAlignment(Qt::AlignCenter);
+}
+
 void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
          file_stat_layout_.addLayout(&download_path_layout_);
@@ -121,4 +130,84 @@ void Download_tracker::download_progress_update(const int64_t bytes_received,con
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
          download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
+}
+
+
+void Download_tracker::configure_default_connections() noexcept {
+
+         auto on_cancel_button_clicked = [this]{
+                  constexpr std::string_view question_title("Cancel Download");
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All download progress will be lost.");
+                  constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
+                  
+                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+
+                  if(response == QMessageBox::StandardButton::Yes){
+                           emit request_satisfied();
+                  }
+         };
+
+         auto on_delete_button_clicked = [this]{
+                  QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::NoButton);
+
+                  auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
+                  auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
+                  [[maybe_unused]] auto * const cancel_button = query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
+
+                  connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
+                  connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
+                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::release_lifetime);
+                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::release_lifetime);
+                  
+                  [[maybe_unused]] const auto response = query_box.exec();
+         };
+
+         connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+                  time_elapsed_ = time_elapsed_.addSecs(1);
+                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+         });
+
+         connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
+         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
+}
+
+
+void Download_tracker::switch_to_finished_state() noexcept {
+         time_elapsed_timer_.stop();
+         time_elapsed_buddy_.setText("Time took: ");
+         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
+         state_holder_.setCurrentWidget(&error_line_);
+         
+         if(error_ == Error::Null){
+                  delete_button_.setEnabled(true);
+                  open_button_.setEnabled(true);
+         }else{
+                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
+         }
+}
+
+
+void Download_tracker::update_error_line() noexcept {
+         constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
+         constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
+         constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
+         constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
+
+         switch(error_){
+                  case Error::Null :
+			error_line_.setText(null_error_info.data()); 
+			break;
+                  case Error::File_Write :
+			error_line_.setText(file_write_error_info.data()); 
+			break;
+                  case Error::Unknown_Network :
+			error_line_.setText(unknown_network_error_info.data()); 
+			break;
+                  case Error::File_Lock :
+			error_line_.setText(file_lock_error_info.data()); 
+			break;
+                  case Error::Custom : [[fallthrough]];
+                  default : __builtin_unreachable();
+         }
 }

@@ -17,31 +17,33 @@ namespace conversion {
 
 enum class Conversion_Format { Speed, Memory };
 
-template<typename T>
+template<typename Byte>
 [[nodiscard]]
-constexpr std::pair<T,std::string_view> stringify_bytes(const T bytes,const Conversion_Format format) noexcept {
+constexpr auto stringify_bytes(const Byte bytes,const Conversion_Format format) noexcept {
          constexpr auto bytes_in_kb = 1024;
          constexpr auto bytes_in_mb = bytes_in_kb * 1024;
          constexpr auto bytes_in_gb = bytes_in_mb * 1024;
 
+	using namespace std::string_view_literals;
+
          if(bytes >= bytes_in_gb){
-                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec" : "gb(s)"};
+                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb(s)/sec"sv : "gb(s)"sv);
          }
 
          if(bytes >= bytes_in_mb){
-                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec" : "mb(s)"};
+                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb(s)/sec"sv : "mb(s)"sv);
          }
 
          if(bytes >= bytes_in_kb){
-                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec" : "kb(s)"};
+                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb(s)/sec"sv : "kb(s)"sv);
          }
 
-         return {bytes,format == Conversion_Format::Speed ? "byte(s)/sec" : "byte(s)"};
+         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte(s)/sec"sv : "byte(s)"sv);
 }
 
 template<typename T>
 [[nodiscard]]
-inline QString stringify_bytes(const T bytes_received,const T total_bytes) noexcept {
+inline auto stringify_bytes(const T bytes_received,const T total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
          double converted_total_bytes = 0;
