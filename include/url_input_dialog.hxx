@@ -47,40 +47,6 @@ private:
 	QPushButton cancel_button_ = QPushButton("Cancel");
 };
 
-inline Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
-         setFixedSize(QSize(600,200));
-         setWindowTitle("Custom Url");
-         
-         setup_layout();
-         setup_tab_order();
-         configure_default_connections();
-
-         url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
-         path_line_.setPlaceholderText("eg: /home/user/Downloads/");
-         package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
-}
-
-inline void Url_input_widget::configure_default_connections() noexcept {
-
-         connect(&path_button_,&QToolButton::clicked,[this]{
-                  const auto selected_directory = QFileDialog::getExistingDirectory(this);
-
-                  if(!selected_directory.isEmpty()){
-                           path_line_.setText(selected_directory);
-                  }
-         });
-
-         connect(&cancel_button_,&QPushButton::clicked,[this]{
-                  reset_lines();
-                  hide();
-         });
-
-         connect(&download_button_,&QPushButton::clicked,this,&Url_input_widget::on_input_received);
-         connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
-         connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
-         connect(&path_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
-}
-
 inline void Url_input_widget::reset_lines() noexcept {
          url_line_.clear();
          package_name_line_.clear();

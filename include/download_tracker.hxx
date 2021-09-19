@@ -17,14 +17,14 @@
 #include <QTime>
 #include <QDesktopServices>
 
-struct Download_request;
-
 class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
          Q_OBJECT
+	Download_tracker();
 public:
          enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
 
          explicit Download_tracker(const util::Download_request & download_request);
+	explicit Download_tracker(const util::Metadata & metadata);
 
 	constexpr auto error() const noexcept;
          auto get_elapsed_seconds() const noexcept;
@@ -35,12 +35,13 @@ public:
 signals:
          void request_satisfied() const;
          void release_lifetime() const;
-         void retry_download(const util::Download_request & download_request) const;
+         void retry_url_download(const util::Download_request & download_request) const;
+         void retry_torrent_download(const util::Metadata & metadata) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 public slots:
-         void download_progress_update(int64_t bytes_received,int64_t total_bytes) noexcept;
-         void upload_progress_update(int64_t bytes_sent,int64_t total_bytes) noexcept;
+         void download_progress_update(std::int64_t bytes_received,std::int64_t total_bytes) noexcept;
+         void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
 private:
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
@@ -109,7 +110,7 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
          switch_to_finished_state();
 }
 
-inline void Download_tracker::upload_progress_update(const int64_t bytes_sent,const int64_t total_bytes) noexcept {
+inline void Download_tracker::upload_progress_update(const std::int64_t bytes_sent,const std::int64_t total_bytes) noexcept {
          upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
 }
 

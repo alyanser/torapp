@@ -1,11 +1,14 @@
 #ifndef UTILITY_HXX
 #define UTILITY_HXX
 
+#include "bencode_parser.hxx"
 #include <QString>
 #include <QUrl>
 #include <string_view>
 
 namespace util {
+
+using bencode::Metadata;
 
 struct Download_request {
          QString package_name;

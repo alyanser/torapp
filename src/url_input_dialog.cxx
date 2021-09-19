@@ -3,14 +3,48 @@
 
 #include <QFileInfo>
 
+Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
+         setFixedSize(QSize(600,200));
+         setWindowTitle("Custom Url");
+         
+         setup_layout();
+         setup_tab_order();
+         configure_default_connections();
+
+         url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
+         path_line_.setText(default_path_);
+         package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
+}
+
+void Url_input_widget::configure_default_connections() noexcept {
+
+         connect(&path_button_,&QToolButton::clicked,[this]{
+                  const auto selected_directory = QFileDialog::getExistingDirectory(this);
+
+                  if(!selected_directory.isEmpty()){
+                           path_line_.setText(selected_directory);
+                  }
+         });
+
+         connect(&cancel_button_,&QPushButton::clicked,[this]{
+                  reset_lines();
+                  reject();
+         });
+
+         connect(&download_button_,&QPushButton::clicked,this,&Url_input_widget::on_input_received);
+         connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
+         connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
+         connect(&path_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
+}
+
 void Url_input_widget::setup_layout() noexcept {
 	central_layout_.addLayout(&central_form_layout_);
 	central_form_layout_.setSpacing(25);
 
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"URL:",&url_line_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Name:",&package_name_line_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Path",&path_layout_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),&button_layout_);
+	central_form_layout_.addRow("URL:",&url_line_);
+	central_form_layout_.addRow("Name:",&package_name_line_);
+	central_form_layout_.addRow("Path",&path_layout_);
+	central_form_layout_.addRow(&button_layout_);
 
 	path_layout_.addWidget(&path_line_);
 	path_layout_.addWidget(&path_button_);
@@ -79,6 +113,6 @@ void Url_input_widget::on_input_received() noexcept {
          }
 
          reset_lines();
-         hide();
          emit new_request_received({package_name,path,url});
+	accept();
 }

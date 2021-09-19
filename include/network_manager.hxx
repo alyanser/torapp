@@ -1,6 +1,8 @@
 #ifndef NETWORK_MANAGER_HXX
 #define NETWORK_MANAGER_HXX
 
+#include "utility.hxx"
+
 #include <QNetworkAccessManager>
 
 class Download_tracker;
@@ -15,19 +17,25 @@ public:
                   QUrl url;
          };
 
-         Network_manager();
-
+	Network_manager();
+	
  	constexpr auto connection_count() const noexcept;
          constexpr void increment_connection_count() noexcept;
          void download(const Download_resources & resources) noexcept;
 signals:
          void terminate() const;
+	void tracker_added(Download_tracker & new_tracker);
          void all_trackers_destroyed() const;
 public slots:
+	void initiate_new_url_download(const util::Download_request & request);
+	void initiate_new_torrent_download(const util::Metadata & metadata); 
          constexpr void on_tracker_destroyed() noexcept;
 private:
          void configure_default_connections() noexcept;
+	void setup_tracker(Download_tracker & tracker) noexcept;
+	bool open_file_handle(QFile & file,Download_tracker & tracker);
          ///
+	QSet<QString> open_files_;
          uint32_t connection_count_ = 0;
          bool terminating_ = false;
 };

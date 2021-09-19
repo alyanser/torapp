@@ -4,17 +4,18 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
 	central_layout_.addLayout(&central_form_layout_,0,0);
 	central_form_layout_.setSpacing(10);
 	
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Name",&torrent_name_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Created by",&created_by_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Creation date",&creation_date_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Announce",&announce_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Comment",&comment_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Encoding",&encoding_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),"Size",&torrent_length_label_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),&file_form_layout_);
-	central_form_layout_.insertRow(central_form_layout_.rowCount(),&button_layout_);
+	central_form_layout_.addRow("Name",&torrent_name_label_);
+	central_form_layout_.addRow("Created by",&created_by_label_);
+	central_form_layout_.addRow("Creation date",&creation_date_label_);
+	central_form_layout_.addRow("Announce",&announce_label_);
+	central_form_layout_.addRow("Comment",&comment_label_);
+	central_form_layout_.addRow("Encoding",&encoding_label_);
+	central_form_layout_.addRow("Size",&torrent_length_label_);
+	central_form_layout_.addRow(&file_form_layout_);
+	central_form_layout_.addRow(&button_layout_);
 
-	file_form_layout_.insertRow(file_form_layout_.rowCount(),"Files",&file_layout_);
+	file_form_layout_.addRow("Files",&file_layout_);
+	
 	button_layout_.addWidget(&begin_download_button_);
 	button_layout_.addWidget(&cancel_button_);
 }

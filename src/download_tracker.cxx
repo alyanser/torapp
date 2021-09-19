@@ -1,10 +1,6 @@
 #include "download_tracker.hxx"
-#include "utility.hxx"
 
-Download_tracker::Download_tracker(const util::Download_request & download_request){
-         assert(!download_request.url.isEmpty());
-         assert(!download_request.download_path.isEmpty());
-         
+Download_tracker::Download_tracker(){
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -12,11 +8,17 @@ Download_tracker::Download_tracker(const util::Download_request & download_reque
          update_error_line();
          configure_default_connections();
 
-         package_name_label_.setText(download_request.url.fileName());
-         download_path_label_.setText(download_request.download_path);
          time_elapsed_timer_.start(std::chrono::milliseconds(1000));
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
+}
+
+Download_tracker::Download_tracker(const util::Download_request & download_request) : Download_tracker(){
+         assert(!download_request.url.isEmpty());
+         assert(!download_request.download_path.isEmpty());
+
+         package_name_label_.setText(download_request.url.fileName());
+         download_path_label_.setText(download_request.download_path);
 
          {
                   auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
@@ -30,7 +32,7 @@ Download_tracker::Download_tracker(const util::Download_request & download_reque
                   };
 
                   auto on_retry_button_clicked = [this,download_request = download_request]{
-                           emit retry_download(download_request);
+                           emit retry_url_download(download_request);
                            emit release_lifetime();
                   };
 
@@ -137,7 +139,7 @@ void Download_tracker::configure_default_connections() noexcept {
 
          auto on_cancel_button_clicked = [this]{
                   constexpr std::string_view question_title("Cancel Download");
-                  constexpr std::string_view question_body("Are you sure you want to cancel the download? All download progress will be lost.");
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   
                   const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
@@ -172,7 +174,6 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 }
 
-
 void Download_tracker::switch_to_finished_state() noexcept {
          time_elapsed_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
@@ -186,7 +187,6 @@ void Download_tracker::switch_to_finished_state() noexcept {
                   initiate_buttons_holder_.setCurrentWidget(&retry_button_);
          }
 }
-
 
 void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");

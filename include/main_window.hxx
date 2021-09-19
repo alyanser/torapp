@@ -14,14 +14,6 @@
 #include <QFile>
 #include <QCloseEvent>
 #include <QActionGroup>
-#include <QSet>
-#include <vector>
-
-namespace bencode {
-	struct Metadata;
-} // namespace bencode
-
-struct Download_request;
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -34,19 +26,16 @@ public:
          ~Main_window() override = default;
 signals:
          void quit() const;
-public slots:
-         void initiate_new_download(const util::Download_request & download_request) noexcept;
-	void initate_new_download(const bencode::Metadata & metadata) noexcept;
+	void forward_url_download_request(const util::Download_request & download_request) const;
+	void forward_torrent_download_request(const util::Metadata & metadata) const;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
          void configure_default_connections() noexcept;
-	void setup_tracker(Download_tracker & tracker) noexcept;
          void setup_menu_bar() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
          void confirm_quit() noexcept;
-	auto open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept;
          ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
@@ -54,12 +43,17 @@ private:
          QMenu file_menu_ = QMenu("File",menuBar());
          QMenu sort_menu_ = QMenu("Sort",menuBar());
          QActionGroup sort_action_group_ = QActionGroup(this);
-
          Network_manager network_manager_;
-         QSet<QString> open_files_;
 };
 
 inline void Main_window::configure_default_connections() noexcept {
+
+	connect(&network_manager_,&Network_manager::tracker_added,[&central_layout_ = central_layout_](Download_tracker & new_tracker){
+		central_layout_.addWidget(&new_tracker);
+	});
+
+	connect(this,&Main_window::forward_url_download_request,&network_manager_,&Network_manager::initiate_new_url_download);
+	connect(this,&Main_window::forward_torrent_download_request,&network_manager_,&Network_manager::initiate_new_torrent_download);
          connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
 }
 
