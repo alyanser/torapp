@@ -14,15 +14,15 @@ Download_tracker::Download_tracker(){
          delete_button_.setEnabled(false);
 }
 
-Download_tracker::Download_tracker(const util::Download_request & download_request) : Download_tracker(){
-         assert(!download_request.url.isEmpty());
-         assert(!download_request.download_path.isEmpty());
+Download_tracker::Download_tracker(const util::Download_request & url_download_request) : Download_tracker(){
+         assert(!url_download_request.url.isEmpty());
+         assert(!url_download_request.download_path.isEmpty());
 
-         package_name_label_.setText(download_request.url.fileName());
-         download_path_label_.setText(download_request.download_path);
+         package_name_label_.setText(url_download_request.url.fileName());
+         download_path_label_.setText(url_download_request.download_path);
 
          {
-                  auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
+                  auto on_open_button_clicked = [this,path = url_download_request.download_path,name = url_download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
@@ -32,12 +32,12 @@ Download_tracker::Download_tracker(const util::Download_request & download_reque
                            }
                   };
 
-                  auto on_retry_button_clicked = [this,download_request = download_request]{
-                           emit retry_url_download(download_request);
+                  auto on_retry_button_clicked = [this,url_download_request = url_download_request]{
+                           emit retry_url_download(url_download_request);
                            emit release_lifetime();
                   };
 
-                  auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
+                  auto on_open_directory_button_clicked = [this,download_path = url_download_request.download_path]{
 
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");

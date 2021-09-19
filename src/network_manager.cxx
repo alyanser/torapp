@@ -1,10 +1,10 @@
-#include "download_tracker.hxx"
 #include "network_manager.hxx"
+#include "download_tracker.hxx"
 
 #include <QNetworkReply>
 #include <QFile>
 
-void Network_manager::initiate_new_url_download(const util::Download_request & download_request){
+void Network_manager::initiate_url_download(const util::Download_request & download_request){
 	assert(!download_request.download_path.isEmpty());
          assert(!download_request.url.toString().isEmpty());
 
@@ -15,13 +15,13 @@ void Network_manager::initiate_new_url_download(const util::Download_request & d
 	emit tracker_added(*tracker);
 
 	if(open_file_handle(*file_handle,*tracker)){
-                  download({file_handle,tracker,download_request.url});
+                  download_url({file_handle,tracker,download_request.url});
 	}else{
 		qDebug() << "invalid";
 	}
 }
 
-void Network_manager::initiate_new_torrent_download(const bencode::Metadata & metadata) {
+void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata){
 }
 
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker){
@@ -50,18 +50,16 @@ bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tr
 }
 
 void Network_manager::setup_tracker(Download_tracker & tracker) noexcept {
-	increment_connection_count();
+	++connection_count_;
 	tracker.bind_lifetime();
 
          connect(this,&Network_manager::terminate,&tracker,&Download_tracker::release_lifetime);
          connect(&tracker,&Download_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
-	
-	{
-		// connect(&tracker,&Download_tracker::retry_url_download,&Network_manager::initiate_new_url_request);
-	}
+	connect(&tracker,&Download_tracker::retry_url_download,this,&Network_manager::initiate_url_download);
+	connect(&tracker,&Download_tracker::retry_torrent_download,this,&Network_manager::initiate_torrent_download);
 }
          
-void Network_manager::download(const Download_resources & resources) noexcept {
+void Network_manager::download_url(const Download_resources & resources) noexcept {
          const auto & [file_handle,tracker,url] = resources;
 
          assert(!url.isEmpty());
@@ -109,4 +107,3 @@ void Network_manager::download(const Download_resources & resources) noexcept {
          connect(network_reply.get(),&QNetworkReply::downloadProgress,tracker.get(),&Download_tracker::download_progress_update);
          connect(network_reply.get(),&QNetworkReply::uploadProgress,tracker.get(),&Download_tracker::upload_progress_update);
 }
-

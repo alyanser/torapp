@@ -52,9 +52,10 @@ inline void Main_window::configure_default_connections() noexcept {
 		central_layout_.addWidget(&new_tracker);
 	});
 
-	connect(this,&Main_window::forward_url_download_request,&network_manager_,&Network_manager::initiate_new_url_download);
-	connect(this,&Main_window::forward_torrent_download_request,&network_manager_,&Network_manager::initiate_new_torrent_download);
          connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
+
+	connect(this,&Main_window::forward_url_download_request,&network_manager_,&Network_manager::initiate_url_download);
+	connect(this,&Main_window::forward_torrent_download_request,&network_manager_,&Network_manager::initiate_torrent_download);
 }
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
