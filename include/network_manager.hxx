@@ -11,11 +11,15 @@ class QFile;
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT
 public:
-         struct Download_resources {
+         struct Url_download_resources {
                   std::shared_ptr<QFile> file_handle;
                   std::shared_ptr<Download_tracker> tracker;
                   QUrl url;
          };
+
+	struct Torrent_download_resources {
+
+	};
 
 	Network_manager();
 	
@@ -26,14 +30,14 @@ signals:
          void all_trackers_destroyed() const;
 public slots:
 	void initiate_url_download(const util::Download_request & request);
-	void initiate_torrent_download(const bencode::Metadata & torrent_metadata); 
+	void initiate_torrent_download(const bencode::Metadata & torrent_metadata);
 private:
          void configure_default_connections() noexcept;
 	void setup_tracker(Download_tracker & tracker) noexcept;
 	bool open_file_handle(QFile & file,Download_tracker & tracker);
          constexpr void on_tracker_destroyed() noexcept;
-         void download_url(const Download_resources & resources) noexcept;
-         void download_torrent(const bencode::Metadata & torrent_metadata) noexcept;
+         void download_url(const Url_download_resources & resources) noexcept;
+         void download_torrent(const Torrent_download_resources & torrent_metadata) noexcept;
          ///
 	QSet<QString> open_files_;
          uint32_t connection_count_ = 0;

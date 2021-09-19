@@ -16,8 +16,6 @@ void Network_manager::initiate_url_download(const util::Download_request & downl
 
 	if(open_file_handle(*file_handle,*tracker)){
                   download_url({file_handle,tracker,download_request.url});
-	}else{
-		qDebug() << "invalid";
 	}
 }
 
@@ -59,7 +57,7 @@ void Network_manager::setup_tracker(Download_tracker & tracker) noexcept {
 	connect(&tracker,&Download_tracker::retry_torrent_download,this,&Network_manager::initiate_torrent_download);
 }
          
-void Network_manager::download_url(const Download_resources & resources) noexcept {
+void Network_manager::download_url(const Url_download_resources & resources) noexcept {
          const auto & [file_handle,tracker,url] = resources;
 
          assert(!url.isEmpty());
