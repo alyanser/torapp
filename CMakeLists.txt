@@ -5,11 +5,11 @@ project(torapp)
 set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
+set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
-
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-fno-omit-frame-pointer ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
 
@@ -20,7 +20,7 @@ set(SOURCES
          src/url_input_dialog.cxx
          src/download_tracker.cxx
 	src/torrent_metadata_dialog.cxx
-	src/torrent_client.cxx
+	src/udp_torrent_client.cxx
 )
 
 set(MOC_INCLUDES
@@ -29,7 +29,7 @@ set(MOC_INCLUDES
          include/network_manager.hxx
          include/download_tracker.hxx
 	include/torrent_metadata_dialog.hxx
-	include/torrent_client.hxx
+	include/udp_torrent_client.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
@@ -47,14 +47,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Widgets
 )
 
-# target_precompile_headers(${PROJECT_NAME} PRIVATE
-#          [["QApplication"]]
-#          [["QMainWindow"]]
-#          [["QWidget"]]
-#          [["QNetworkAccessManager"]]
-#          [["QDebug"]]
-#          [["QString"]]
-#          [["QObject"]]
-# 	[["QGridLayout"]]
-# 	[["bencode_parser.hxx"]]
-# )
+target_precompile_headers(${PROJECT_NAME} PRIVATE
+         [["QApplication"]]
+         [["QMainWindow"]]
+         [["QWidget"]]
+         [["QNetworkAccessManager"]]
+         [["QDebug"]]
+         [["QString"]]
+         [["QObject"]]
+	[["QGridLayout"]]
+	[["bencode_parser.hxx"]]
+)

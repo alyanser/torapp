@@ -1,12 +1,9 @@
 #include "network_manager.hxx"
+#include "udp_torrent_client.hxx"
 #include "download_tracker.hxx"
-#include "torrent_client.hxx"
 
 #include <QNetworkReply>
 #include <QNetworkProxy>
-#include <QHostAddress>
-#include <QUdpSocket>
-#include <QUrlQuery>
 #include <QFile>
 
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept {
@@ -54,7 +51,7 @@ void Network_manager::initiate_url_download(const util::Download_request & downl
 	emit tracker_added(*tracker);
 
 	if(open_file_handle(*file_handle,*tracker)){
-                  download_url({file_handle,tracker,download_request.url});
+                  download_url({file_handle,tracker,std::move(download_request).url});
 	}
 }
 
@@ -107,12 +104,11 @@ void Network_manager::download_url(const Url_download_resources & resources) noe
 }
 
 void Network_manager::initiate_torrent_download(const bencode::Metadata & torrent_metadata) noexcept {
-	auto torrent_client = std::make_shared<Torrent_client>(torrent_metadata)->bind_lifetime();
+	const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
-	connect(torrent_client.get(),&Torrent_client::send_request,[this,torrent_client = torrent_client.get()](auto && request){
-		auto network_reply = std::unique_ptr<QNetworkReply>(get(request));
-		emit respond_client(*network_reply);
-	});
-
-	connect(this,&Network_manager::respond_client,torrent_client.get(),&Torrent_client::on_response_arrived);
+	if(protocol == "udp"){
+		std::make_shared<Udp_torrent_client>(torrent_metadata)->run();
+	}else{
+		qDebug() << "unrecognized protocol : " << protocol;
+	}
 }

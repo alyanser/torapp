@@ -18,7 +18,7 @@ public:
                   std::shared_ptr<Download_tracker> tracker;
                   QUrl url;
          };
-
+// 
 	Network_manager();
 
  	constexpr auto connection_count() const noexcept;
@@ -26,7 +26,6 @@ signals:
          void terminate() const;
 	void tracker_added(Download_tracker & new_tracker) const;
          void all_trackers_destroyed() const;
-	void respond_client(QNetworkReply & reply) const;
 public slots:
 	void initiate_url_download(const util::Download_request & request) noexcept;
 	void initiate_torrent_download(const bencode::Metadata & torrent_metadata) noexcept;
@@ -71,5 +70,4 @@ inline void Network_manager::configure_default_connections() noexcept {
                   }
          });
 }
-
 #endif // NETWORK_MANAGER_HXX
