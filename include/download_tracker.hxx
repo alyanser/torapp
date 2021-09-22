@@ -17,7 +17,13 @@
 class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
          Q_OBJECT
 public:
-         enum class Error { Null, File_Write, Unknown_Network, File_Lock, Custom };
+         enum class Error { 
+		Null,
+		File_Write,
+		Unknown_Network,
+		File_Lock,
+		Custom
+	};
 
          explicit Download_tracker(const util::Download_request & download_request);
 	explicit Download_tracker(const bencode::Metadata & metadata);

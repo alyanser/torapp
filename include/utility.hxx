@@ -61,9 +61,10 @@ auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept 
          return converted_str;
 }
 
-template<typename Numeric,typename = std::enable_if_t<std::is_same_v<Numeric,quint32_be> || std::is_same_v<Numeric,quint64_be>>>
+//todo figure SFINAE for q.int_.e types
+template<typename Numeric>
 [[nodiscard]]
-auto convert_to_hex_array(const Numeric number,const QByteArray::size_type size_required) noexcept {
+auto convert_to_hex(const Numeric number,const std::ptrdiff_t size_required) noexcept {
 	constexpr auto hex_base = 16;
 
 	auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));
