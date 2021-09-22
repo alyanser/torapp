@@ -5,6 +5,7 @@
 #include <QNetworkReply>
 #include <QNetworkProxy>
 #include <QFile>
+#include <QTimer>
 
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept {
 	constexpr auto failure = false;
@@ -108,8 +109,7 @@ void Network_manager::initiate_torrent_download(const bencode::Metadata & torren
 
 	if(protocol == "udp"){
 		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->run();
-
-		udp_client->send_connect_requests();
+		QTimer::singleShot(0,udp_client.get(),&Udp_torrent_client::send_connect_requests);
 	}else{
 		qDebug() << "unrecognized protocol : " << protocol;
 	}

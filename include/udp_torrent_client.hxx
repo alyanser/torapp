@@ -4,6 +4,7 @@
 #include "utility.hxx"
 
 #include <QObject>
+#include <QUdpSocket>
 
 class quint32_t;
 
@@ -16,7 +17,12 @@ public:
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
 
 	static QByteArray craft_connect_request() noexcept;
+	static QByteArray craft_announce_request() noexcept;
 	static std::optional<std::uint64_t> verify_connect_response(const QByteArray & request,const QByteArray & response) noexcept;
+
+	template<typename Socket_T,typename Packet_T,typename Size_T>
+	static void send_packet(Socket_T && socket,Packet_T && packet,Size_T packet_size) noexcept;
+
 	auto run() noexcept;
 	void send_connect_requests() noexcept;
 signals:
@@ -32,6 +38,11 @@ inline auto Udp_torrent_client::run() noexcept {
 	},Qt::SingleShotConnection);
 
 	return shared_from_this();
+}
+
+template<typename Socket_T,typename Packet_T,typename Size_T>
+void Udp_torrent_client::send_packet(Socket_T && socket,Packet_T && packet_type,const Size_T packet_size) noexcept {
+	socket.write(std::forward<Packet_T>(packet_type),packet_size);
 }
 
 #endif // UDP_TORRENT_CLIENT_HXX

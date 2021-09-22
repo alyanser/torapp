@@ -9,7 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "-fno-omit-frame-pointer ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
 
@@ -57,4 +57,6 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QObject"]]
 	[["QGridLayout"]]
 	[["bencode_parser.hxx"]]
+	[["QAbstractSocket"]]
+	[["QUdpSocket"]]
 )

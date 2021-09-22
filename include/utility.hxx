@@ -40,7 +40,7 @@ constexpr auto stringify_bytes(const Byte bytes,const Conversion_Format format) 
 
 template<typename Byte,typename = std::enable_if_t<std::is_arithmetic_v<Byte>>>
 [[nodiscard]]
-inline auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept {
+auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
 
@@ -63,7 +63,7 @@ inline auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) no
 
 template<typename Numeric,typename = std::enable_if_t<std::is_same_v<Numeric,quint32_be> || std::is_same_v<Numeric,quint64_be>>>
 [[nodiscard]]
-auto convert_to_hex_array(const Numeric number,const QByteArray::size_type size_required){
+auto convert_to_hex_array(const Numeric number,const QByteArray::size_type size_required) noexcept {
 	constexpr auto hex_base = 16;
 
 	auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));

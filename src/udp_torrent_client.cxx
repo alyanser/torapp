@@ -2,7 +2,6 @@
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
-#include <QUdpSocket>
 #include <random>
 
 inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
@@ -20,11 +19,17 @@ inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 
 	const auto message = protocol_constant_hex + action_hex + transaction_id_hex;
 
-	constexpr auto total_request_bytes = Protocol_Constant_Bytes + Action_Code_Bytes + Transaction_Id_Bytes;
+	[[maybe_unused]] constexpr auto total_request_bytes = Protocol_Constant_Bytes + Action_Code_Bytes + Transaction_Id_Bytes;
 
 	assert(message.size() == total_request_bytes);
 
 	return message;
+}
+
+
+QByteArray Udp_torrent_client::craft_announce_request() noexcept {
+	qInfo() << "crafting announce request";
+	return {};
 }
 
 void Udp_torrent_client::send_connect_requests() noexcept {
@@ -44,9 +49,10 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 		socket->connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 
 		auto on_socket_connected = [socket = socket.get(),connect_request = connect_request]{
-			const auto connect_request_size = connect_request.size();
+			send_packet(*socket,connect_request.data(),connect_request.size());
+
+			[[maybe_unused]] const auto connect_request_size = connect_request.size();
 			assert(connect_request_size == 16);
-			socket->write(connect_request.data(),connect_request_size);
 		};
 
 		auto on_socket_ready_read = [socket = socket.get(),connect_request]{
@@ -58,6 +64,8 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 
 					if(const auto connection_id_opt =  verify_connect_response(connect_request,datagram.data())){
 						const auto connection_id = connection_id_opt.value();
+						const auto announce_request = craft_announce_request();
+						send_packet(*socket,announce_request,announce_request.size());
 					}
 
 				}else{ // announce response
@@ -77,15 +85,18 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 }
 
 std::optional<std::uint64_t> Udp_torrent_client::verify_connect_response(const QByteArray & request,const QByteArray & response) noexcept {
-	assert(request.size() == 16 && response.size() == 16);
+	{
+	 	[[maybe_unused]] constexpr auto expected_packet_size = 16;
+		assert(request.size() == expected_packet_size && response.size() == expected_packet_size);
+	}
 
 	{	// verify integrity of transaction id
 
 		constexpr auto request_transaction_begin_index = 12;
 		constexpr auto response_transaction_begin_index = 4;
 
-		const auto request_transaction_id = request.sliced(request_transaction_begin_index,Transaction_Id_Bytes);
-		const auto response_transaction_id = response.sliced(response_transaction_begin_index,Transaction_Id_Bytes);
+		const auto request_transaction_id = request.sliced(request_transaction_begin_index,Transaction_Id_Bytes).toHex();
+		const auto response_transaction_id = response.sliced(response_transaction_begin_index,Transaction_Id_Bytes).toHex();
 
 		if(request_transaction_id != response_transaction_id){
 			return {};
@@ -97,16 +108,18 @@ std::optional<std::uint64_t> Udp_torrent_client::verify_connect_response(const Q
 		constexpr auto request_action_code_begin_index = 8;
 		constexpr auto response_action_code_begin_index = 0;
 
-		const auto request_action_code = request.sliced(request_action_code_begin_index,Action_Code_Bytes);
-		const auto response_action_code = response.sliced(response_action_code_begin_index,Action_Code_Bytes);
+		const auto request_action_code = request.sliced(request_action_code_begin_index,Action_Code_Bytes).toHex();
+		const auto response_action_code = response.sliced(response_action_code_begin_index,Action_Code_Bytes).toHex();
 
-		assert(request_action_code.size() == Action_Code_Bytes && response_action_code.size() == Action_Code_Bytes);
+		constexpr auto action_code_hex_bytes = Action_Code_Bytes * 2;
 
-		//? operator '==' stops at null termination. find an alt later
-		for(const auto c : request_action_code){
-			assert(c == '\x00');
+		assert(request_action_code.size() == action_code_hex_bytes && response_action_code.size() == action_code_hex_bytes);
+
+		{
+			[[maybe_unused]] constexpr std::string_view connect_action_code_hex = "00000000";
+			assert(request_action_code == connect_action_code_hex.data());
 		}
-
+			
 		if(request_action_code != response_action_code){
 			return {};
 		}
@@ -114,10 +127,10 @@ std::optional<std::uint64_t> Udp_torrent_client::verify_connect_response(const Q
 
 	constexpr auto connection_id_begin_index = 8;
 	constexpr auto connection_id_bytes = 8;
+	constexpr auto hex_base = 16;
 
-	const auto connection_id = response.sliced(connection_id_begin_index,connection_id_bytes);
+	const auto connection_id = response.sliced(connection_id_begin_index,connection_id_bytes).toHex();
 
-	qInfo() << connection_id;
-
-	return {};
+	//? do we check if the conversion succeeds
+	return connection_id.toULongLong(nullptr,hex_base);
 }
