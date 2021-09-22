@@ -2,6 +2,7 @@
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
+#include <QHostAddress>
 #include <QTimer>
 
 inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
@@ -39,7 +40,6 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::uint64_t server
 
 	{
 		const quint32_be transaction_id(random_id_range(random_generator));
-		qInfo() << transaction_id;
 		announce_request += util::conversion::convert_to_hex(transaction_id,Transaction_Id_Bytes);
 	}
 
@@ -224,6 +224,8 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		}
 	}
 
+	//todo report this stuff to the tracker
+
 	{
 		constexpr auto interval_begin_index = 8;
 		constexpr auto interval_bytes = 4;
@@ -257,13 +259,11 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		constexpr auto ip_bytes = 4;
 		constexpr auto port_bytes = 2;
 
-		//! valid?
-		const auto peer_ip = convert_to_hex(i,ip_bytes).toULong(nullptr,hex_base);
+		const auto peer_ip = convert_to_hex(i,ip_bytes).toUInt(nullptr,hex_base);
 		const auto peer_port = convert_to_hex(i + ip_bytes,port_bytes).toUShort(nullptr,hex_base);
 
-		// convert ip
-		// peers_urls.emplace_back(QString::number(peer_ip) + ':' + peer_port);
-		// qInfo() << peers_urls.back();
+		auto & url = peers_urls.emplace_back(QHostAddress(peer_ip).toString());
+		url.setPort(peer_port);
 	}
 
 	return peers_urls;

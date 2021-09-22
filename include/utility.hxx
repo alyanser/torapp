@@ -14,9 +14,9 @@ namespace conversion {
 
 enum class Conversion_Format { Speed, Memory };
 
-template<typename Byte,typename = std::enable_if_t<std::is_arithmetic_v<Byte>>>
+template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
 [[nodiscard]]
-constexpr auto stringify_bytes(const Byte bytes,const Conversion_Format format) noexcept {
+constexpr auto stringify_bytes(const Byte_T bytes,const Conversion_Format format) noexcept {
          constexpr auto bytes_in_kb = 1024;
          constexpr auto bytes_in_mb = bytes_in_kb * 1024;
          constexpr auto bytes_in_gb = bytes_in_mb * 1024;
@@ -38,9 +38,9 @@ constexpr auto stringify_bytes(const Byte bytes,const Conversion_Format format) 
          return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte (s) / sec"sv : "byte (s)"sv);
 }
 
-template<typename Byte,typename = std::enable_if_t<std::is_arithmetic_v<Byte>>>
+template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
 [[nodiscard]]
-auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept {
+auto stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
 
@@ -62,9 +62,9 @@ auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) noexcept 
 }
 
 //todo figure SFINAE for q.int_.e types
-template<typename Numeric>
+template<typename Numeric_T>
 [[nodiscard]]
-auto convert_to_hex(const Numeric number,const std::ptrdiff_t size_required) noexcept {
+auto convert_to_hex(const Numeric_T number,const std::ptrdiff_t size_required) noexcept {
 	constexpr auto hex_base = 16;
 
 	auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));
