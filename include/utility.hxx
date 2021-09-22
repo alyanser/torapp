@@ -3,6 +3,7 @@
 
 #include "bencode_parser.hxx"
 
+#include <QBigEndianStorageType>
 #include <QString>
 #include <QUrl>
 #include <string_view>
@@ -60,7 +61,7 @@ inline auto stringify_bytes(const Byte bytes_received,const Byte total_bytes) no
          return converted_str;
 }
 
-template<typename Numeric,typename = std::enable_if_t<std::is_arithmetic_v<Numeric>>>
+template<typename Numeric,typename = std::enable_if_t<std::is_same_v<Numeric,quint32_be> || std::is_same_v<Numeric,quint64_be>>>
 [[nodiscard]]
 auto convert_to_hex_array(const Numeric number,const QByteArray::size_type size_required){
 	constexpr auto hex_base = 16;

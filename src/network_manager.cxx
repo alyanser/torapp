@@ -51,7 +51,7 @@ void Network_manager::initiate_url_download(const util::Download_request & downl
 	emit tracker_added(*tracker);
 
 	if(open_file_handle(*file_handle,*tracker)){
-                  download_url({file_handle,tracker,std::move(download_request).url});
+                  download_url({file_handle,tracker,download_request.url});
 	}
 }
 
@@ -76,11 +76,11 @@ void Network_manager::download_url(const Url_download_resources & resources) noe
                   assert(file_handle.unique());
                   assert(tracker.use_count() <= 2);
 
-                  if(network_reply->error() != QNetworkReply::NoError){
+                  if(network_reply->error() == QNetworkReply::NoError){
+                           tracker->switch_to_finished_state();
+                  }else{
                            tracker->set_error_and_finish(network_reply->errorString());
                            file_handle->remove();
-                  }else{
-                           tracker->switch_to_finished_state();
                   }
          };
 
@@ -107,7 +107,9 @@ void Network_manager::initiate_torrent_download(const bencode::Metadata & torren
 	const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
 	if(protocol == "udp"){
-		std::make_shared<Udp_torrent_client>(torrent_metadata)->run();
+		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->run();
+
+		udp_client->send_connect_requests();
 	}else{
 		qDebug() << "unrecognized protocol : " << protocol;
 	}

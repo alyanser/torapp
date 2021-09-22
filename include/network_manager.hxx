@@ -18,7 +18,7 @@ public:
                   std::shared_ptr<Download_tracker> tracker;
                   QUrl url;
          };
-// 
+	
 	Network_manager();
 
  	constexpr auto connection_count() const noexcept;
