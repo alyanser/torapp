@@ -7,20 +7,14 @@
 #include <QObject>
 #include <random>
 
-class quint32_t;
-
 class Udp_torrent_client : public QObject, public std::enable_shared_from_this<Udp_torrent_client> {
 	Q_OBJECT
 public:
 	enum class Action_Code { 
 		Connect, 
-		Announce 
-	};
-
-	enum Connect_Segment_Bytes { 
-		Action_Code_Bytes = 4, 
-		Transaction_Id_Bytes = 4,
-		Protocol_Constant_Bytes = 8,
+		Announce,
+		Scrape,
+		Error
 	};
 
 	enum class Download_event {
@@ -36,6 +30,7 @@ public:
 	static void send_packet(Socket_T && socket,Packet_T && packet,Size_T packet_size) noexcept;
 
 	void send_connect_requests() noexcept;
+	void on_socket_ready_read(QUdpSocket & socket,const QByteArray & connect_request) noexcept;
 	auto run() noexcept;
 signals:
 	void stop() const;
@@ -49,8 +44,8 @@ private:
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
 	inline static QByteArray peer_id = QByteArray("-TA0001-01234501234567").toHex();
 
-	QSet<std::uint32_t> announced_random_ids_;
 	bencode::Metadata metadata_;
+	QSet<std::uint32_t> announced_random_ids_;
 	quint64_be downloaded_ = quint64_be(0);
 	quint64_be left_ = quint64_be(0);
 	quint64_be uploaded_ = quint64_be(0);
@@ -68,8 +63,8 @@ inline auto Udp_torrent_client::run() noexcept {
 }
 
 template<typename Socket_T,typename Packet_T,typename Size_T>
-void Udp_torrent_client::send_packet(Socket_T && socket,Packet_T && packet_type,const Size_T packet_size) noexcept {
-	socket.write(std::forward<Packet_T>(packet_type),packet_size);
+void Udp_torrent_client::send_packet(Socket_T && socket,Packet_T && packet,const Size_T packet_size) noexcept {
+	socket.write(std::forward<Packet_T>(packet),packet_size);
 }
 
 #endif // UDP_TORRENT_CLIENT_HXX
