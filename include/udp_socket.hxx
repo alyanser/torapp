@@ -9,15 +9,13 @@
 class Udp_socket : public QUdpSocket, public std::enable_shared_from_this<Udp_socket> {
 	Q_OBJECT
 
+public :
 	enum class State { 
 		Connect,
 		Scrape,
 		Announce 
 	};
 
-	Q_ENUM(State);
-
-public :
 	explicit Udp_socket(const QUrl & url);
 
 	std::shared_ptr<Udp_socket> bind_lifetime() noexcept;
@@ -28,50 +26,40 @@ public :
 
 	void set_connect_request(QByteArray connect_request) noexcept;
 	void set_announce_request(QByteArray announce_request) noexcept;
+	void set_scrape_request(QByteArray scrape_request) noexcept;
 	
 	const QByteArray & connect_request() const noexcept;
 	const QByteArray & announce_request() const noexcept;
+	const QByteArray & scrape_request() const noexcept;
 
-	void send_initial_connect_request() noexcept;
-	void send_initial_announce_request() noexcept;
+	void send_initial_request(const QByteArray & request,State new_state) noexcept;
 private:
 	constexpr void set_txn_id(std::uint32_t txn_id) noexcept;
 	void configure_default_connections() noexcept;
 	std::int32_t get_timeout_seconds() const noexcept;
-	void send_packet(const QByteArray & packet) noexcept;
-	void send_announce_request() noexcept;
-	void send_connect_request() noexcept;
+	void send_request(const QByteArray & request) noexcept;
+	void write_packet(const QByteArray & packet) noexcept;
+	void reset_time_specs() noexcept;
 	///
+	constexpr static std::chrono::minutes protocol_validity_timeout {1};
+
 	QByteArray connect_request_;
 	QByteArray announce_request_;
+	QByteArray scrape_request_;
 	QTimer connection_timer_;
 	QTimer validity_timer_;
 	std::chrono::seconds interval_time_ {};
 	State state_ = State::Connect;
 	std::uint32_t txn_id_ = 0;
 	std::uint8_t timeout_factor_ = 0;
+	bool connection_id_valid_ = false;
 };
 
 inline Udp_socket::Udp_socket(const QUrl & url){
-
 	configure_default_connections();
 	connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
-}
 
-inline void Udp_socket::send_initial_connect_request() noexcept {
-	state_ = State::Connect;
-	timeout_factor_ = 0;
-	connection_timer_.start(get_timeout_seconds());
-	
-	send_connect_request();
-}
-
-inline void Udp_socket::send_initial_announce_request() noexcept {
-	state_ = State::Announce;
-	timeout_factor_ = 0;
-	connection_timer_.start(get_timeout_seconds());
-
-	send_announce_request();
+	validity_timer_.setSingleShot(true);
 }
 
 inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
@@ -83,12 +71,25 @@ inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
 	return shared_from_this();
 }
 
+inline void Udp_socket::reset_time_specs() noexcept {
+	timeout_factor_ = 0;
+	connection_timer_.start(get_timeout_seconds());
+	validity_timer_.start(protocol_validity_timeout);
+}
+
 inline void Udp_socket::configure_default_connections() noexcept {
 
-	connect(this,&Udp_socket::connected,this,&Udp_socket::send_initial_connect_request);
+	connect(this,&Udp_socket::connected,[this]{
+		send_initial_request(connect_request_,State::Connect);
+	});
 	
 	connect(this,&Udp_socket::readyRead,[&connection_timer_ = connection_timer_]{
 		connection_timer_.stop();
+	});
+
+	connect(&validity_timer_,&QTimer::timeout,[&connection_id_valid_ = connection_id_valid_]{
+		assert(connection_id_valid_);
+		connection_id_valid_ = false;
 	});
 
 	connect(&connection_timer_,&QTimer::timeout,[this]{
@@ -98,17 +99,17 @@ inline void Udp_socket::configure_default_connections() noexcept {
 			switch(state_){
 
 				case State::Connect : {
-					send_connect_request();
+					send_request(connect_request_);
 					break;
 				}
 
 				case State::Scrape : { 
-					//todo add scrape
+					send_request(scrape_request_);
 					break;
 				}
 
 				case State::Announce : {
-					send_announce_request();
+					send_request(announce_request_);
 					break;
 				}
 
@@ -155,18 +156,31 @@ inline const QByteArray & Udp_socket::announce_request() const noexcept {
 	return announce_request_;
 }
 
-inline void Udp_socket::send_connect_request() noexcept {
-	assert(!connect_request_.isEmpty());
-	send_packet(connect_request_);
+inline const QByteArray & Udp_socket::scrape_request() const noexcept {
+	return scrape_request_;
 }
 
-inline void Udp_socket::send_announce_request() noexcept {
-	assert(!announce_request_.isEmpty());
-	send_packet(announce_request_);
+inline void Udp_socket::send_initial_request(const QByteArray & request,const State new_state) noexcept {
+	state_ = new_state;
+	write_packet(request);
+	reset_time_specs();
+}
+
+inline void Udp_socket::send_request(const QByteArray & request) noexcept {
+	
+	if(state_ != State::Connect && !connection_id_valid_){
+		send_initial_request(request,State::Connect);
+	}else{
+		write_packet(request);
+	}
 }
 
 inline void Udp_socket::set_announce_request(QByteArray announce_request) noexcept {
 	announce_request_ = std::move(announce_request);
+}
+
+inline void Udp_socket::set_scrape_request(QByteArray scrape_request) noexcept {
+	scrape_request_ = std::move(scrape_request);
 }
 
 [[nodiscard]]
@@ -180,7 +194,8 @@ inline std::int32_t Udp_socket::get_timeout_seconds() const noexcept {
 	return timeout_seconds;
 }
 
-inline void Udp_socket::send_packet(const QByteArray & packet) noexcept {
+inline void Udp_socket::write_packet(const QByteArray & packet) noexcept {
+	assert(packet.size() >= 16);
 	write(packet.data(),packet.size());
 
 	constexpr auto txn_id_offset = 12;

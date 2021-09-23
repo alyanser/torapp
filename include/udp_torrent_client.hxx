@@ -18,8 +18,6 @@ public:
 		Error
 	}; 
 
-	Q_ENUM(Action_Code);
-	
 	enum class Download_event {
 		None,
 		Started,
@@ -27,8 +25,6 @@ public:
 		Completed
 	}; 
 	
-	Q_ENUM(Download_event);
-
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
 
 	std::shared_ptr<Udp_torrent_client> bind_lifetime() noexcept;
@@ -37,10 +33,12 @@ signals:
 	void stop() const;
 private:
 	static QByteArray craft_connect_request() noexcept;
+	QByteArray craft_announce_request(quint64_be tracker_connection_id) const noexcept;
+	static QByteArray craft_scrape_request(const bencode::Metadata & metadata,quint64_be tracker_connection_id) noexcept;
+
 	static std::optional<quint64_be> verify_connect_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
 	static std::vector<QUrl> verify_announce_response(const QByteArray & response,Udp_socket * socket) noexcept;
 
-	QByteArray craft_announce_request(std::uint64_t server_connection_id) const noexcept;
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};

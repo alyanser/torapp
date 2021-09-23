@@ -31,8 +31,8 @@ inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 }
 
 [[nodiscard]]
-QByteArray Udp_torrent_client::craft_announce_request(const std::uint64_t server_connection_id) const noexcept {
-	QByteArray announce_request = util::conversion::convert_to_hex(server_connection_id,sizeof(quint64_be));
+QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_connection_id) const noexcept {
+	QByteArray announce_request = util::conversion::convert_to_hex(tracker_connection_id,sizeof(quint64_be));
 
 	{
 		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Announce));
@@ -74,6 +74,23 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::uint64_t server
 	return announce_request;
 }
 
+QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const quint64_be tracker_connection_id) noexcept {
+	QByteArray scrape_request = util::conversion::convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
+
+	{
+		constexpr quint32_be scrape_action(static_cast<std::uint32_t>(Action_Code::Scrape));
+		scrape_request += util::conversion::convert_to_hex(scrape_action,sizeof(scrape_action));
+	}
+
+	{
+		const quint32_be txn_id(random_id_range(random_generator));
+		scrape_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+	}
+
+	//! check if valid
+	return scrape_request + QByteArray(metadata.pieces.data());
+}
+
 void Udp_torrent_client::send_connect_requests() noexcept {
 
 	if(metadata_.announce_url_list.empty()){
@@ -94,24 +111,26 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 //? consider using weak pointer here
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
 
-	auto on_server_action_connect = [this,socket](const QByteArray & tracker_response){
+	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 
 		if(const auto connection_id_opt = verify_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
 
 			socket->set_announce_request(craft_announce_request(connection_id));
-			socket->send_initial_announce_request();
+			socket->set_scrape_request(craft_scrape_request(metadata_,connection_id));
+			socket->send_initial_request(socket->scrape_request(),Udp_socket::State::Scrape);
 		}
 	};
 
-	auto on_server_action_announce = [socket](const QByteArray & response){
+	auto on_tracker_action_announce = [socket](const QByteArray & response){
 
 		if(const auto peer_urls = verify_announce_response(response,socket);!peer_urls.empty()){
 			//todo emit it to thet peer protocol
 		}
 	};
 
-	auto on_server_action_scrape = []( [[maybe_unused]] const QByteArray & response){
+	auto on_tracker_action_scrape = []( [[maybe_unused]] const QByteArray & response){
+		//todo parse scrape response
 	};
 
 	auto on_tracker_action_error = [socket](const QByteArray & response){
@@ -145,17 +164,17 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 		switch(tracker_action){
 			case Action_Code::Connect : {
-				on_server_action_connect(tracker_response); 
+				on_tracker_action_connect(tracker_response); 
 				break;
 			}
 
 			case Action_Code::Announce : {
-				on_server_action_announce(tracker_response);
+				on_tracker_action_announce(tracker_response);
 				break;
 			}
 
 			case Action_Code::Scrape : {
-				on_server_action_scrape(tracker_response);
+				on_tracker_action_scrape(tracker_response);
 				break;
 			}
 
@@ -169,7 +188,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 [[nodiscard]]
 std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByteArray & response,const std::uint32_t txn_id_sent) noexcept {
-
 	{
 		constexpr auto expected_packet_size = 16;
 
@@ -222,7 +240,6 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		constexpr auto interval_bytes = 4;
 
 		const auto interval_time = convert_to_hex(interval_offset,interval_bytes).toUInt(nullptr,hex_base);
-
 		socket->set_interval_time(std::chrono::seconds(interval_time));
 	}
 	
