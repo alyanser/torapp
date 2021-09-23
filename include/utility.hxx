@@ -16,31 +16,29 @@ enum class Conversion_Format { Speed, Memory };
 
 template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
 [[nodiscard]]
-constexpr auto stringify_bytes(const Byte_T bytes,const Conversion_Format format) noexcept {
+constexpr std::pair<double,std::string_view> stringify_bytes(const Byte_T bytes,const Conversion_Format format) noexcept {
          constexpr auto bytes_in_kb = 1024;
          constexpr auto bytes_in_mb = bytes_in_kb * 1024;
          constexpr auto bytes_in_gb = bytes_in_mb * 1024;
 
-	using namespace std::string_view_literals;
-
          if(bytes >= bytes_in_gb){
-                  return std::make_pair(bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb (s) /sec"sv : "gb (s)"sv);
+                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
          }
 
          if(bytes >= bytes_in_mb){
-                  return std::make_pair(bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb (s) / sec"sv : "mb (s)"sv);
+                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
          }
 
          if(bytes >= bytes_in_kb){
-                  return std::make_pair(bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb (s) / sec"sv : "kb (s)"sv);
+                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
          }
 
-         return std::make_pair(bytes,format == Conversion_Format::Speed ? "byte (s) / sec"sv : "byte (s)"sv);
+         return {bytes,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};
 }
 
 template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
 [[nodiscard]]
-auto stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) noexcept {
+QString stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) noexcept {
          constexpr auto format = Conversion_Format::Memory;
          constexpr auto unknown_bound = -1;
 
@@ -64,7 +62,7 @@ auto stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) noexc
 //todo figure SFINAE for q.int_.e types
 template<typename Numeric_T>
 [[nodiscard]]
-auto convert_to_hex(const Numeric_T number,const std::ptrdiff_t size_required) noexcept {
+QByteArray convert_to_hex(const Numeric_T number,const std::ptrdiff_t size_required) noexcept {
 	constexpr auto hex_base = 16;
 
 	auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));

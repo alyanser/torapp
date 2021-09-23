@@ -28,9 +28,9 @@ public:
          explicit Download_tracker(const util::Download_request & download_request);
 	explicit Download_tracker(const bencode::Metadata & metadata);
 
-	constexpr auto error() const noexcept;
-         auto get_elapsed_seconds() const noexcept;
-         auto bind_lifetime() noexcept;
+	constexpr Error error() const noexcept;
+         std::uint32_t get_elapsed_seconds() const noexcept;
+         std::shared_ptr<Download_tracker> bind_lifetime() noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
@@ -100,7 +100,7 @@ private:
          QPushButton open_directory_button_ = QPushButton("Open directory");
 };
 
-inline auto Download_tracker::bind_lifetime() noexcept {
+inline std::shared_ptr<Download_tracker> Download_tracker::bind_lifetime() noexcept {
 
          const auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
                   assert(self.use_count() <= 2); // other could be held by the associated network request
@@ -122,12 +122,12 @@ inline void Download_tracker::setup_layout() noexcept {
 }
 
 [[nodiscard]]
-constexpr auto Download_tracker::error() const noexcept {
+constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 
 [[nodiscard]]
-inline auto Download_tracker::get_elapsed_seconds() const noexcept {
+inline std::uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
          return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 

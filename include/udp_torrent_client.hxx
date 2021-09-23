@@ -7,6 +7,7 @@
 #include <QObject>
 #include <random>
 
+
 class Udp_torrent_client : public QObject, public std::enable_shared_from_this<Udp_torrent_client> {
 	Q_OBJECT
 public:
@@ -24,28 +25,40 @@ public:
 		Completed
 	};
 
+	class Udp_socket : public QUdpSocket {
+	public:
+		void set_txn_id(const std::uint32_t new_txn_id) noexcept {
+			txn_id_ = new_txn_id;
+		}
+	
+		[[nodiscard]]
+		std::uint32_t txn_id() const noexcept {
+			return txn_id_;
+		}
+	private:
+		std::uint32_t txn_id_;
+	};
+
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
 
-	template<typename Socket_T,typename Packet_T,typename Size_T>
-	static void send_packet(Socket_T && socket,Packet_T && packet,Size_T packet_size) noexcept;
 
+	std::shared_ptr<Udp_torrent_client> run() noexcept;
 	void send_connect_requests() noexcept;
-	void on_socket_ready_read(QUdpSocket & socket,const QByteArray & connect_request) noexcept;
-	auto run() noexcept;
+	void on_socket_ready_read(Udp_socket & socket,const QByteArray & connect_request) noexcept;
 signals:
 	void stop() const;
 private:
+	static void send_packet(Udp_socket & socket,const QByteArray & packet) noexcept;
 	static QByteArray craft_connect_request() noexcept;
-	static std::optional<quint64_be> verify_connect_response(const QByteArray & request,const QByteArray & response) noexcept;
+	static std::optional<quint64_be> verify_connect_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
+	static std::vector<QUrl> verify_announce_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
 	QByteArray craft_announce_request(std::uint64_t server_connection_id) const noexcept;
-	std::vector<QUrl> verify_announce_response(const QByteArray & response) const noexcept;
 	///
-	inline static std::mt19937 random_generator = std::mt19937(std::random_device{}());
+	inline static auto random_generator = std::mt19937(std::random_device{}());
+	inline static auto peer_id = QByteArray("-TA0001-01234501234567").toHex();
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
-	inline static QByteArray peer_id = QByteArray("-TA0001-01234501234567").toHex();
 
 	bencode::Metadata metadata_;
-	QSet<std::uint32_t> announced_random_ids_;
 	quint64_be downloaded_ = quint64_be(0);
 	quint64_be left_ = quint64_be(0);
 	quint64_be uploaded_ = quint64_be(0);
@@ -53,7 +66,7 @@ private:
 	std::uint8_t timeout_factor_ = 0;
 };
 
-inline auto Udp_torrent_client::run() noexcept {
+inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::run() noexcept {
 
 	connect(this,&Udp_torrent_client::stop,this,[self = shared_from_this()]{
 		assert(self.unique());
@@ -62,9 +75,13 @@ inline auto Udp_torrent_client::run() noexcept {
 	return shared_from_this();
 }
 
-template<typename Socket_T,typename Packet_T,typename Size_T>
-void Udp_torrent_client::send_packet(Socket_T && socket,Packet_T && packet,const Size_T packet_size) noexcept {
-	socket.write(std::forward<Packet_T>(packet),packet_size);
+inline void Udp_torrent_client::send_packet(Udp_socket & socket,const QByteArray & packet) noexcept {
+	socket.write(packet.data(),packet.size());
+
+	constexpr auto txn_id_offset = 4;
+	constexpr auto txn_id_bytes = 4;
+
+	socket.set_txn_id(packet.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt());
 }
 
 #endif // UDP_TORRENT_CLIENT_HXX
