@@ -6,6 +6,20 @@
 #include <QTimer>
 #include <QHash>
 
+inline void Udp_torrent_client::send_packet(Udp_socket & socket,const QByteArray & packet) noexcept {
+	socket.write(packet.data(),packet.size());
+
+	constexpr auto txn_id_offset = 12;
+	constexpr auto txn_id_bytes = 4;
+
+	bool conversion_success = true;
+	const auto sent_txn_id = packet.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(&conversion_success,hex_base);
+	assert(conversion_success);
+
+	socket.set_txn_id(sent_txn_id);
+	assert(socket.txn_id() == sent_txn_id);
+}
+
 [[nodiscard]]
 inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 	QByteArray connect_request;
@@ -16,8 +30,8 @@ inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 	}
 
 	{
-		constexpr quint32_be connect_action_code(static_cast<std::uint32_t>(Action_Code::Connect));
-		connect_request += util::conversion::convert_to_hex(connect_action_code,sizeof(connect_action_code));
+		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Connect));
+		connect_request += util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
 	}
 
 	{
@@ -36,8 +50,8 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::uint64_t server
 	QByteArray announce_request = util::conversion::convert_to_hex(server_connection_id,sizeof(quint64_be));
 
 	{
-		constexpr quint32_be connect_action_code(static_cast<std::uint32_t>(Action_Code::Announce));
-		announce_request += util::conversion::convert_to_hex(connect_action_code,sizeof(connect_action_code));
+		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Announce));
+		announce_request += util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
 	}
 
 	{
@@ -81,9 +95,9 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 		metadata_.announce_url_list.emplace_back(metadata_.announce_url);
 	}
 
+	const auto connect_request = craft_connect_request();
+
 	for(const auto & announce_url : metadata_.announce_url_list){
-		//? consider declaring it outside? not declared yet because of random number
-		const auto connect_request = craft_connect_request();
 		auto socket = std::make_shared<Udp_socket>();
 		auto timer = std::make_shared<QTimer>();
 
@@ -92,39 +106,44 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 			socket->connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 		}
 
-		connect(timer.get(),&QTimer::timeout,[this,timer = timer.get(),socket = socket.get(),connect_request = connect_request]{
+		connect(timer.get(),&QTimer::timeout,[this,timer = timer.get(),socket = socket.get(),connect_request]{
 			send_packet(*socket,connect_request);
-			timer->start(static_cast<std::int32_t>(15 * std::exp2(timeout_factor_++)));
+
+			const auto timeout_limit_reached = [&timeout_factor_ = timeout_factor_]{
+				constexpr auto max_protocol_timeout_factor = 8;
+				return timeout_factor_ == max_protocol_timeout_factor;
+			}();
+			
+			if(!timeout_limit_reached){
+				constexpr auto protocol_delta = 15;
+				timer->start(static_cast<std::int32_t>(protocol_delta * std::exp2(++timeout_factor_)));
+			}
 		});
 
-		auto on_socket_connected = [socket = socket.get(),connect_request = connect_request]{
+		connect(socket.get(),&QUdpSocket::connected,this,[socket = socket.get(),connect_request]{
 			send_packet(*socket,connect_request);
-			//todo set the timer
-		};
+		});
 
 		const auto read_connection = connect(socket.get(),&QUdpSocket::readyRead,this,[this,socket,connect_request]{
 			timeout_factor_ = 0;
-			on_socket_ready_read(socket);
+			on_socket_ready_read(socket.get());
 		});
 
 		connect(socket.get(),&QUdpSocket::disconnected,this,[socket,read_connection]{
 			{
-				const auto success = disconnect(read_connection);
-				assert(success);
+				const auto disconnect_success = disconnect(read_connection);
+				assert(disconnect_success);
 			}
 
-			//? consider using delete later here
-			qInfo() << "socket disconected";
 			assert(socket.unique());
+			qInfo() << "socket disconected";
 		},Qt::SingleShotConnection);
-
-		connect(socket.get(),&QUdpSocket::connected,this,on_socket_connected);
 	}
 }
 
-void Udp_torrent_client::on_socket_ready_read(std::shared_ptr<Udp_socket> socket) noexcept {
+void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
 
-	auto on_server_action_connect = [this,socket = socket.get()](const QByteArray & tracker_response){
+	auto on_server_action_connect = [this,socket](const QByteArray & tracker_response){
 
 		if(const auto connection_id_opt = verify_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
@@ -134,7 +153,7 @@ void Udp_torrent_client::on_socket_ready_read(std::shared_ptr<Udp_socket> socket
 		}
 	};
 
-	auto on_server_action_announce = [socket = socket.get()](const QByteArray & response){
+	auto on_server_action_announce = [socket](const QByteArray & response){
 
 		if(const auto peer_urls = verify_announce_response(response,socket->txn_id());!peer_urls.empty()){
 			//todo emit it to thet peer protocol
@@ -144,11 +163,10 @@ void Udp_torrent_client::on_socket_ready_read(std::shared_ptr<Udp_socket> socket
 	auto on_server_action_scrape = []( [[maybe_unused]] const QByteArray & response){
 	};
 
-	auto on_tracker_action_error = [socket = socket.get()](const QByteArray & response){
+	auto on_tracker_action_error = [socket](const QByteArray & response){
 		{
 			constexpr auto txn_id_offset = 4;
 			constexpr auto txn_id_bytes = 4;
-			constexpr auto hex_base = 16;
 
 			const auto txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
@@ -167,10 +185,10 @@ void Udp_torrent_client::on_socket_ready_read(std::shared_ptr<Udp_socket> socket
 		const auto tracker_response = socket->receiveDatagram().data();
 
 		const auto server_action = [&tracker_response]{
-			constexpr auto action_code_offset = 0;
-			constexpr auto action_code_bytes = 4;
+			constexpr auto action_offset = 0;
+			constexpr auto action_bytes = 4;
 
-			return static_cast<Action_Code>(tracker_response.sliced(action_code_offset,action_code_bytes).toHex().toUInt(nullptr,16));
+			return static_cast<Action_Code>(tracker_response.sliced(action_offset,action_bytes).toHex().toUInt(nullptr,hex_base));
 		}();
 
 		assert(static_cast<std::int32_t>(server_action) < 4);
@@ -209,8 +227,6 @@ std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByt
 		}
 	}
 
-	constexpr auto hex_base = 16;
-
 	{
 		constexpr auto response_txn_offset = 4;
 		constexpr auto txn_id_bytes = 4;
@@ -235,8 +251,6 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		assert(offset + bytes <= response.size());
 		return response.sliced(offset,bytes).toHex();
 	};
-
-	constexpr auto hex_base = 16;
 
 	{
 		constexpr auto txn_id_offset = 4;
