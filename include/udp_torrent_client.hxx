@@ -36,8 +36,8 @@ signals:
 	void stop() const;
 private:
 	static QByteArray craft_connect_request() noexcept;
-	QByteArray craft_announce_request(std::uint64_t server_connection_id) const noexcept;
 	static std::optional<quint64_be> verify_connect_response(const QByteArray & request,const QByteArray & response) noexcept;
+	QByteArray craft_announce_request(std::uint64_t server_connection_id) const noexcept;
 	std::vector<QUrl> verify_announce_response(const QByteArray & response) const noexcept;
 	///
 	inline static std::mt19937 random_generator = std::mt19937(std::random_device{}());

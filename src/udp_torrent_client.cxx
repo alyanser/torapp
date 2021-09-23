@@ -81,17 +81,19 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 	}
 
 	for(const auto & announce_url : metadata_.announce_url_list){
+		//? consider declaring it outside? not declared yet because of random number
 		const auto connect_request = craft_connect_request();
 		auto socket = std::make_shared<QUdpSocket>();
-		auto timeout_timer = std::make_shared<QTimer>();
+		auto timer = std::make_shared<QTimer>();
 
 		{
 			const QUrl url(announce_url.data());
 			socket->connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 		}
 
-		connect(timeout_timer.get(),&QTimer::timeout,[socket = socket.get(),connect_request = connect_request]{
+		connect(timer.get(),&QTimer::timeout,[this,timer = timer.get(),socket = socket.get(),connect_request = connect_request]{
 			send_packet(*socket,connect_request.data(),connect_request.size());
+			timer->start(static_cast<std::int32_t>(15 * std::exp2(timeout_factor_++)));
 		});
 
 		auto on_socket_connected = [socket = socket.get(),connect_request = connect_request]{
@@ -102,11 +104,13 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 		};
 
 		connect(socket.get(),&QUdpSocket::readyRead,this,[this,&socket = *socket,connect_request]{
+			timeout_factor_ = 0;
 			on_socket_ready_read(socket,connect_request);
 		});
 
 		connect(socket.get(),&QUdpSocket::disconnected,this,[socket]{
 			//? consider using delete later here
+			qInfo() << "socket disconected";
 			assert(socket.unique());
 		},Qt::SingleShotConnection);
 
@@ -150,7 +154,7 @@ void Udp_torrent_client::on_socket_ready_read(QUdpSocket & socket,const QByteArr
 	auto on_server_action_scrape = [](const QByteArray & response){
 	};
 
-	auto on_server_action_error = [this](const QByteArray & response){
+	auto on_tracker_action_error = [this](const QByteArray & response){
 		{
 			constexpr auto txn_id_offset = 4;
 			constexpr auto txn_id_bytes = 4;
@@ -163,8 +167,8 @@ void Udp_torrent_client::on_socket_ready_read(QUdpSocket & socket,const QByteArr
 		}
 
 		constexpr auto error_offset = 8;
-		QByteArray error = response.sliced(error_offset);
-		qDebug() << error;
+		const QByteArray tracker_error = response.sliced(error_offset);
+		qDebug() << tracker_error;
 		//todo report it to tracker
 	};
 
@@ -197,7 +201,7 @@ void Udp_torrent_client::on_socket_ready_read(QUdpSocket & socket,const QByteArr
 			}
 
 			case Action_Code::Error : {
-				on_server_action_error(response);
+				on_tracker_action_error(response);
 				break;
 			}
 		}
@@ -294,6 +298,7 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		const auto peer_port = convert_to_hex(i + ip_bytes,port_bytes).toUShort(nullptr,hex_base);
 
 		auto & url = peers_urls.emplace_back(QHostAddress(peer_ip).toString());
+		//! becomes invalid after setting the prot
 		url.setPort(peer_port);
 	}
 
