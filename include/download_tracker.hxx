@@ -96,7 +96,7 @@ private:
          QLabel download_speed_buddy_ {"Download Speed:"};
          QLabel download_speed_label_ {"0 bytes/sec"};
 
-         QPushButton delete_button_ {"Delete"};;
+         QPushButton delete_button_ {"Delete"};
          QPushButton open_directory_button_ {"Open directory"};
 };
 

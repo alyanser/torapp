@@ -106,7 +106,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 	auto on_server_action_announce = [socket](const QByteArray & response){
 
-		if(const auto peer_urls = verify_announce_response(response,socket->txn_id());!peer_urls.empty()){
+		if(const auto peer_urls = verify_announce_response(response,socket);!peer_urls.empty()){
 			//todo emit it to thet peer protocol
 		}
 	};
@@ -196,7 +196,7 @@ std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByt
 }
 
 [[nodiscard]]
-std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray & response,const std::uint32_t txn_id_sent) noexcept {
+std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray & response,Udp_socket * const socket) noexcept {
 
 	auto convert_to_hex = [&response](const auto offset,const auto bytes){
 		assert(offset + bytes <= response.size());
@@ -209,7 +209,7 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 
 		const auto received_txn_id = convert_to_hex(tracker_txn_id_offset,tracker_txn_id_bytes).toUInt(nullptr,hex_base);
 
-		if(txn_id_sent != received_txn_id){
+		if(socket->txn_id() != received_txn_id){
 			return {};
 		}
 	}
@@ -221,7 +221,9 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		constexpr auto interval_offset = 8;
 		constexpr auto interval_bytes = 4;
 
-		[[maybe_unused]] const auto interval_seconds = convert_to_hex(interval_offset,interval_bytes).toUInt(nullptr,hex_base);
+		const auto interval_time = convert_to_hex(interval_offset,interval_bytes).toUInt(nullptr,hex_base);
+
+		socket->set_interval_time(std::chrono::seconds(interval_time));
 	}
 	
 	{
