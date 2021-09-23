@@ -28,7 +28,7 @@ private:
          ///
          QString default_path_ = QDir::currentPath();
 
-         QVBoxLayout central_layout_ = QVBoxLayout(this);
+         QVBoxLayout central_layout_ {this};
 	QFormLayout central_form_layout_;
 
 	QLineEdit url_line_;
@@ -39,8 +39,8 @@ private:
 	QToolButton path_button_;
 
 	QHBoxLayout button_layout_;
-	QPushButton download_button_ = QPushButton("Download");
-	QPushButton cancel_button_ = QPushButton("Cancel");
+	QPushButton download_button_ {"Download"};
+	QPushButton cancel_button_ {"Cancel"};
 };
 
 inline void Url_input_widget::reset_lines() noexcept {

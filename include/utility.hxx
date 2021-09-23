@@ -12,7 +12,10 @@ namespace util {
 
 namespace conversion {
 
-enum class Conversion_Format { Speed, Memory };
+enum class Conversion_Format { 
+	Speed,
+	Memory
+};
 
 template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
 [[nodiscard]]

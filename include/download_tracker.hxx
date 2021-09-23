@@ -53,17 +53,17 @@ private:
          void setup_state_widget() noexcept;
          void update_error_line() noexcept;
          ///
-         Error error_ = Error::Null;
-         QVBoxLayout central_layout_ = QVBoxLayout(this);
+         Error error_ {Error::Null};
+         QVBoxLayout central_layout_ {this};
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
 
          QHBoxLayout package_name_layout_;
-         QLabel package_name_buddy_ = QLabel("Name:");
+         QLabel package_name_buddy_ {"Name:"};
          QLabel package_name_label_;
 
          QHBoxLayout download_path_layout_;
-         QLabel download_path_buddy_ = QLabel("Path:");
+         QLabel download_path_buddy_ {"Path:"};
          QLabel download_path_label_;
 
          QStackedWidget state_holder_;
@@ -71,33 +71,33 @@ private:
          QProgressBar download_progress_bar_;
 
          QHBoxLayout download_quantity_layout_;
-         QLabel download_quantity_buddy_ = QLabel("Downloaded:");
-         QLabel download_quantity_label_ = QLabel("0 byte (s) / 0 byte (s)");
+         QLabel download_quantity_buddy_ {"Downloaded:"};
+         QLabel download_quantity_label_ {"0 byte (s) / 0 byte (s)"};
 
          QHBoxLayout upload_quantity_layout_;
-         QLabel upload_quantity_buddy_ = QLabel("Uploaded:");
-         QLabel upload_quantity_label_ = QLabel("0 byte (s) / 0 byte (s)");
+         QLabel upload_quantity_buddy_ {"Uploaded:"};
+         QLabel upload_quantity_label_ {"0 byte (s) / 0 byte (s)"};
 
          QStackedWidget terminate_buttons_holder_;
-         QPushButton finish_button_ = QPushButton("Finish");
-         QPushButton cancel_button_ = QPushButton("Cancel");
+         QPushButton finish_button_ {"Finish"};
+         QPushButton cancel_button_ {"Cancel"};
 
          QStackedWidget initiate_buttons_holder_;
-         QPushButton open_button_ = QPushButton("Open");
-         QPushButton retry_button_ = QPushButton("Retry");
+         QPushButton open_button_ {"Open"};
+         QPushButton retry_button_ {"Retry"};
 
          QHBoxLayout time_elapsed_layout_;
-         QTime time_elapsed_ = QTime(0,0,1); // 1 to prevent division by zero
+         QTime time_elapsed_ {0,0,1}; // 1 to prevent division by zero
          QTimer time_elapsed_timer_;
-         QLabel time_elapsed_buddy_ = QLabel("Time elapsed:");
-         QLabel time_elapsed_label_ = QLabel(time_elapsed_.toString() + " hh::mm::ss");
+         QLabel time_elapsed_buddy_ {"Time elapsed:"};
+         QLabel time_elapsed_label_ {time_elapsed_.toString() + " hh::mm::ss"};
 
          QHBoxLayout download_speed_layout_;
-         QLabel download_speed_buddy_ = QLabel("Download Speed:");
-         QLabel download_speed_label_ = QLabel("0 bytes/sec");
+         QLabel download_speed_buddy_ {"Download Speed:"};
+         QLabel download_speed_label_ {"0 bytes/sec"};
 
-         QPushButton delete_button_ = QPushButton("Delete");
-         QPushButton open_directory_button_ = QPushButton("Open directory");
+         QPushButton delete_button_ {"Delete"};;
+         QPushButton open_directory_button_ {"Open directory"};
 };
 
 inline std::shared_ptr<Download_tracker> Download_tracker::bind_lifetime() noexcept {

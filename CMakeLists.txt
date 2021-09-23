@@ -30,6 +30,7 @@ set(MOC_INCLUDES
          include/download_tracker.hxx
 	include/torrent_metadata_dialog.hxx
 	include/udp_torrent_client.hxx
+	include/udp_socket.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
@@ -59,4 +60,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
 	[["bencode_parser.hxx"]]
 	[["QAbstractSocket"]]
 	[["QUdpSocket"]]
+	[["QTimer"]]
 )

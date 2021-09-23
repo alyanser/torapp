@@ -36,11 +36,11 @@ private:
          void confirm_quit() noexcept;
          ///
          QWidget central_widget_;
-         QVBoxLayout central_layout_ = QVBoxLayout(&central_widget_);
+         QVBoxLayout central_layout_ {&central_widget_};
          QToolBar tool_bar_;
-         QMenu file_menu_ = QMenu("File",menuBar());
-         QMenu sort_menu_ = QMenu("Sort",menuBar());
-         QActionGroup sort_action_group_ = QActionGroup(this);
+         QMenu file_menu_ {"File",menuBar()};
+         QMenu sort_menu_ {"Sort",menuBar()};
+         QActionGroup sort_action_group_ {this};
          Network_manager network_manager_;
 };
 

@@ -108,9 +108,10 @@ void Network_manager::initiate_torrent_download(const bencode::Metadata & torren
 	const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
 	if(protocol == "udp"){
-		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->run();
+		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->bind_lifetime();
 		QTimer::singleShot(0,udp_client.get(),&Udp_torrent_client::send_connect_requests);
 	}else{
+		//todo inform the tracker
 		qDebug() << "unrecognized protocol : " << protocol;
 	}
 }
