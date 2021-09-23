@@ -99,18 +99,20 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 
 		auto on_socket_connected = [socket = socket.get(),connect_request = connect_request]{
 			send_packet(*socket,connect_request);
-			//todo start time here
-
-			[[maybe_unused]] const auto connect_request_size = connect_request.size();
-			assert(connect_request_size == 16);
+			//todo set the timer
 		};
 
-		connect(socket.get(),&QUdpSocket::readyRead,this,[this,&socket = *socket,connect_request]{
+		const auto read_connection = connect(socket.get(),&QUdpSocket::readyRead,this,[this,socket,connect_request]{
 			timeout_factor_ = 0;
-			on_socket_ready_read(socket,connect_request);
+			on_socket_ready_read(socket);
 		});
 
-		connect(socket.get(),&QUdpSocket::disconnected,this,[socket]{
+		connect(socket.get(),&QUdpSocket::disconnected,this,[socket,read_connection]{
+			{
+				const auto success = disconnect(read_connection);
+				assert(success);
+			}
+
 			//? consider using delete later here
 			qInfo() << "socket disconected";
 			assert(socket.unique());
@@ -120,22 +122,19 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 	}
 }
 
-void Udp_torrent_client::on_socket_ready_read(Udp_socket & socket,const QByteArray & connect_request) noexcept {
+void Udp_torrent_client::on_socket_ready_read(std::shared_ptr<Udp_socket> socket) noexcept {
 
-	constexpr auto hex_base = 16;
+	auto on_server_action_connect = [this,socket = socket.get()](const QByteArray & tracker_response){
 
-	auto on_server_action_connect = [this,socket = &socket,&connect_request](){
-
-		if(const auto connection_id_opt = verify_connect_response(connect_request,socket->txn_id())){
+		if(const auto connection_id_opt = verify_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
 			const auto announce_request = craft_announce_request(connection_id);
 
-			//todo set the socket new id
-			send_packet(*socket,announce_request.data());
+			send_packet(*socket,announce_request);
 		}
 	};
 
-	auto on_server_action_announce = [socket = &socket](const QByteArray & response){
+	auto on_server_action_announce = [socket = socket.get()](const QByteArray & response){
 
 		if(const auto peer_urls = verify_announce_response(response,socket->txn_id());!peer_urls.empty()){
 			//todo emit it to thet peer protocol
@@ -145,10 +144,11 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket & socket,const QByteArr
 	auto on_server_action_scrape = []( [[maybe_unused]] const QByteArray & response){
 	};
 
-	auto on_tracker_action_error = [socket = &socket](const QByteArray & response){
+	auto on_tracker_action_error = [socket = socket.get()](const QByteArray & response){
 		{
 			constexpr auto txn_id_offset = 4;
 			constexpr auto txn_id_bytes = 4;
+			constexpr auto hex_base = 16;
 
 			const auto txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
@@ -160,40 +160,39 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket & socket,const QByteArr
 
 		constexpr auto error_offset = 8;
 		const QByteArray tracker_error = response.sliced(error_offset);
-		qDebug() << tracker_error;
 		//todo report it to tracker
 	};
 
-	while(socket.hasPendingDatagrams()){
-		const auto response = socket.receiveDatagram().data();
+	while(socket->hasPendingDatagrams()){
+		const auto tracker_response = socket->receiveDatagram().data();
 
-		const auto server_action = [&response]{
+		const auto server_action = [&tracker_response]{
 			constexpr auto action_code_offset = 0;
 			constexpr auto action_code_bytes = 4;
 
-			return static_cast<Action_Code>(response.sliced(action_code_offset,action_code_bytes).toHex().toUInt());
+			return static_cast<Action_Code>(tracker_response.sliced(action_code_offset,action_code_bytes).toHex().toUInt(nullptr,16));
 		}();
 
-		assert(static_cast<std::int32_t>(server_action) <= 3);
+		assert(static_cast<std::int32_t>(server_action) < 4);
 
 		switch(server_action){
 			case Action_Code::Connect : {
-				on_server_action_connect(); 
+				on_server_action_connect(tracker_response); 
 				break;
 			}
 
 			case Action_Code::Announce : {
-				on_server_action_announce(response);
+				on_server_action_announce(tracker_response);
 				break;
 			}
 
 			case Action_Code::Scrape : {
-				on_server_action_scrape(response);
+				on_server_action_scrape(tracker_response);
 				break;
 			}
 
 			case Action_Code::Error : {
-				on_tracker_action_error(response);
+				on_tracker_action_error(tracker_response);
 				break;
 			}
 		}
@@ -202,17 +201,21 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket & socket,const QByteArr
 
 [[nodiscard]]
 std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByteArray & response,const std::uint32_t txn_id_sent) noexcept {
-	constexpr auto expected_packet_size = 16;
+	{
+		constexpr auto expected_packet_size = 16;
 
-	if(response.size() < expected_packet_size){
-		return {};
+		if(response.size() != expected_packet_size){
+			return {};
+		}
 	}
+
+	constexpr auto hex_base = 16;
 
 	{
 		constexpr auto response_txn_offset = 4;
 		constexpr auto txn_id_bytes = 4;
 
-		const auto response_txn_id = response.sliced(response_txn_offset,txn_id_bytes).toHex().toUInt();
+		const auto response_txn_id = response.sliced(response_txn_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
 		if(txn_id_sent != response_txn_id){
 			return {};
@@ -221,12 +224,8 @@ std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByt
 	
 	constexpr auto connection_id_offset = 8;
 	constexpr auto connection_id_bytes = 8;
-	constexpr auto hex_base = 16;
 
-	const auto connection_id = response.sliced(connection_id_offset,connection_id_bytes).toHex();
-
-	//? do we check if the conversion succeeds
-	return quint64_be(connection_id.toULongLong(nullptr,hex_base));
+	return quint64_be(response.sliced(connection_id_offset,connection_id_bytes).toHex().toULongLong(nullptr,hex_base));
 }
 
 [[nodiscard]]
@@ -289,8 +288,6 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		const auto peer_port = convert_to_hex(i + ip_bytes,port_bytes).toUShort(nullptr,hex_base);
 
 		auto & url = peers_urls.emplace_back(QHostAddress(peer_ip).toString());
-		qInfo() << url;
-		//! becomes invalid after setting the prot
 		url.setPort(peer_port);
 	}
 
