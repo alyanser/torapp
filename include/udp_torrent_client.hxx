@@ -25,11 +25,23 @@ public:
 		Completed
 	};
 
-	struct Scrape_response {
+	struct Swarm_metadata {
 		std::uint32_t seeds_count = 0;
 		std::uint32_t completed_count = 0;
 		std::uint32_t leechers_count = 0;
 	};
+
+	struct Announce_response {
+		std::vector<QUrl> peer_urls;
+		std::uint32_t interval_time = 0;
+		std::uint32_t leechers_count = 0;
+		std::uint32_t seeds_count = 0;
+	};
+
+	using connect_response = std::optional<quint64_be>;
+	using scrape_response = std::optional<Swarm_metadata>;
+	using announce_response = std::optional<Announce_response>;
+	using tracker_error = std::optional<QByteArray>;
 	
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
 
@@ -37,15 +49,20 @@ public:
 	void send_connect_requests() noexcept;
 signals:
 	void stop() const;
+	void announce_response_received(const Announce_response & announec_response) const;
+	void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
+	void error_received(const QByteArray & array) const;
 private:
 	static QByteArray craft_connect_request() noexcept;
 	QByteArray craft_announce_request(quint64_be tracker_connection_id) const noexcept;
 	static QByteArray craft_scrape_request(const bencode::Metadata & metadata,quint64_be tracker_connection_id) noexcept;
 
-	static std::optional<quint64_be> verify_connect_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
-	static std::vector<QUrl> verify_announce_response(const QByteArray & response,Udp_socket * socket) noexcept;
-	static Scrape_response verify_scrape_response(const QByteArray & response,Udp_socket * socket) noexcept;
+	static connect_response extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static announce_response extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static scrape_response extract_scrape_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static tracker_error extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
 
+	static bool verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};

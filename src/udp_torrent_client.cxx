@@ -6,7 +6,7 @@
 #include <QTimer>
 
 [[nodiscard]]
-inline QByteArray Udp_torrent_client::craft_connect_request() noexcept {
+QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 	QByteArray connect_request;
 
 	{
@@ -92,6 +92,18 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
 	return scrape_request + QByteArray(metadata.pieces.data());
 }
 
+[[nodiscard]]
+bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
+	assert(response.size() >= 8);
+	
+	constexpr auto txn_id_offset = 4;
+	constexpr auto txn_id_bytes = 4;
+		
+	const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
+
+	return sent_txn_id == received_txn_id;
+}
+
 void Udp_torrent_client::send_connect_requests() noexcept {
 
 	if(metadata_.announce_url_list.empty()){
@@ -108,12 +120,11 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 	}
 }
 
-//? consider using weak pointer here
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
 
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 
-		if(const auto connection_id_opt = verify_connect_response(tracker_response,socket->txn_id())){
+		if(const auto connection_id_opt = extract_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
 
 			socket->set_announce_request(craft_announce_request(connection_id));
@@ -123,34 +134,25 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 		}
 	};
 
-	auto on_tracker_action_announce = [socket](const QByteArray & response){
+	auto on_tracker_action_announce = [this,socket](const QByteArray & response){
 
-		if(const auto peer_urls = verify_announce_response(response,socket);!peer_urls.empty()){
-			//todo emit it to thet peer protocol
+		if(const auto announce_response_opt = extract_announce_response(response,socket->txn_id())){
+			emit announce_response_received(announce_response_opt.value());
 		}
 	};
 
-	auto on_tracker_action_scrape = [socket](const QByteArray & response){
-		const auto scrape_metadata = verify_scrape_response(response,socket);
-		qInfo() << scrape_metadata.completed_count << scrape_metadata.leechers_count << scrape_metadata.seeds_count;
+	auto on_tracker_action_scrape = [this,socket](const QByteArray & response){
+
+		if(const auto scrape_response_opt = extract_scrape_response(response,socket->txn_id())){
+			emit swarm_metadata_received(scrape_response_opt.value());
+		}
 	};
 
-	auto on_tracker_action_error = [socket](const QByteArray & response){
+	auto on_tracker_action_error = [this,socket](const QByteArray & response){
 
-		{
-			constexpr auto tracker_txn_id_offset = 4;
-			constexpr auto tracker_txn_id_bytes = 4;
-
-			const auto txn_id = response.sliced(tracker_txn_id_offset,tracker_txn_id_bytes).toHex().toUInt(nullptr,hex_base);
-
-			if(socket->txn_id() != txn_id){
-				return;
-			}
+		if(const auto tracker_error_opt = extract_tracker_error(response,socket->txn_id())){
+			emit error_received(tracker_error_opt.value());
 		}
-
-		constexpr auto error_offset = 8;
-		const QByteArray tracker_error = response.sliced(error_offset);
-		//todo report it to tracker
 	};
 
 	while(socket->hasPendingDatagrams()){
@@ -189,22 +191,11 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 }
 
 [[nodiscard]]
-std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByteArray & response,const std::uint32_t txn_id_sent) noexcept {
+std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
 	{
-		constexpr auto expected_packet_size = 16;
+		constexpr auto min_connect_response_size = 12;
 
-		if(response.size() != expected_packet_size){
-			return {};
-		}
-	}
-
-	{
-		constexpr auto txn_id_offset = 4;
-		constexpr auto txn_id_bytes = 4;
-
-		const auto response_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
-
-		if(txn_id_sent != response_txn_id){
+		if(response.size() < min_connect_response_size || !verify_txn_id(response,sent_txn_id)){
 			return {};
 		}
 	}
@@ -216,72 +207,89 @@ std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByt
 }
 
 [[nodiscard]]
-std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray & response,Udp_socket * const socket) noexcept {
+Udp_torrent_client::announce_response Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+	{
+		constexpr auto min_announce_response_size = 20;
+
+		if(response.size() < min_announce_response_size){
+			return {};
+		}
+	}
+	
 	{
 		constexpr auto tracker_txn_id_offset = 4;
 		constexpr auto tracker_txn_id_bytes = 4;
 
 		const auto received_txn_id = response.sliced(tracker_txn_id_offset,tracker_txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
-		if(socket->txn_id() != received_txn_id){
+		if(sent_txn_id != received_txn_id){
 			return {};
 		}
 	}
 
-	//todo report this stuff to the tracker
-	//! consider the unsignedness of these segments below
-
-	{
-		constexpr auto interval_offset = 8;
+	const auto interval_time = [&response]{
 		constexpr auto interval_bytes = 4;
+		constexpr auto interval_offset = 8;
 
-		const auto interval_time = response.sliced(interval_offset,interval_bytes).toHex().toUInt(nullptr,hex_base);
-		socket->set_interval_time(std::chrono::seconds(interval_time));
-	}
-	
-	{
+		return response.sliced(interval_offset,interval_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
+
+	const auto leechers_count = [&response]{
 		constexpr auto leechers_offset = 12;
 		constexpr auto leechers_bytes = 4;
 
-		const auto leechers_count = response.sliced(leechers_offset,leechers_bytes).toHex().toUInt(nullptr,hex_base);
-	}
+		return response.sliced(leechers_offset,leechers_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
 
-	{
+	const auto seeds_count = [&response]{
 		constexpr auto seeders_offset = 16;
 		constexpr auto seeders_bytes = 4;
 
-		const auto seeds_count = response.sliced(seeders_offset,seeders_bytes).toHex().toUInt(nullptr,hex_base);
-	}
+		return response.sliced(seeders_offset,seeders_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
 
-	std::vector<QUrl> peer_urls;
+	const auto peer_urls = [&response]{
+		std::vector<QUrl> peer_urls;
 
-	constexpr auto peers_ip_offset = 20;
-	constexpr auto peer_url_bytes = 6;
+		constexpr auto peers_ip_offset = 20;
+		constexpr auto peer_url_bytes = 6;
 
-	for(std::ptrdiff_t i = peers_ip_offset;i < response.size();i += peer_url_bytes){
-		//! check if valid
-		constexpr auto ip_bytes = 4;
-		constexpr auto port_bytes = 2;
+		for(std::ptrdiff_t i = peers_ip_offset;i < response.size();i += peer_url_bytes){
+			//todo also support ipv6
+			//! check if valid
+			constexpr auto ip_bytes = 4;
+			constexpr auto port_bytes = 2;
 
-		const auto peer_ip = response.sliced(i,ip_bytes).toHex().toUInt(nullptr,hex_base);
-		const auto peer_port = response.sliced(i + ip_bytes,port_bytes).toHex().toUShort(nullptr,hex_base);
+			const auto peer_ip = response.sliced(i,ip_bytes).toHex().toUInt(nullptr,hex_base);
+			const auto peer_port = response.sliced(i + ip_bytes,port_bytes).toHex().toUShort(nullptr,hex_base);
 
-		auto & url = peer_urls.emplace_back(QHostAddress(peer_ip).toString());
-		url.setPort(peer_port);
-	}
+			auto & url = peer_urls.emplace_back(QHostAddress(peer_ip).toString());
+			url.setPort(peer_port);
+		}
 
-	return peer_urls;
+		return peer_urls;
+	}();
+
+	return Announce_response{peer_urls,interval_time,leechers_count,seeds_count};
 }
 
 [[nodiscard]]
-Udp_torrent_client::Scrape_response Udp_torrent_client::verify_scrape_response(const QByteArray & response,Udp_socket * const socket) noexcept {
+Udp_torrent_client::scrape_response Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+	{
+		constexpr auto min_scrape_response_size = 20;
+
+		if(response.size() < min_scrape_response_size || !verify_txn_id(response,sent_txn_id)){
+			return {};
+		}
+	}
+
 	{
 		constexpr auto txn_id_offset = 4;
 		constexpr auto txn_id_bytes = 4;
 		
 		const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
-		if(socket->txn_id() != received_txn_id){
+		if(sent_txn_id != received_txn_id){
 			return {};
 		}
 	}
@@ -307,5 +315,20 @@ Udp_torrent_client::Scrape_response Udp_torrent_client::verify_scrape_response(c
 		return response.sliced(leechers_count_offset,leechers_count_bytes).toHex().toUInt(nullptr,hex_base);
 	}();
 
-	return {seeds_count,completed_count,leechers_count};
+	return Swarm_metadata{seeds_count,completed_count,leechers_count};
+}
+
+[[nodiscard]]
+Udp_torrent_client::tracker_error Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
+	{
+		constexpr auto min_error_response_size = 8;
+
+		if(response.size() < min_error_response_size || !verify_txn_id(response,sent_txn_id)){
+			return {};
+		}
+	}
+
+	constexpr auto error_offset = 8;
+
+	return response.sliced(error_offset);
 }

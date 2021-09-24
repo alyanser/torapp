@@ -44,7 +44,11 @@ void Udp_socket::configure_default_connections() noexcept {
 }
 
 void Udp_socket::write_packet(const QByteArray & packet) noexcept {
-	assert(packet.size() >= 16);
+	{
+		constexpr auto min_packet_size = 16;
+		assert(packet.size() >= min_packet_size);
+	}
+
 	write(packet.data(),packet.size());
 
 	constexpr auto txn_id_offset = 12;
@@ -53,6 +57,8 @@ void Udp_socket::write_packet(const QByteArray & packet) noexcept {
 
 	bool conversion_success = true;
 	const auto sent_txn_id = packet.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(&conversion_success,hex_base);
+	
+
 	assert(conversion_success);
 	set_txn_id(sent_txn_id);
 }
