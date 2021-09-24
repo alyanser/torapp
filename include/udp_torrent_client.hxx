@@ -23,7 +23,13 @@ public:
 		Started,
 		Stopped,
 		Completed
-	}; 
+	};
+
+	struct Scrape_response {
+		std::uint32_t seeds_count = 0;
+		std::uint32_t completed_count = 0;
+		std::uint32_t leechers_count = 0;
+	};
 	
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
 
@@ -38,7 +44,7 @@ private:
 
 	static std::optional<quint64_be> verify_connect_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
 	static std::vector<QUrl> verify_announce_response(const QByteArray & response,Udp_socket * socket) noexcept;
-	static void verify_scrape_response(const QByteArray & response,Udp_socket * socket) noexcept;
+	static Scrape_response verify_scrape_response(const QByteArray & response,Udp_socket * socket) noexcept;
 
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
 	///

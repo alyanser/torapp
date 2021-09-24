@@ -4,23 +4,14 @@ void Udp_socket::configure_default_connections() noexcept {
 
 	connect(this,&Udp_socket::connected,[this]{
 		send_initial_request(connect_request_,State::Connect);
-		qInfo() << "sending the request";
 		connection_timer_.start(get_timeout());
-		qInfo() << connection_timer_.interval();
 	});
 	
 	connect(this,&Udp_socket::readyRead,[&connection_timer_ = connection_timer_]{
 		connection_timer_.stop();
 	});
 
-	connect(&validity_timer_,&QTimer::timeout,[&connection_id_valid_ = connection_id_valid_]{
-		qInfo() << "validity timer timed out";
-		assert(connection_id_valid_);
-		connection_id_valid_ = false;
-	});
-
 	connect(&connection_timer_,&QTimer::timeout,[this]{
-		qDebug() << "connection timer timed out";
 		constexpr auto protocol_max_factor_limit = 8;
 
 		if(++timeout_factor_ <= protocol_max_factor_limit){

@@ -67,6 +67,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	}
 
 	{
+		// todo choose different port
 		constexpr quint32_be default_port(6889);
 		announce_request += util::conversion::convert_to_hex(default_port,sizeof(default_port));
 	}
@@ -104,8 +105,6 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
 			on_socket_ready_read(socket);
 		});
-
-		break;
 	}
 }
 
@@ -116,9 +115,11 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 		if(const auto connection_id_opt = verify_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
+
 			socket->set_announce_request(craft_announce_request(connection_id));
 			socket->set_scrape_request(craft_scrape_request(metadata_,connection_id));
-			socket->send_initial_request(socket->scrape_request(),Udp_socket::State::Scrape);
+
+			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
 		}
 	};
 
@@ -130,7 +131,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 	};
 
 	auto on_tracker_action_scrape = [socket](const QByteArray & response){
-		verify_scrape_response(response,socket);
+		const auto scrape_metadata = verify_scrape_response(response,socket);
+		qInfo() << scrape_metadata.completed_count << scrape_metadata.leechers_count << scrape_metadata.seeds_count;
 	};
 
 	auto on_tracker_action_error = [socket](const QByteArray & response){
@@ -215,7 +217,6 @@ std::optional<quint64_be> Udp_torrent_client::verify_connect_response(const QByt
 
 [[nodiscard]]
 std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray & response,Udp_socket * const socket) noexcept {
-
 	{
 		constexpr auto tracker_txn_id_offset = 4;
 		constexpr auto tracker_txn_id_bytes = 4;
@@ -249,7 +250,7 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 		constexpr auto seeders_offset = 16;
 		constexpr auto seeders_bytes = 4;
 
-		const auto seeders_count = response.sliced(seeders_offset,seeders_bytes).toHex().toUInt(nullptr,hex_base);
+		const auto seeds_count = response.sliced(seeders_offset,seeders_bytes).toHex().toUInt(nullptr,hex_base);
 	}
 
 	std::vector<QUrl> peer_urls;
@@ -258,7 +259,7 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 	constexpr auto peer_url_bytes = 6;
 
 	for(std::ptrdiff_t i = peers_ip_offset;i < response.size();i += peer_url_bytes){
-		//todo also support ipv6
+		//! check if valid
 		constexpr auto ip_bytes = 4;
 		constexpr auto port_bytes = 2;
 
@@ -272,7 +273,8 @@ std::vector<QUrl> Udp_torrent_client::verify_announce_response(const QByteArray 
 	return peer_urls;
 }
 
-void Udp_torrent_client::verify_scrape_response(const QByteArray & response,Udp_socket * const socket) noexcept {
+[[nodiscard]]
+Udp_torrent_client::Scrape_response Udp_torrent_client::verify_scrape_response(const QByteArray & response,Udp_socket * const socket) noexcept {
 	{
 		constexpr auto txn_id_offset = 4;
 		constexpr auto txn_id_bytes = 4;
@@ -280,8 +282,30 @@ void Udp_torrent_client::verify_scrape_response(const QByteArray & response,Udp_
 		const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
 		if(socket->txn_id() != received_txn_id){
-			return;
-			// return {};
+			return {};
 		}
 	}
+
+	const auto seeds_count = [&response]{
+		constexpr auto seeds_count_offset = 8;
+		constexpr auto seeds_count_bytes =  4;
+
+		return response.sliced(seeds_count_offset,seeds_count_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
+
+	const auto completed_count = [&response]{
+		constexpr auto download_count_offset = 12;
+		constexpr auto download_count_bytes =  4;
+
+		return response.sliced(download_count_offset,download_count_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
+
+	const auto leechers_count = [&response]{
+		constexpr auto leechers_count_offset = 16;
+		constexpr auto leechers_count_bytes =  4;
+
+		return response.sliced(leechers_count_offset,leechers_count_bytes).toHex().toUInt(nullptr,hex_base);
+	}();
+
+	return {seeds_count,completed_count,leechers_count};
 }

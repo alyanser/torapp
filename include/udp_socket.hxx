@@ -8,7 +8,6 @@
 
 class Udp_socket : public QUdpSocket, public std::enable_shared_from_this<Udp_socket> {
 	Q_OBJECT
-
 public :
 	enum class State { 
 		Connect,
@@ -41,25 +40,20 @@ private:
 	void write_packet(const QByteArray & packet) noexcept;
 	void reset_time_specs() noexcept;
 	///
-	constexpr static std::chrono::minutes protocol_validity_timeout {1};
-
 	QByteArray connect_request_;
 	QByteArray announce_request_;
 	QByteArray scrape_request_;
 	QTimer connection_timer_;
-	QTimer validity_timer_;
 	std::chrono::seconds interval_time_ {};
 	State state_ = State::Connect;
 	std::uint32_t txn_id_ = 0;
 	std::uint8_t timeout_factor_ = 0;
-	bool connection_id_valid_ = false;
+	bool connection_id_valid_ = true;
 };
 
 inline Udp_socket::Udp_socket(const QUrl & url){
 	configure_default_connections();
 	connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
-
-	validity_timer_.setSingleShot(true);
 }
 
 inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
@@ -74,7 +68,15 @@ inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
 inline void Udp_socket::reset_time_specs() noexcept {
 	timeout_factor_ = 0;
 	connection_timer_.start(get_timeout());
-	validity_timer_.start(protocol_validity_timeout);
+	connection_id_valid_ = true;
+
+	{
+		constexpr std::chrono::minutes protocol_validity_timeout {1};
+
+		QTimer::singleShot(protocol_validity_timeout,[&connection_id_valid_ = connection_id_valid_]{
+			connection_id_valid_ = false;
+		});
+	}
 }
 
 constexpr void Udp_socket::set_txn_id(std::uint32_t txn_id) noexcept {
@@ -122,7 +124,7 @@ inline void Udp_socket::send_initial_request(const QByteArray & request,const St
 inline void Udp_socket::send_request(const QByteArray & request) noexcept {
 	
 	if(state_ != State::Connect && !connection_id_valid_){
-		send_initial_request(request,State::Connect);
+		send_initial_request(connect_request_,State::Connect);
 	}else{
 		write_packet(request);
 	}
@@ -138,8 +140,8 @@ inline void Udp_socket::set_scrape_request(QByteArray scrape_request) noexcept {
 
 [[nodiscard]]
 constexpr std::chrono::seconds Udp_socket::get_timeout() const noexcept {
-	constexpr auto protocol_delta = 15;
-	const std::chrono::seconds timeout_seconds(protocol_delta * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
+	constexpr auto protocol_constant = 15;
+	const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
 
 	[[maybe_unused]] constexpr std::chrono::seconds max_timeout_seconds(3840);
 	assert(timeout_seconds <= max_timeout_seconds);
