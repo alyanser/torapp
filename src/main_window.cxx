@@ -8,7 +8,6 @@
 #include <string_view>
 
 Main_window::Main_window(){
-         setMinimumSize(QSize(1024,400));
          setWindowTitle("Torapp");
 
          setCentralWidget(&central_widget_);
@@ -18,8 +17,6 @@ Main_window::Main_window(){
          setup_sort_menu();
          add_top_actions();
          configure_default_connections();
-
-         tool_bar_.setFloatable(false);
 }
 
 void Main_window::configure_default_connections() noexcept {

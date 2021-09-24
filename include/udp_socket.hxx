@@ -12,10 +12,10 @@ public :
 	enum class State { 
 		Connect,
 		Scrape,
-		Announce 
+		Announce
 	};
 
-	explicit Udp_socket(const QUrl & url);
+	Udp_socket(const QUrl & url,QByteArray connect_request);
 
 	std::shared_ptr<Udp_socket> bind_lifetime() noexcept;
 	constexpr std::uint32_t txn_id() const noexcept;
@@ -37,7 +37,7 @@ private:
 	constexpr std::chrono::seconds get_timeout() const noexcept;
 	void configure_default_connections() noexcept;
 	void send_request(const QByteArray & request) noexcept;
-	void write_packet(const QByteArray & packet) noexcept;
+	void send_packet(const QByteArray & packet) noexcept;
 	void reset_time_specs() noexcept;
 	///
 	QByteArray connect_request_;
@@ -51,7 +51,8 @@ private:
 	bool connection_id_valid_ = true;
 };
 
-inline Udp_socket::Udp_socket(const QUrl & url){
+inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request) : connect_request_(std::move(connect_request)){
+	assert(!connect_request_.isEmpty());
 	configure_default_connections();
 	connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 }
@@ -97,10 +98,6 @@ constexpr std::chrono::seconds Udp_socket::interval_time() const noexcept {
 	return interval_time_;
 }
 
-inline void Udp_socket::set_connect_request(QByteArray connect_request) noexcept {
-	connect_request_ = std::move(connect_request);
-}
-
 [[nodiscard]]
 inline const QByteArray & Udp_socket::connect_request() const noexcept {
 	return connect_request_;
@@ -111,13 +108,14 @@ inline const QByteArray & Udp_socket::announce_request() const noexcept {
 	return announce_request_;
 }
 
+[[nodiscard]]
 inline const QByteArray & Udp_socket::scrape_request() const noexcept {
 	return scrape_request_;
 }
 
 inline void Udp_socket::send_initial_request(const QByteArray & request,const State new_state) noexcept {
 	state_ = new_state;
-	write_packet(request);
+	send_packet(request);
 	reset_time_specs();
 }
 
@@ -126,8 +124,12 @@ inline void Udp_socket::send_request(const QByteArray & request) noexcept {
 	if(state_ != State::Connect && !connection_id_valid_){
 		send_initial_request(connect_request_,State::Connect);
 	}else{
-		write_packet(request);
+		send_packet(request);
 	}
+}
+
+inline void Udp_socket::set_connect_request(QByteArray connect_request) noexcept {
+	connect_request_ = std::move(connect_request);
 }
 
 inline void Udp_socket::set_announce_request(QByteArray announce_request) noexcept {

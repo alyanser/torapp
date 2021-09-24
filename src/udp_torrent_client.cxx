@@ -5,6 +5,21 @@
 #include <QHostAddress>
 #include <QTimer>
 
+void Udp_torrent_client::send_connect_requests() noexcept {
+
+	if(metadata_.announce_url_list.empty()){
+		metadata_.announce_url_list.emplace_back(metadata_.announce_url);
+	}
+
+	for(const auto & announce_url : metadata_.announce_url_list){
+		auto socket = std::make_shared<Udp_socket>(QUrl(announce_url.data()),craft_connect_request())->bind_lifetime();
+		
+		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
+			on_socket_ready_read(socket);
+		});
+	}
+}
+
 [[nodiscard]]
 QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 	QByteArray connect_request;
@@ -88,7 +103,6 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
 		scrape_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
 	}
 
-	//! check if valid
 	return scrape_request + QByteArray(metadata.pieces.data());
 }
 
@@ -102,22 +116,6 @@ bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t
 	const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
 
 	return sent_txn_id == received_txn_id;
-}
-
-void Udp_torrent_client::send_connect_requests() noexcept {
-
-	if(metadata_.announce_url_list.empty()){
-		metadata_.announce_url_list.emplace_back(metadata_.announce_url);
-	}
-
-	for(const auto & announce_url : metadata_.announce_url_list){
-		auto socket = std::make_shared<Udp_socket>(QUrl(announce_url.data()))->bind_lifetime();
-		socket->set_connect_request(craft_connect_request());
-		
-		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
-			on_socket_ready_read(socket);
-		});
-	}
 }
 
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
