@@ -18,7 +18,7 @@ public:
 		Error
 	}; 
 
-	enum class Download_event {
+	enum class Download_Event {
 		None,
 		Started,
 		Stopped,
@@ -38,6 +38,7 @@ private:
 
 	static std::optional<quint64_be> verify_connect_response(const QByteArray & response,std::uint32_t txn_id_sent) noexcept;
 	static std::vector<QUrl> verify_announce_response(const QByteArray & response,Udp_socket * socket) noexcept;
+	static void verify_scrape_response(const QByteArray & response,Udp_socket * socket) noexcept;
 
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
 	///
@@ -50,7 +51,7 @@ private:
 	quint64_be downloaded_ {};
 	quint64_be left_ {};
 	quint64_be uploaded_ {};
-	Download_event event_ {};
+	Download_Event event_ {};
 };
 
 inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() noexcept {

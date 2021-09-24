@@ -62,7 +62,7 @@ QString stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) no
          return converted_str;
 }
 
-//todo figure SFINAE for q.int_.e types
+//todo figure SFINAE for 'q.int_.e' types
 template<typename Numeric_T>
 [[nodiscard]]
 QByteArray convert_to_hex(const Numeric_T number,const std::ptrdiff_t size_required) noexcept {

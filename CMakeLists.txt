@@ -21,6 +21,7 @@ set(SOURCES
          src/download_tracker.cxx
 	src/torrent_metadata_dialog.cxx
 	src/udp_torrent_client.cxx
+	src/udp_socket.cxx
 )
 
 set(MOC_INCLUDES

@@ -35,8 +35,8 @@ public :
 	void send_initial_request(const QByteArray & request,State new_state) noexcept;
 private:
 	constexpr void set_txn_id(std::uint32_t txn_id) noexcept;
+	constexpr std::chrono::seconds get_timeout() const noexcept;
 	void configure_default_connections() noexcept;
-	std::int32_t get_timeout_seconds() const noexcept;
 	void send_request(const QByteArray & request) noexcept;
 	void write_packet(const QByteArray & packet) noexcept;
 	void reset_time_specs() noexcept;
@@ -73,56 +73,8 @@ inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
 
 inline void Udp_socket::reset_time_specs() noexcept {
 	timeout_factor_ = 0;
-	connection_timer_.start(get_timeout_seconds());
+	connection_timer_.start(get_timeout());
 	validity_timer_.start(protocol_validity_timeout);
-}
-
-inline void Udp_socket::configure_default_connections() noexcept {
-
-	connect(this,&Udp_socket::connected,[this]{
-		send_initial_request(connect_request_,State::Connect);
-	});
-	
-	connect(this,&Udp_socket::readyRead,[&connection_timer_ = connection_timer_]{
-		connection_timer_.stop();
-	});
-
-	connect(&validity_timer_,&QTimer::timeout,[&connection_id_valid_ = connection_id_valid_]{
-		assert(connection_id_valid_);
-		connection_id_valid_ = false;
-	});
-
-	connect(&connection_timer_,&QTimer::timeout,[this]{
-		constexpr auto protocol_max_limit = 8;
-
-		if(++timeout_factor_ <= protocol_max_limit){
-			switch(state_){
-
-				case State::Connect : {
-					send_request(connect_request_);
-					break;
-				}
-
-				case State::Scrape : { 
-					send_request(scrape_request_);
-					break;
-				}
-
-				case State::Announce : {
-					send_request(announce_request_);
-					break;
-				}
-
-				default : __builtin_unreachable();
-			}
-			
-			connection_timer_.start(get_timeout_seconds());
-		}else{
-			//todo alert the tracker about connection timeout
-			connection_timer_.stop();
-			disconnectFromHost();
-		}
-	});
 }
 
 constexpr void Udp_socket::set_txn_id(std::uint32_t txn_id) noexcept {
@@ -138,6 +90,7 @@ constexpr void Udp_socket::set_interval_time(std::chrono::seconds interval_time)
 	interval_time_ = interval_time;
 }
 
+[[nodiscard]]
 constexpr std::chrono::seconds Udp_socket::interval_time() const noexcept {
 	return interval_time_;
 }
@@ -184,28 +137,14 @@ inline void Udp_socket::set_scrape_request(QByteArray scrape_request) noexcept {
 }
 
 [[nodiscard]]
-inline std::int32_t Udp_socket::get_timeout_seconds() const noexcept {
+constexpr std::chrono::seconds Udp_socket::get_timeout() const noexcept {
 	constexpr auto protocol_delta = 15;
-	const auto timeout_seconds = protocol_delta * static_cast<std::int32_t>(std::exp2(timeout_factor_));
+	const std::chrono::seconds timeout_seconds(protocol_delta * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
 
-	[[maybe_unused]] constexpr auto max_timeout_seconds = 3840;
+	[[maybe_unused]] constexpr std::chrono::seconds max_timeout_seconds(3840);
 	assert(timeout_seconds <= max_timeout_seconds);
 
 	return timeout_seconds;
-}
-
-inline void Udp_socket::write_packet(const QByteArray & packet) noexcept {
-	assert(packet.size() >= 16);
-	write(packet.data(),packet.size());
-
-	constexpr auto txn_id_offset = 12;
-	constexpr auto txn_id_bytes = 4;
-	constexpr auto hex_base = 16;
-
-	bool conversion_success = true;
-	const auto sent_txn_id = packet.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(&conversion_success,hex_base);
-	assert(conversion_success);
-	set_txn_id(sent_txn_id);
 }
 
 #endif // UDP_SOCKET_HXX
