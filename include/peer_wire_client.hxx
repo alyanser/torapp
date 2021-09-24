@@ -1,12 +1,13 @@
-#ifndef PEER_WIRE_CLIENT_HXX
-#define PEER_WIRE_CLIENT_HXX
+#pragma once
 
-#include <QObject>
+#include <QNetworkAccessManager>
 
-class Peer_wire_client : public QObject {
+class Peer_wire_client : public QNetworkAccessManager, std::enable_shared_from_this<Peer_wire_client> {
 	Q_OBJECT
 public:
-
+	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;
 };
 
-#endif // PEER_WIRE_CLIENT_HXX
+inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexcept {
+	return shared_from_this();
+}

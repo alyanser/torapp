@@ -1,5 +1,4 @@
-#ifndef TORRENT_METADATA_DIALOG_HXX
-#define TORRENT_METADATA_DIALOG_HXX
+#pragma once
 
 #include "utility.hxx"
 
@@ -66,5 +65,3 @@ inline void Torrent_metadata_dialog::configure_default_connections() noexcept {
 	connect(&begin_download_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::accept);
 	connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::reject);
 }
-
-#endif // TORRENT_METADATA_DIALOG_HXX

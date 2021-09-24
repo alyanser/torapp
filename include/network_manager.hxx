@@ -1,5 +1,4 @@
-#ifndef NETWORK_MANAGER_HXX
-#define NETWORK_MANAGER_HXX
+#pragma once
 
 #include "utility.hxx"
 
@@ -70,4 +69,3 @@ inline void Network_manager::configure_default_connections() noexcept {
                   }
          });
 }
-#endif // NETWORK_MANAGER_HXX

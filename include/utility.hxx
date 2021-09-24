@@ -1,5 +1,4 @@
-#ifndef UTILITY_HXX
-#define UTILITY_HXX
+#pragma once
 
 #include "bencode_parser.hxx"
 
@@ -86,5 +85,3 @@ struct Download_request {
 };
 
 } // namespace util
-
-#endif // UTILITY_HXX

@@ -22,6 +22,7 @@ set(SOURCES
 	src/torrent_metadata_dialog.cxx
 	src/udp_torrent_client.cxx
 	src/udp_socket.cxx
+	src/peer_wire_client.cxx
 )
 
 set(MOC_INCLUDES
@@ -32,6 +33,7 @@ set(MOC_INCLUDES
 	include/torrent_metadata_dialog.hxx
 	include/udp_torrent_client.hxx
 	include/udp_socket.hxx
+	include/peer_wire_client.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})

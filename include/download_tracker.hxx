@@ -1,5 +1,4 @@
-#ifndef DOWNLOAD_TRACKER_HXX
-#define DOWNLOAD_TRACKER_HXX
+#pragma once
 
 #include "utility.hxx"
 
@@ -147,5 +146,3 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
 inline void Download_tracker::upload_progress_update(const std::int64_t bytes_sent,const std::int64_t total_bytes) noexcept {
          upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
 }
-
-#endif // DOWNLOAD_TRACKER_HXX

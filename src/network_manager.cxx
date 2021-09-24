@@ -8,17 +8,15 @@
 #include <QTimer>
 
 bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tracker) noexcept {
-	constexpr auto failure = false;
-	constexpr auto success = true;
-	
+
 	if(open_files_.contains(file_handle.fileName())){
 		tracker.set_error_and_finish(Download_tracker::Error::File_Lock);
-		return failure;
+		return false;
 	}
 
 	if(!file_handle.open(QFile::WriteOnly | QFile::Truncate)){
 		tracker.set_error_and_finish(Download_tracker::Error::File_Write);
-		return failure;
+		return false;
 	}
 
 	open_files_.insert(file_handle.fileName());
@@ -29,7 +27,7 @@ bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tr
 		open_files_.erase(file_itr);
 	});
 
-	return success;
+	return true;
 }
 
 void Network_manager::configure_tracker_connections(Download_tracker & tracker) const noexcept {
@@ -111,8 +109,6 @@ void Network_manager::initiate_torrent_download(const bencode::Metadata & torren
 		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->bind_lifetime();
 		QTimer::singleShot(0,udp_client.get(),&Udp_torrent_client::send_connect_requests);
 	}else{
-		//todo inform the tracker
-		
 		qDebug() << "unrecognized protocol : " << protocol;
 	}
 }

@@ -1,8 +1,6 @@
-#ifndef UDP_SOCKET_HXX
-#define UDP_SOCKET_HXX
+#pragma once
 
 #include <QUdpSocket>
-#include <QByteArray>
 #include <QTimer>
 #include <QUrl>
 
@@ -150,5 +148,3 @@ constexpr std::chrono::seconds Udp_socket::get_timeout() const noexcept {
 
 	return timeout_seconds;
 }
-
-#endif // UDP_SOCKET_HXX

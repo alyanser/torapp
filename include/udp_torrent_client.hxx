@@ -1,5 +1,4 @@
-#ifndef UDP_TORRENT_CLIENT_HXX
-#define UDP_TORRENT_CLIENT_HXX
+#pragma once
 
 #include "udp_socket.hxx"
 #include "utility.hxx"
@@ -64,6 +63,7 @@ private:
 
 	static bool verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
+	void configure_default_connections() noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
@@ -85,5 +85,3 @@ inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() n
 
 	return shared_from_this();
 }
-
-#endif // UDP_TORRENT_CLIENT_HXX

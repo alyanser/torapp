@@ -1,5 +1,4 @@
-#ifndef MAIN_WINDOW_HXX
-#define MAIN_WINDOW_HXX
+#pragma once
 
 #include "url_input_dialog.hxx"
 #include "network_manager.hxx"
@@ -66,5 +65,3 @@ inline void Main_window::setup_menu_bar() noexcept {
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
 }
-
-#endif // MAIN_WINDOW_HXX

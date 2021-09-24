@@ -1,9 +1,17 @@
 #include "udp_torrent_client.hxx"
+#include "peer_wire_client.hxx"
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
 #include <QHostAddress>
 #include <QTimer>
+
+void Udp_torrent_client::configure_default_connections() noexcept {
+
+	connect(this,&Udp_torrent_client::announce_response_received,[](const auto & announce_response){
+		[[maybe_unused]] auto peer_client = std::make_shared<Peer_wire_client>()->bind_lifetime();
+	});
+}
 
 void Udp_torrent_client::send_connect_requests() noexcept {
 
@@ -188,6 +196,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 	}
 }
 
+
 [[nodiscard]]
 std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
 	{
@@ -209,18 +218,7 @@ Udp_torrent_client::announce_response Udp_torrent_client::extract_announce_respo
 	{
 		constexpr auto min_announce_response_size = 20;
 
-		if(response.size() < min_announce_response_size){
-			return {};
-		}
-	}
-	
-	{
-		constexpr auto tracker_txn_id_offset = 4;
-		constexpr auto tracker_txn_id_bytes = 4;
-
-		const auto received_txn_id = response.sliced(tracker_txn_id_offset,tracker_txn_id_bytes).toHex().toUInt(nullptr,hex_base);
-
-		if(sent_txn_id != received_txn_id){
+		if(response.size() < min_announce_response_size || !verify_txn_id(response,sent_txn_id)){
 			return {};
 		}
 	}
@@ -277,17 +275,6 @@ Udp_torrent_client::scrape_response Udp_torrent_client::extract_scrape_response(
 		constexpr auto min_scrape_response_size = 20;
 
 		if(response.size() < min_scrape_response_size || !verify_txn_id(response,sent_txn_id)){
-			return {};
-		}
-	}
-
-	{
-		constexpr auto txn_id_offset = 4;
-		constexpr auto txn_id_bytes = 4;
-		
-		const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
-
-		if(sent_txn_id != received_txn_id){
 			return {};
 		}
 	}

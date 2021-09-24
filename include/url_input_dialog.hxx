@@ -1,5 +1,4 @@
-#ifndef URL_INPUT_DIALOG_HXX
-#define URL_INPUT_DIALOG_HXX
+#pragma once
 
 #include <QVBoxLayout>
 #include <QFormLayout>
@@ -59,5 +58,3 @@ inline void Url_input_widget::setup_tab_order() noexcept {
          setTabOrder(&path_button_,&download_button_);
          setTabOrder(&download_button_,&cancel_button_);
 }
-
-#endif // URL_INPUT_DIALOG_HXX
