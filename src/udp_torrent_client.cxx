@@ -5,11 +5,14 @@
 #include <QNetworkDatagram>
 #include <QHostAddress>
 #include <QTimer>
+#include <QFile>
 
-void Udp_torrent_client::configure_default_connections() noexcept {
+void Udp_torrent_client::configure_default_connections() const noexcept {
 
-	connect(this,&Udp_torrent_client::announce_response_received,[](const auto & announce_response){
-		[[maybe_unused]] auto peer_client = std::make_shared<Peer_wire_client>()->bind_lifetime();
+	connect(this,&Udp_torrent_client::announce_response_received,[](const Announce_response & announce_response){
+		auto peer_client = std::make_shared<Peer_wire_client>()->bind_lifetime();
+		assert(!announce_response.peer_urls.empty());
+		peer_client->connect(announce_response.peer_urls);
 	});
 }
 
@@ -47,8 +50,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 		connect_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
 	}
 
-	[[maybe_unused]] constexpr auto total_request_bytes = 16;
-	assert(connect_request.size() == total_request_bytes);
+	assert(connect_request.size() == 16);
 
 	return connect_request;
 }
@@ -67,7 +69,12 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 		announce_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
 	}
 
-	announce_request += QByteArray(metadata_.pieces.data());
+	{
+		const auto raw_info = QByteArray(metadata_.raw_info_dict.data(),static_cast<std::ptrdiff_t>(metadata_.raw_info_dict.size()));
+		qInfo() << raw_info.size();
+		announce_request += QCryptographicHash::hash(raw_info,QCryptographicHash::Sha1);
+	}
+
 	announce_request += QByteArray::fromHex(peer_id);
 	announce_request += util::conversion::convert_to_hex(downloaded_,sizeof(downloaded_));
 	announce_request += util::conversion::convert_to_hex(left_,sizeof(left_));
@@ -90,7 +97,6 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	}
 
 	{
-		// todo choose different port
 		constexpr quint32_be default_port(6889);
 		announce_request += util::conversion::convert_to_hex(default_port,sizeof(default_port));
 	}
@@ -168,8 +174,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 			constexpr auto action_offset = 0;
 			constexpr auto action_bytes = 4;
 
-			const auto tracker_action = tracker_response.sliced(action_offset,action_bytes).toHex().toUInt(nullptr,hex_base);
-			return static_cast<Action_Code>(tracker_action);
+			return static_cast<Action_Code>(tracker_response.sliced(action_offset,action_bytes).toHex().toUInt(nullptr,hex_base));
 		}();
 
 		switch(tracker_action){
@@ -196,7 +201,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 	}
 }
 
-
 [[nodiscard]]
 std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
 	{
@@ -214,7 +218,7 @@ std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QBy
 }
 
 [[nodiscard]]
-Udp_torrent_client::announce_response Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
 	{
 		constexpr auto min_announce_response_size = 20;
 
@@ -244,33 +248,32 @@ Udp_torrent_client::announce_response Udp_torrent_client::extract_announce_respo
 		return response.sliced(seeders_offset,seeders_bytes).toHex().toUInt(nullptr,hex_base);
 	}();
 
-	const auto peer_urls = [&response]{
+	auto peer_urls = [&response]{
 		std::vector<QUrl> peer_urls;
 
 		constexpr auto peers_ip_offset = 20;
 		constexpr auto peer_url_bytes = 6;
 
-		for(std::ptrdiff_t i = peers_ip_offset;i < response.size();i += peer_url_bytes){
-			//todo also support ipv6
-			//! check if valid
+		for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_bytes){
 			constexpr auto ip_bytes = 4;
 			constexpr auto port_bytes = 2;
 
-			const auto peer_ip = response.sliced(i,ip_bytes).toHex().toUInt(nullptr,hex_base);
-			const auto peer_port = response.sliced(i + ip_bytes,port_bytes).toHex().toUShort(nullptr,hex_base);
+			const auto peer_ip = response.sliced(idx,ip_bytes).toHex().toUInt(nullptr,hex_base);
+			const auto peer_port = response.sliced(idx + ip_bytes,port_bytes).toHex().toUShort(nullptr,hex_base);
 
-			auto & url = peer_urls.emplace_back(QHostAddress(peer_ip).toString());
+			auto & url = peer_urls.emplace_back();
+			url.setHost(QHostAddress(peer_ip).toString());
 			url.setPort(peer_port);
 		}
 
 		return peer_urls;
 	}();
 
-	return Announce_response{peer_urls,interval_time,leechers_count,seeds_count};
+	return Announce_response{std::move(peer_urls),interval_time,leechers_count,seeds_count};
 }
 
 [[nodiscard]]
-Udp_torrent_client::scrape_response Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
 	{
 		constexpr auto min_scrape_response_size = 20;
 
@@ -304,7 +307,7 @@ Udp_torrent_client::scrape_response Udp_torrent_client::extract_scrape_response(
 }
 
 [[nodiscard]]
-Udp_torrent_client::tracker_error Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
 	{
 		constexpr auto min_error_response_size = 8;
 

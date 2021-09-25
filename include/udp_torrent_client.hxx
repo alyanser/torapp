@@ -11,7 +11,7 @@ class Udp_torrent_client : public QObject, public std::enable_shared_from_this<U
 	Q_OBJECT
 public:
 	enum class Action_Code { 
-		Connect, 
+		Connect,
 		Announce,
 		Scrape,
 		Error
@@ -37,12 +37,12 @@ public:
 		std::uint32_t seeds_count = 0;
 	};
 
-	using connect_response = std::optional<quint64_be>;
-	using scrape_response = std::optional<Swarm_metadata>;
-	using announce_response = std::optional<Announce_response>;
-	using tracker_error = std::optional<QByteArray>;
+	using connect_optional = std::optional<quint64_be>;
+	using scrape_optional = std::optional<Swarm_metadata>;
+	using announce_optional = std::optional<Announce_response>;
+	using error_optional = std::optional<QByteArray>;
 	
-	explicit Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)){}
+	explicit Udp_torrent_client(bencode::Metadata torrent_metadata);
 
 	std::shared_ptr<Udp_torrent_client> bind_lifetime() noexcept;
 	void send_connect_requests() noexcept;
@@ -56,14 +56,14 @@ private:
 	QByteArray craft_announce_request(quint64_be tracker_connection_id) const noexcept;
 	static QByteArray craft_scrape_request(const bencode::Metadata & metadata,quint64_be tracker_connection_id) noexcept;
 
-	static connect_response extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static announce_response extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static scrape_response extract_scrape_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static tracker_error extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static connect_optional extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static announce_optional extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static scrape_optional extract_scrape_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static error_optional extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
 
 	static bool verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
 	void on_socket_ready_read(Udp_socket * socket) noexcept;
-	void configure_default_connections() noexcept;
+	void configure_default_connections() const noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
@@ -72,10 +72,16 @@ private:
 
 	bencode::Metadata metadata_;
 	quint64_be downloaded_ {};
-	quint64_be left_ {};
 	quint64_be uploaded_ {};
 	Download_Event event_ {};
+	quint64_be left_ {};
 };
+
+inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)), 
+	left_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+{
+	configure_default_connections();
+}
 
 inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() noexcept {
 
