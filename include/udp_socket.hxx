@@ -16,8 +16,8 @@ public :
 	Udp_socket(const QUrl & url,QByteArray connect_request);
 
 	std::shared_ptr<Udp_socket> bind_lifetime() noexcept;
-	constexpr std::uint32_t txn_id() const noexcept;
 
+	constexpr std::uint32_t txn_id() const noexcept;
 	constexpr void set_interval_time(std::chrono::seconds interval_time) noexcept;
 	constexpr std::chrono::seconds interval_time() const noexcept;
 
@@ -58,7 +58,6 @@ inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request) : con
 inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
 
 	connect(this,&Udp_socket::disconnected,this,[self = shared_from_this()]{
-		assert(self.unique());
 	},Qt::SingleShotConnection);
 
 	return shared_from_this();

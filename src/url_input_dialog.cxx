@@ -20,9 +20,8 @@ Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
 void Url_input_widget::configure_default_connections() noexcept {
 
          connect(&path_button_,&QToolButton::clicked,[this]{
-                  const auto selected_directory = QFileDialog::getExistingDirectory(this);
-
-                  if(!selected_directory.isEmpty()){
+                  
+                  if(const auto selected_directory = QFileDialog::getExistingDirectory(this);!selected_directory.isEmpty()){
                            path_line_.setText(selected_directory);
                   }
          });
@@ -55,7 +54,7 @@ void Url_input_widget::setup_layout() noexcept {
 }
 
 void Url_input_widget::on_input_received() noexcept {
-         const QUrl url(url_line_.text().simplified());
+         QUrl url(url_line_.text().simplified());
 
          if(url.isEmpty()){
                   constexpr std::string_view error_title("Empty URL");
@@ -114,6 +113,6 @@ void Url_input_widget::on_input_received() noexcept {
          }
 
          reset_lines();
-         emit new_request_received({package_name,path,url});
+         emit new_request_received({std::move(package_name),std::move(path),std::move(url)});
 	accept();
 }

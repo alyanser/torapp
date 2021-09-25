@@ -3,9 +3,6 @@
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
-#include <QHostAddress>
-#include <QTimer>
-#include <QFile>
 
 void Udp_torrent_client::configure_default_connections() const noexcept {
 
@@ -33,25 +30,23 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 
 [[nodiscard]]
 QByteArray Udp_torrent_client::craft_connect_request() noexcept {
-	QByteArray connect_request;
 
-	{
+	QByteArray connect_request = []{
 		constexpr quint64_be protocol_constant(0x41727101980);
-		connect_request = util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
-	}
+		return util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
+	}();
 
-	{
+	connect_request += []{
 		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Connect));
-		connect_request += util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
-	}
+		return util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
+	}();
 
-	{
+	connect_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		connect_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
-	}
+		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+	}();
 
 	assert(connect_request.size() == 16);
-
 	return connect_request;
 }
 
@@ -59,47 +54,42 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_connection_id) const noexcept {
 	QByteArray announce_request = util::conversion::convert_to_hex(tracker_connection_id,sizeof(quint64_be));
 
-	{
+	announce_request += []{
 		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Announce));
-		announce_request += util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
-	}
+		return util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
+	}();
 
-	{
+	announce_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		announce_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
-	}
+		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+	}();
 
-	{
-		const auto raw_info = QByteArray(metadata_.raw_info_dict.data(),static_cast<std::ptrdiff_t>(metadata_.raw_info_dict.size()));
-		qInfo() << raw_info.size();
-		announce_request += QCryptographicHash::hash(raw_info,QCryptographicHash::Sha1);
-	}
-
+	announce_request += info_sha1_hash_;
 	announce_request += QByteArray::fromHex(peer_id);
 	announce_request += util::conversion::convert_to_hex(downloaded_,sizeof(downloaded_));
 	announce_request += util::conversion::convert_to_hex(left_,sizeof(left_));
 	announce_request += util::conversion::convert_to_hex(uploaded_,sizeof(uploaded_));
 	announce_request += util::conversion::convert_to_hex(static_cast<std::uint32_t>(event_),sizeof(event_));
 
-	{
+	announce_request += []{
 		constexpr auto default_ip_address = 0;
-		announce_request += util::conversion::convert_to_hex(default_ip_address,sizeof(default_ip_address));
-	}
+		return util::conversion::convert_to_hex(default_ip_address,sizeof(default_ip_address));
+	}();
 
-	{
+	announce_request += []{
 		const quint32_be random_key(random_id_range(random_generator));
-		announce_request += util::conversion::convert_to_hex(random_key,sizeof(random_key));
-	}
+		return util::conversion::convert_to_hex(random_key,sizeof(random_key));
+	}();
 
-	{
+	announce_request += []{
 		constexpr qint32_be default_num_want(-1);
-		announce_request += util::conversion::convert_to_hex(default_num_want,sizeof(default_num_want));
-	}
+		return util::conversion::convert_to_hex(default_num_want,sizeof(default_num_want));
+	}();
 
-	{
+	announce_request += []{
 		constexpr quint32_be default_port(6889);
-		announce_request += util::conversion::convert_to_hex(default_port,sizeof(default_port));
-	}
+		return util::conversion::convert_to_hex(default_port,sizeof(default_port));
+	}();
 
 	return announce_request;
 }
@@ -107,15 +97,15 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const quint64_be tracker_connection_id) noexcept {
 	QByteArray scrape_request = util::conversion::convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
 
-	{
+	scrape_request += []{
 		constexpr quint32_be scrape_action(static_cast<std::uint32_t>(Action_Code::Scrape));
-		scrape_request += util::conversion::convert_to_hex(scrape_action,sizeof(scrape_action));
-	}
+		return util::conversion::convert_to_hex(scrape_action,sizeof(scrape_action));
+	}();
 
-	{
+	scrape_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		scrape_request += util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
-	}
+		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+	}();
 
 	return scrape_request + QByteArray(metadata.pieces.data());
 }
@@ -128,7 +118,7 @@ bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t
 	constexpr auto txn_id_bytes = 4;
 		
 	const auto received_txn_id = response.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(nullptr,hex_base);
-
+	
 	return sent_txn_id == received_txn_id;
 }
 
@@ -197,18 +187,19 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 				on_tracker_action_error(tracker_response);
 				break;
 			}
+
+			default : {
+				qDebug() << "tracker replied with invalid action code" << static_cast<std::uint32_t>(tracker_action);
+			}
 		}
 	}
 }
 
 [[nodiscard]]
 std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
-	{
-		constexpr auto min_connect_response_size = 12;
 
-		if(response.size() < min_connect_response_size || !verify_txn_id(response,sent_txn_id)){
-			return {};
-		}
+	if(constexpr auto min_response_size = 12;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+		return {};
 	}
 	
 	constexpr auto connection_id_offset = 8;
@@ -219,12 +210,9 @@ std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QBy
 
 [[nodiscard]]
 Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
-	{
-		constexpr auto min_announce_response_size = 20;
-
-		if(response.size() < min_announce_response_size || !verify_txn_id(response,sent_txn_id)){
-			return {};
-		}
+	
+	if(constexpr auto min_response_size = 20;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+		return {};
 	}
 
 	const auto interval_time = [&response]{
@@ -262,6 +250,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 			const auto peer_port = response.sliced(idx + ip_bytes,port_bytes).toHex().toUShort(nullptr,hex_base);
 
 			auto & url = peer_urls.emplace_back();
+			
 			url.setHost(QHostAddress(peer_ip).toString());
 			url.setPort(peer_port);
 		}
@@ -274,12 +263,9 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 
 [[nodiscard]]
 Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
-	{
-		constexpr auto min_scrape_response_size = 20;
-
-		if(response.size() < min_scrape_response_size || !verify_txn_id(response,sent_txn_id)){
-			return {};
-		}
+	
+	if(constexpr auto min_response_size = 20;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+		return {};
 	}
 
 	const auto seeds_count = [&response]{
@@ -291,7 +277,7 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 
 	const auto completed_count = [&response]{
 		constexpr auto download_count_offset = 12;
-		constexpr auto download_count_bytes =  4;
+		constexpr auto download_count_bytes = 4;
 
 		return response.sliced(download_count_offset,download_count_bytes).toHex().toUInt(nullptr,hex_base);
 	}();
@@ -308,12 +294,9 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 
 [[nodiscard]]
 Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
-	{
-		constexpr auto min_error_response_size = 8;
 
-		if(response.size() < min_error_response_size || !verify_txn_id(response,sent_txn_id)){
-			return {};
-		}
+	if(constexpr auto min_response_size = 8;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+		return {};
 	}
 
 	constexpr auto error_offset = 8;

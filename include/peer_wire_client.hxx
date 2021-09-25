@@ -1,9 +1,8 @@
 #pragma once
 
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
+#include <QObject>
 
-class Peer_wire_client : public QNetworkAccessManager, public std::enable_shared_from_this<Peer_wire_client> {
+class Peer_wire_client : public QObject, public std::enable_shared_from_this<Peer_wire_client> {
 	Q_OBJECT
 public:
 	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;

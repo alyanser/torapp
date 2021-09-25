@@ -24,8 +24,7 @@ public:
 		Custom
 	};
 
-         explicit Download_tracker(const util::Download_request & download_request);
-	explicit Download_tracker(const bencode::Metadata & metadata);
+         explicit Download_tracker(util::Download_request download_request);
 
 	constexpr Error error() const noexcept;
          std::uint32_t get_elapsed_seconds() const noexcept;
@@ -45,6 +44,7 @@ public slots:
          void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
 private:
 	Download_tracker();
+
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
          void setup_file_status_layout() noexcept;
@@ -130,9 +130,9 @@ inline std::uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
          return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
 }
 
-inline void Download_tracker::set_error_and_finish(const Error new_error) noexcept {
-         assert(new_error != Error::Null && new_error != Error::Custom);
-         error_ = new_error;
+inline void Download_tracker::set_error_and_finish(const Error error) noexcept {
+         assert(error != Error::Null && error != Error::Custom);
+         error_ = error;
          update_error_line();
          switch_to_finished_state();
 }

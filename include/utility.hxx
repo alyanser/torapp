@@ -16,9 +16,9 @@ enum class Conversion_Format {
 	Memory
 };
 
-template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
+template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
-constexpr std::pair<double,std::string_view> stringify_bytes(const Byte_T bytes,const Conversion_Format format) noexcept {
+constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type bytes,const Conversion_Format format) noexcept {
          constexpr auto bytes_in_kb = 1024;
          constexpr auto bytes_in_mb = bytes_in_kb * 1024;
          constexpr auto bytes_in_gb = bytes_in_mb * 1024;
@@ -38,16 +38,15 @@ constexpr std::pair<double,std::string_view> stringify_bytes(const Byte_T bytes,
          return {bytes,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};
 }
 
-template<typename Byte_T,typename = std::enable_if_t<std::is_arithmetic_v<Byte_T>>>
+template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
-QString stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) noexcept {
-         constexpr auto format = Conversion_Format::Memory;
-         constexpr auto unknown_bound = -1;
-
+QString stringify_bytes(const byte_type bytes_received,const byte_type total_bytes) noexcept {
          double converted_total_bytes = 0;
          std::string_view total_bytes_postfix("inf");
 
-         if(total_bytes != unknown_bound){
+         constexpr auto format = Conversion_Format::Memory;
+
+         if(constexpr auto unknown_bound = -1;total_bytes != unknown_bound){
                   std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_bytes),format);
          }
 
@@ -62,16 +61,21 @@ QString stringify_bytes(const Byte_T bytes_received,const Byte_T total_bytes) no
 }
 
 //todo figure SFINAE for 'q.int_.e' types
-template<typename Numeric_T>
+template<typename numeric_type>
 [[nodiscard]]
-QByteArray convert_to_hex(const Numeric_T number,const std::ptrdiff_t size_required) noexcept {
-	constexpr auto hex_base = 16;
+QByteArray convert_to_hex(const numeric_type number,const std::ptrdiff_t size_required) noexcept {
 
-	auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));
+	const auto hex_fmt = [number,size_required]{
+		constexpr auto hex_base = 16;
+		
+		auto hex_fmt = QByteArray::fromHex(QByteArray::number(number,hex_base));
 
-	while(hex_fmt.size() < size_required){
-		hex_fmt.push_front('\x00');
-	}
+		while(hex_fmt.size() < size_required){
+			hex_fmt.push_front('\x00');
+		}
+
+		return hex_fmt;
+	}();
 
 	return hex_fmt.size() == size_required ? hex_fmt : QByteArray{};
 }

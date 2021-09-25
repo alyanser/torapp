@@ -61,7 +61,6 @@ inline void Main_window::confirm_quit() noexcept {
 
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
-
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
 }

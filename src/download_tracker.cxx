@@ -17,15 +17,15 @@ Download_tracker::Download_tracker(){
          delete_button_.setEnabled(false);
 }
 
-Download_tracker::Download_tracker(const util::Download_request & url_download_request) : Download_tracker(){
-         assert(!url_download_request.url.isEmpty());
-         assert(!url_download_request.download_path.isEmpty());
+Download_tracker::Download_tracker(util::Download_request download_request) : Download_tracker(){
+         assert(!download_request.url.isEmpty());
+         assert(!download_request.download_path.isEmpty());
 
-         package_name_label_.setText(url_download_request.url.fileName());
-         download_path_label_.setText(url_download_request.download_path);
+         package_name_label_.setText(download_request.url.fileName());
+         download_path_label_.setText(download_request.download_path);
 
          {	
-                  auto on_open_button_clicked = [this,path = url_download_request.download_path,name = url_download_request.package_name]{
+                  auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
@@ -35,12 +35,8 @@ Download_tracker::Download_tracker(const util::Download_request & url_download_r
                            }
                   };
 
-                  auto on_retry_button_clicked = [this,url_download_request]{
-                           emit retry_url_download(url_download_request);
-                           emit release_lifetime();
-                  };
 
-                  auto on_open_directory_button_clicked = [this,download_path = url_download_request.download_path]{
+                  auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
 
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");
@@ -49,6 +45,13 @@ Download_tracker::Download_tracker(const util::Download_request & url_download_r
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
                   };
+
+                  auto on_retry_button_clicked = [this,download_request = std::move(download_request)]{
+                           emit retry_url_download(download_request);
+                           emit release_lifetime();
+                  };
+
+		//! download request moved from
 
                   connect(&open_button_,&QPushButton::clicked,on_open_button_clicked);
                   connect(&open_directory_button_,&QPushButton::clicked,on_open_directory_button_clicked);
@@ -119,9 +122,7 @@ void Download_tracker::download_progress_update(const std::int64_t bytes_receive
          assert(bytes_received >= 0);
          assert(!download_progress_bar_.minimum());
 
-         constexpr auto unknown_bytes = -1;
-
-         if(total_bytes == unknown_bytes){
+         if(constexpr auto unknown_bytes = -1;total_bytes == unknown_bytes){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
                   download_progress_bar_.setValue(0);
@@ -162,7 +163,7 @@ void Download_tracker::configure_default_connections() noexcept {
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
                   auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
-                  [[maybe_unused]] auto * const cancel_button = query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
+                  query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
@@ -203,18 +204,26 @@ void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
 
          switch(error_){
-                  case Error::Null :
+                  case Error::Null : {
 			error_line_.setText(null_error_info.data()); 
 			break;
-                  case Error::File_Write :
+		}
+
+                  case Error::File_Write : {
 			error_line_.setText(file_write_error_info.data()); 
 			break;
-                  case Error::Unknown_Network :
+		}
+
+                  case Error::Unknown_Network : {
 			error_line_.setText(unknown_network_error_info.data()); 
 			break;
-                  case Error::File_Lock :
+		}
+		
+                  case Error::File_Lock : { 
 			error_line_.setText(file_lock_error_info.data()); 
 			break;
+		}
+
                   case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();
          }

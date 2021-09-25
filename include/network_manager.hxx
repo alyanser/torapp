@@ -6,7 +6,6 @@
 #include <QSet>
 
 class Download_tracker;
-class QString;
 class QFile;
 
 class Network_manager : public QNetworkAccessManager {
@@ -48,7 +47,6 @@ inline Network_manager::Network_manager(){
 constexpr auto Network_manager::connection_count() const noexcept {
          return connection_count_;
 }
-
 
 constexpr void Network_manager::on_tracker_destroyed() noexcept {
          assert(connection_count_ > 0);
