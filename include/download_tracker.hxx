@@ -102,7 +102,7 @@ private:
 inline std::shared_ptr<Download_tracker> Download_tracker::bind_lifetime() noexcept {
 
          const auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  assert(self.use_count() <= 2); // other could be held by the associated network request
+                  assert(self.use_count() <= 2);
          },Qt::SingleShotConnection);
 
 	assert(self_lifetime_connection);

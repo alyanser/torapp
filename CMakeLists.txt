@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3  -fno-omit-frame-pointer ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=address,undefined -fno-omit-frame-pointer ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
@@ -20,8 +20,9 @@ set(SOURCES
          src/download_tracker.cxx
 	src/torrent_metadata_dialog.cxx
 	src/udp_torrent_client.cxx
-	src/udp_socket.cxx
 	src/peer_wire_client.cxx
+	src/udp_socket.cxx
+	src/tcp_socket.cxx
 )
 
 set(MOC_INCLUDES
@@ -30,9 +31,10 @@ set(MOC_INCLUDES
          include/network_manager.hxx
          include/download_tracker.hxx
 	include/torrent_metadata_dialog.hxx
+	include/peer_wire_client.hxx
 	include/udp_torrent_client.hxx
 	include/udp_socket.hxx
-	include/peer_wire_client.hxx
+	include/tcp_socket.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
