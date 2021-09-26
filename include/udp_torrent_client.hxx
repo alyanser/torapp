@@ -70,8 +70,7 @@ private:
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
-	inline const static auto peer_id = QByteArray("-TA0001-012345012345").toHex();
-	constexpr static auto hex_base = 16;
+	inline const static auto id = QByteArray("-TA0001-012345012345").toHex();
 
 	bencode::Metadata torrent_metadata_;
 	QByteArray info_sha1_hash_;

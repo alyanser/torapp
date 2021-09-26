@@ -65,6 +65,11 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 	peer_id_ = std::move(peer_id);
 }
 
+inline void Tcp_socket::send_packet(const QByteArray & packet){
+	const auto raw_fmt = QByteArray::fromHex(packet);
+	write(raw_fmt.data(),raw_fmt.size());
+}
+
 [[nodiscard]]
 inline QByteArray Tcp_socket::peer_id() const noexcept {
 	return peer_id_;

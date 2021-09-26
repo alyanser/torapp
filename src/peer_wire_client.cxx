@@ -21,7 +21,7 @@ QByteArray Peer_wire_client::craft_handshake_packet() noexcept {
 		return util::conversion::convert_to_hex(0,reserved_bytes);
 	}();
 
-	handshake_packet += info_sha1_hash_ + peer_id_;
+	handshake_packet += info_sha1_hash_ + id_;
 
 	return handshake_packet;
 }
@@ -45,14 +45,16 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcep
 
 					socket->set_peer_info_hash(std::move(peer_info_hash));
 					socket->set_peer_id(std::move(peer_id));
+				}else{
+					socket->disconnectFromHost();
 				}
 			}
 		});
 	}
 }
 
-bool Peer_wire_client::validate_bittorrent_protocol(const QByteArray & response) noexcept {
-	assert(response.size() >= 24);
+std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handshake_response(Tcp_socket * const socket) noexcept {
+	const auto response = socket->readAll();
 
 	const auto protocol_label_len = [&response]{
 		constexpr auto protocol_label_len_offset = 0;
@@ -60,7 +62,7 @@ bool Peer_wire_client::validate_bittorrent_protocol(const QByteArray & response)
 	}();
 
 	if(constexpr auto expected_protocol_label_len = 19;protocol_label_len != expected_protocol_label_len){
-		return false;
+		return {};
 	}
 
 	const auto protocol_label = [&response,protocol_label_len]{
@@ -69,21 +71,21 @@ bool Peer_wire_client::validate_bittorrent_protocol(const QByteArray & response)
 	}();
 
 	if(constexpr std::string_view expected_protocol_label("BitTorrent protocol");protocol_label.data() != expected_protocol_label){
-		return false;
+		return {};
 	}
 
-	const auto reserved_bytes = [&response]{
-		constexpr auto reserved_bytes_offset = 20;
-		return util::extract_integer<std::uint32_t>(response,reserved_bytes_offset);
-	}();
+	{
+		const auto reserved_bytes_content = [&response]{
+			constexpr auto reserved_bytes_offset = 20;
+			return util::extract_integer<std::uint32_t>(response,reserved_bytes_offset);
+		}();
 
-	return !reserved_bytes;
-}
+		if(reserved_bytes_content){ // only support 0x0000
+			return {};
+		}
+	}
 
-std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handshake_response(Tcp_socket * const socket) noexcept {
-	const auto response = socket->readAll();
-
-	if(constexpr auto expected_response_size = 68;response.size() != expected_response_size || !validate_bittorrent_protocol(response)){
+	if(constexpr auto expected_response_size = 68;response.size() != expected_response_size){
 		return {};
 	}
 
@@ -105,7 +107,8 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handsha
 }
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) noexcept {
-	// ok we're here now
+	assert(socket->handshake_done());
+	qInfo() << "here after the handshake";
 	const auto response = socket->readAll();
 	constexpr auto fixed_bytes = 4;
 	

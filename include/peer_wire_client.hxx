@@ -29,7 +29,6 @@ public:
 	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;
 
 	void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
-	static bool validate_bittorrent_protocol(const QByteArray & response) noexcept;
 signals:
 	void stop() const;
 private:
@@ -38,12 +37,12 @@ private:
 	QByteArray craft_handshake_packet() noexcept;
 	void communicate_with_peer(Tcp_socket * socket) noexcept;
 	///
-	QByteArray peer_id_;
+	QByteArray id_;
 	QByteArray info_sha1_hash_;
 	QByteArray handshake_packet_;
 };
 
-inline Peer_wire_client::Peer_wire_client(QByteArray peer_id,QByteArray info_sha1_hash) : peer_id_(std::move(peer_id)),
+inline Peer_wire_client::Peer_wire_client(QByteArray peer_id,QByteArray info_sha1_hash) : id_(std::move(peer_id)),
 	info_sha1_hash_(std::move(info_sha1_hash)), handshake_packet_(craft_handshake_packet())
 {
 }

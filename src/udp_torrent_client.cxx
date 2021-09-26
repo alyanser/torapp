@@ -8,7 +8,7 @@
 void Udp_torrent_client::configure_default_connections() const noexcept {
 
 	connect(this,&Udp_torrent_client::announce_response_received,[this](const Announce_response & announce_response){
-		auto peer_client = std::make_shared<Peer_wire_client>(peer_id,info_sha1_hash_)->bind_lifetime();
+		auto peer_client = std::make_shared<Peer_wire_client>(id,info_sha1_hash_)->bind_lifetime();
 		assert(!announce_response.peer_urls.empty());
 		peer_client->do_handshake(announce_response.peer_urls);
 	});
@@ -69,7 +69,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	}();
 
 	announce_request += info_sha1_hash_;
-	announce_request += peer_id;
+	announce_request += id;
 	announce_request += convert_to_hex(downloaded_,sizeof(downloaded_));
 	announce_request += convert_to_hex(left_,sizeof(left_));
 	announce_request += convert_to_hex(uploaded_,sizeof(uploaded_));
