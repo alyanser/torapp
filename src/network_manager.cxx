@@ -31,7 +31,7 @@ bool Network_manager::open_file_handle(QFile & file_handle,Download_tracker & tr
 }
 
 void Network_manager::configure_tracker_connections(Download_tracker & tracker) const noexcept {
-         connect(this,&Network_manager::terminate,&tracker,&Download_tracker::release_lifetime);
+         connect(this,&Network_manager::terminate,&tracker,&Download_tracker::request_satisfied);
          connect(&tracker,&Download_tracker::destroyed,this,&Network_manager::on_tracker_destroyed);
 	connect(&tracker,&Download_tracker::retry_url_download,this,&Network_manager::initiate_url_download);
 	connect(&tracker,&Download_tracker::retry_torrent_download,this,&Network_manager::initiate_torrent_download);

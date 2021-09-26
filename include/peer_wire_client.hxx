@@ -27,15 +27,14 @@ public:
 	Peer_wire_client(QByteArray peer_id,QByteArray info_sha1_hash);
 
 	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;
-
-	void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
+	void do_handshake(const std::vector<QUrl> & peer_urls) const noexcept;
 signals:
 	void stop() const;
 private:
-	static std::optional<std::pair<QByteArray,QByteArray>> handle_handshake_response(Tcp_socket * socket) noexcept;
-	void extract_peer_response(const QByteArray & peer_response);
-	QByteArray craft_handshake_packet() noexcept;
-	void communicate_with_peer(Tcp_socket * socket) noexcept;
+	static std::optional<std::pair<QByteArray,QByteArray>> handle_handshake_response(Tcp_socket * socket);
+	void extract_peer_response(const QByteArray & peer_response) const noexcept;
+	QByteArray craft_handshake_packet() const noexcept;
+	void communicate_with_peer(Tcp_socket * socket) const;
 	///
 	QByteArray id_;
 	QByteArray info_sha1_hash_;
@@ -49,8 +48,7 @@ inline Peer_wire_client::Peer_wire_client(QByteArray peer_id,QByteArray info_sha
 
 inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexcept {
 
-	connect(this,&Peer_wire_client::stop,this,[self = shared_from_this()]{
-	},Qt::SingleShotConnection);
-	
+	connect(this,&Peer_wire_client::stop,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
+
 	return shared_from_this();
 }

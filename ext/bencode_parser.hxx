@@ -181,7 +181,6 @@ struct Metadata {
 	std::string raw_info_dict;
 	std::vector<std::pair<std::string,std::int64_t>> file_info; // [file_path,file_size : bytes]
 	std::vector<std::string> announce_url_list;
-	std::vector<std::string> peers; // binary model format
 	std::int64_t piece_length = 0;
 	std::int64_t single_file_size = 0;
 	std::int64_t multiple_files_size = 0;

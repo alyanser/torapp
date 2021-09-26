@@ -48,7 +48,7 @@ Download_tracker::Download_tracker(util::Download_request download_request) : Do
 
                   auto on_retry_button_clicked = [this,download_request = std::move(download_request)]{
                            emit retry_url_download(download_request);
-                           emit release_lifetime();
+                           emit request_satisfied();
                   };
 
 		//! download request moved from
@@ -167,8 +167,8 @@ void Download_tracker::configure_default_connections() noexcept {
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
-                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::release_lifetime);
-                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::release_lifetime);
+                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::request_satisfied);
+                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::request_satisfied);
                   
                   query_box.exec();
          };

@@ -3,14 +3,14 @@
 
 #include <QHostAddress>
 #include <QUrl>
+#include <QByteArrayView>
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_handshake_packet() noexcept {
+QByteArray Peer_wire_client::craft_handshake_packet() const noexcept {
 
 	QByteArray handshake_packet = []{
 		constexpr std::uint8_t pstrlen = 19;
 		constexpr std::string_view protocol("BitTorrent protocol");
-
 		static_assert(protocol.size() == pstrlen);
 		
 		return util::conversion::convert_to_hex(pstrlen,sizeof(pstrlen)) + QByteArray(protocol.data()).toHex();
@@ -18,7 +18,7 @@ QByteArray Peer_wire_client::craft_handshake_packet() noexcept {
 
 	handshake_packet += []{
 		constexpr auto reserved_bytes = 8;
-		return util::conversion::convert_to_hex(0,reserved_bytes);
+		return util::conversion::convert_to_hex(0x0,reserved_bytes);
 	}();
 
 	handshake_packet += info_sha1_hash_ + id_;
@@ -26,7 +26,7 @@ QByteArray Peer_wire_client::craft_handshake_packet() noexcept {
 	return handshake_packet;
 }
 
-void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcept {
+void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
 
 	for(const auto & peer_url : peer_urls){
 		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
@@ -37,25 +37,31 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcep
 
 		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
 
-			if(socket->handshake_done()){
-				communicate_with_peer(socket);
-			}else{
-				if(auto peer_info_opt = handle_handshake_response(socket)){
-					auto & [peer_info_hash,peer_id] = peer_info_opt.value();
-
-					socket->set_peer_info_hash(std::move(peer_info_hash));
-					socket->set_peer_id(std::move(peer_id));
+			try {
+				if(socket->handshake_done()){
+					communicate_with_peer(socket);
 				}else{
-					socket->disconnectFromHost();
+					if(auto peer_info_opt = handle_handshake_response(socket)){
+						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
+						//todo add the counter and increment
+						socket->set_peer_info_hash(std::move(peer_info_hash));
+						socket->set_peer_id(std::move(peer_id));
+					}else{
+						socket->disconnectFromHost();
+					}
 				}
+
+			}catch(const std::exception & exception){
+				qDebug() << exception.what();
+				socket->disconnectFromHost();
 			}
 		});
 	}
 }
 
-std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handshake_response(Tcp_socket * const socket) noexcept {
+std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handshake_response(Tcp_socket * const socket){
 	const auto response = socket->readAll();
-
+	
 	const auto protocol_label_len = [&response]{
 		constexpr auto protocol_label_len_offset = 0;
 		return util::extract_integer<std::uint8_t>(response,protocol_label_len_offset);
@@ -80,7 +86,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handsha
 			return util::extract_integer<std::uint32_t>(response,reserved_bytes_offset);
 		}();
 
-		if(reserved_bytes_content){ // only support 0x0000
+		if(reserved_bytes_content){
 			return {};
 		}
 	}
@@ -106,93 +112,153 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handsha
 	return std::make_pair(std::move(peer_info_hash),std::move(peer_id));
 }
 
-void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) noexcept {
+void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
 	assert(socket->handshake_done());
+
 	qInfo() << "here after the handshake";
+	
 	const auto response = socket->readAll();
-	constexpr auto fixed_bytes = 4;
 	
 	const auto packet_length = [&response]{
-		constexpr auto length_offset = 24;
+		constexpr auto length_offset = 0;
 		return util::extract_integer<std::uint32_t>(response,length_offset);
 	}();
 	
-	if(!packet_length){
+	if(!packet_length){ // keep-alive packet
 		socket->reset_disconnect_timer();
 		return;
 	}
 
 	const auto message_id = [&response]{
-		constexpr auto message_id_offset = 28;
+		constexpr auto message_id_offset = 4;
 		return static_cast<Message_Id>(util::extract_integer<std::uint8_t>(response,message_id_offset));
 	}();
 
 	qInfo() << message_id << packet_length;
 
+	constexpr auto message_offset = 5;
+	const auto payload_length = packet_length - 1;
+
+	//? consider throwing if message is packet than excepted
+
+	auto extract_piece_metadata = [&response]{
+
+		const auto piece_index = [&response]{
+			return util::extract_integer<std::uint32_t>(response,message_offset);
+		}();
+
+		const auto piece_offset = [&response]{
+			constexpr auto piece_begin_offset = 9;
+			return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
+		}();
+
+		const auto piece_length = [&response]{
+			constexpr auto piece_length_offset = 13;
+			return util::extract_integer<std::uint32_t>(response,piece_length_offset);
+		}();
+
+		return std::tuple{piece_index,piece_offset,piece_length};
+	};
+
+	constexpr auto status_modifier_length = 1;
+
 	switch(message_id){
 		case Message_Id::Choke : {
+
+			if(packet_length != status_modifier_length){
+				throw std::length_error("length of received 'Choke' packet is non-standard");
+			}
+			
 			socket->set_state(Tcp_socket::State::Choked);
 			break;
 		}
 
 		case Message_Id::Unchoke : {
+
+			if(packet_length != status_modifier_length){
+				throw std::length_error("length of received 'Unchoke' packet is non-standard");
+			}
+
 			socket->set_state(Tcp_socket::State::Unchoked);
 			break;
 		}
 
 		case Message_Id::Interested : {
+
+			if(packet_length != status_modifier_length){
+				throw std::length_error("length of received 'Interested' packet is non-standard");
+			}
+
 			socket->set_state(Tcp_socket::State::Interested);
 			break;
 		}
 
 		case Message_Id::Uninterested : {
+
+			if(packet_length != status_modifier_length){
+				throw std::length_error("length of received 'Uninterested' packet is non-standard");
+			}
+
 			socket->set_state(Tcp_socket::State::Uninterested);
 			break;
 		}
 
 		case Message_Id::Have : {
-			//5 
-			const auto piece_index = [&response]{
-				constexpr auto pieces_index_offset = 5;
-				return util::extract_integer<std::uint32_t>(response,pieces_index_offset);
-			}();
 
+			if(constexpr auto standard_have_length = 12;payload_length != standard_have_length){
+				throw std::length_error("length of received 'Have' packet is non-standard");
+			}
+			
+			const auto verified_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
 			break;
 		}
 
 		case Message_Id::Bitfield : {
-			// based on the length
-
+			//todo bitarray
 			break;
 		}
 
 		case Message_Id::Request : {
 
-			const auto payload_index = [&response]{
-				constexpr auto payload_index_offset = 5;
-				return util::extract_integer<std::uint32_t>(response,payload_index_offset);
-			}();
+			if(constexpr auto standard_request_length = 12;payload_length != standard_request_length){
+				throw std::length_error("length of received 'Request' packet is non-standard");
+			}
 
-			const auto payload_begin = [&response]{
-				constexpr auto payload_begin_offset = 9;
-				return util::extract_integer<std::uint32_t>(response,payload_begin_offset);
-			}();
-
-			const auto payload_length = [&response]{
-				constexpr auto payload_length_offset = 13;
-				return util::extract_integer<std::uint32_t>(response,payload_length_offset);
-			}();
-
+			const auto [requested_piece_index,requested_piece_offset,requested_piece_length] = extract_piece_metadata();
+			// min should be 16kb and max should be 128kb
 			break;
 		}
 
 		case Message_Id::Piece : {
-			//9 index begin block
+
+			if(constexpr auto min_piece_length = 8;payload_length < min_piece_length){
+				throw std::length_error("length of received 'Piece' packet is non-standard");
+			}
+
+			const auto received_piece_index = [&response]{
+				return util::extract_integer<std::uint32_t>(response,message_offset);
+			}();
+
+			const auto received_piece_offset = [&response]{
+				constexpr auto piece_begin_offset = 9;
+				return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
+			}();
+
+			const auto received_piece_content = [&response]{
+				constexpr auto piece_content_offset = 13;
+				return response.sliced(piece_content_offset);
+			}();
+
 			break;
 		}
 
 		case Message_Id::Cancel : {
-			//13 index begin length
+
+			if(constexpr auto standard_cancel_length = 12;payload_length != standard_cancel_length){
+				throw std::length_error("length of received 'Cancel' packet is non-standard");
+			}
+
+			const auto [cancelled_piece_index,cancelled_piece_offset,cancelled_piece_length] = extract_piece_metadata();
 			break;
 		}
 	}

@@ -24,7 +24,13 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 		auto socket = std::make_shared<Udp_socket>(QUrl(announce_url.data()),craft_connect_request())->bind_lifetime();
 		
 		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
-			on_socket_ready_read(socket);
+
+			try {
+				on_socket_ready_read(socket);
+			}catch(const std::exception & exception){
+				qDebug() << exception.what();
+				socket->disconnectFromHost();
+			}
 		});
 	}
 }
@@ -34,9 +40,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 
 	QByteArray connect_request = []{
 		constexpr quint64_be protocol_constant(0x41727101980);
-		const auto store = util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
-
-		return store;
+		return util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
 	}();
 
 	connect_request += []{
@@ -99,32 +103,32 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 }
 
 QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const quint64_be tracker_connection_id) noexcept {
-	QByteArray scrape_request = util::conversion::convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
+	using util::conversion::convert_to_hex;
+	
+	auto scrape_request = convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
 
 	scrape_request += []{
 		constexpr quint32_be scrape_action(static_cast<std::uint32_t>(Action_Code::Scrape));
-		return util::conversion::convert_to_hex(scrape_action,sizeof(scrape_action));
+		return convert_to_hex(scrape_action,sizeof(scrape_action));
 	}();
 
 	scrape_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+		return convert_to_hex(txn_id,sizeof(txn_id));
 	}();
 
 	return scrape_request + QByteArray(metadata.pieces.data(),static_cast<std::ptrdiff_t>(metadata.pieces.size()));
 }
 
 [[nodiscard]]
-bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
-	assert(response.size() >= 8);
+bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id){
 	constexpr auto txn_id_offset = 4;
-
 	const auto received_txn_id = util::extract_integer<std::uint32_t>(response,txn_id_offset);
 
 	return sent_txn_id == received_txn_id;
 }
 
-void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
+void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 		
@@ -142,6 +146,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 		if(const auto announce_response_opt = extract_announce_response(response,socket->txn_id())){
 			emit announce_response_received(announce_response_opt.value());
+		}else{
+			socket->disconnectFromHost();
 		}
 	};
 
@@ -149,6 +155,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 		if(const auto scrape_response_opt = extract_scrape_response(response,socket->txn_id())){
 			emit swarm_metadata_received(scrape_response_opt.value());
+		}else{
+			socket->disconnectFromHost();
 		}
 	};
 
@@ -156,6 +164,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 
 		if(const auto tracker_error_opt = extract_tracker_error(response,socket->txn_id())){
 			emit error_received(tracker_error_opt.value());
+		}else{
+			socket->disconnectFromHost();
 		}
 	};
 
@@ -189,16 +199,17 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 			}
 
 			default : {
-				qInfo() << "tracker replied with invalid action code" << static_cast<std::uint32_t>(tracker_action);
+				socket->disconnectFromHost();
+				return;
 			}
 		}
 	}
 }
 
 [[nodiscard]]
-std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::uint32_t sent_txn_id){
 
-	if(constexpr auto min_response_size = 12;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}
 	
@@ -208,9 +219,9 @@ std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QBy
 }
 
 [[nodiscard]]
-Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id){
 	
-	if(constexpr auto min_response_size = 20;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}
 
@@ -254,9 +265,9 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 }
 
 [[nodiscard]]
-Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::uint32_t sent_txn_id){
 	
-	if(constexpr auto min_response_size = 20;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}
 
@@ -279,9 +290,9 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 }
 
 [[nodiscard]]
-Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept {
+Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id){
 
-	if(constexpr auto min_response_size = 8;response.size() < min_response_size || !verify_txn_id(response,sent_txn_id)){
+	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}
 

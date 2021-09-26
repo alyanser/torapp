@@ -82,18 +82,16 @@ QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size) 
 
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
 result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
-	constexpr auto failure = std::numeric_limits<result_type>::max();
 	constexpr std::ptrdiff_t bytes = sizeof(result_type);
 
 	if(offset + bytes > raw_data.size()){
 		qDebug() << "extraction out of bounds" << raw_data.size() << offset << bytes;
-		return failure;
+		throw std::out_of_range("extraction out of bounds");
 	}
 
 	bool conversion_success = true;
 	result_type result = 0;
 	const auto hex_fmt = raw_data.sliced(offset,bytes).toHex();
-
 	constexpr auto hex_base = 16;
 
 	if constexpr (std::is_same_v<result_type,std::uint32_t>){
@@ -111,14 +109,15 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 	}else if constexpr (std::is_same_v<result_type,std::int8_t> || std::is_same_v<result_type,std::uint8_t>){
 		result = static_cast<result_type>(hex_fmt.toUShort(&conversion_success,hex_base));
 	}else{
-		__builtin_unreachable();
+		throw std::domain_error("invalid type");
 	}
 
 	if(!conversion_success){
 		qDebug() << "conversion failure" << raw_data << offset << bytes;
+		throw std::overflow_error("content could not fit in the specified type");
 	}
 
-	return conversion_success ? result : failure;
+	return result;
 }
 
 struct Download_request {

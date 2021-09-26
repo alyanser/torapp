@@ -34,7 +34,6 @@ public:
          void switch_to_finished_state() noexcept;
 signals:
          void request_satisfied() const;
-         void release_lifetime() const;
          void retry_url_download(const util::Download_request & download_request) const;
          void retry_torrent_download(const bencode::Metadata & metadata) const;
          void delete_file_permanently() const;
@@ -101,15 +100,9 @@ private:
 
 inline std::shared_ptr<Download_tracker> Download_tracker::bind_lifetime() noexcept {
 
-         const auto self_lifetime_connection = connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
+         connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
                   assert(self.use_count() <= 2);
          },Qt::SingleShotConnection);
-
-	assert(self_lifetime_connection);
-
-         connect(this,&Download_tracker::release_lifetime,this,[self_lifetime_connection]{
-                  disconnect(self_lifetime_connection);
-         });
 
 	return shared_from_this();
 }

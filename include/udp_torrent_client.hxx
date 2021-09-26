@@ -15,7 +15,8 @@ public:
 		Connect,
 		Announce,
 		Scrape,
-		Error
+		Error,
+		Invalid
 	}; 
 
 	enum class Download_Event {
@@ -57,15 +58,15 @@ private:
 	static QByteArray craft_scrape_request(const bencode::Metadata & metadata,quint64_be tracker_connection_id) noexcept;
 	QByteArray craft_announce_request(quint64_be tracker_connection_id) const noexcept;
 
-	static connect_optional extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static announce_optional extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static scrape_optional extract_scrape_response(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static error_optional extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
+	static connect_optional extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id);
+	static announce_optional extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id);
+	static scrape_optional extract_scrape_response(const QByteArray & response,std::uint32_t sent_txn_id);
+	static error_optional extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id);
 
-	static bool verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id) noexcept;
-	static QByteArray calculate_info_sha1_hash(const bencode::Metadata & metadata);
+	static bool verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id);
+	static QByteArray calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept;
 
-	void on_socket_ready_read(Udp_socket * socket) noexcept;
+	void on_socket_ready_read(Udp_socket * socket);
 	void configure_default_connections() const noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
@@ -95,7 +96,7 @@ inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() n
 	return shared_from_this();
 }
 
-inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) {
+inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {
 	const auto raw_info_size = static_cast<std::ptrdiff_t>(metadata.raw_info_dict.size());
 	const auto store = QCryptographicHash::hash(QByteArray(metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1);
 
