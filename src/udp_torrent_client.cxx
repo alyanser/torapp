@@ -15,11 +15,11 @@ void Udp_torrent_client::configure_default_connections() const noexcept {
 
 void Udp_torrent_client::send_connect_requests() noexcept {
 
-	if(metadata_.announce_url_list.empty()){
-		metadata_.announce_url_list.emplace_back(metadata_.announce_url);
+	if(torrent_metadata_.announce_url_list.empty()){
+		torrent_metadata_.announce_url_list.emplace_back(torrent_metadata_.announce_url);
 	}
 
-	for(const auto & announce_url : metadata_.announce_url_list){
+	for(const auto & announce_url : torrent_metadata_.announce_url_list){
 		auto socket = std::make_shared<Udp_socket>(QUrl(announce_url.data()),craft_connect_request())->bind_lifetime();
 		
 		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
@@ -33,7 +33,9 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 
 	QByteArray connect_request = []{
 		constexpr quint64_be protocol_constant(0x41727101980);
-		return util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
+		const auto store = util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
+
+		return store;
 	}();
 
 	connect_request += []{
@@ -46,7 +48,6 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
 	}();
 
-	assert(connect_request.size() == 16);
 	return connect_request;
 }
 
@@ -65,7 +66,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	}();
 
 	announce_request += info_sha1_hash_;
-	announce_request += QByteArray::fromHex(peer_id);
+	announce_request += peer_id;
 	announce_request += util::conversion::convert_to_hex(downloaded_,sizeof(downloaded_));
 	announce_request += util::conversion::convert_to_hex(left_,sizeof(left_));
 	announce_request += util::conversion::convert_to_hex(uploaded_,sizeof(uploaded_));
@@ -130,7 +131,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 			const auto connection_id = connection_id_opt.value();
 
 			socket->set_announce_request(craft_announce_request(connection_id));
-			socket->set_scrape_request(craft_scrape_request(metadata_,connection_id));
+			socket->set_scrape_request(craft_scrape_request(torrent_metadata_,connection_id));
 
 			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
 		}

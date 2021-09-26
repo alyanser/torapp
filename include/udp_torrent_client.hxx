@@ -49,7 +49,7 @@ public:
 	void send_connect_requests() noexcept;
 signals:
 	void stop() const;
-	void announce_response_received(const Announce_response & announec_response) const;
+	void announce_response_received(const Announce_response & announce_response) const;
 	void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
 	void error_received(const QByteArray & array) const;
 private:
@@ -70,10 +70,10 @@ private:
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
-	inline static auto peer_id = QByteArray("-TA0001-01234501234567").toHex();
+	inline const static auto peer_id = QByteArray("-TA0001-012345012345").toHex();
 	constexpr static auto hex_base = 16;
 
-	bencode::Metadata metadata_;
+	bencode::Metadata torrent_metadata_;
 	QByteArray info_sha1_hash_;
 	quint64_be downloaded_ {};
 	quint64_be uploaded_ {};
@@ -81,9 +81,9 @@ private:
 	Download_Event event_ {};
 };
 
-inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : metadata_(std::move(torrent_metadata)), 
-	info_sha1_hash_(calculate_info_sha1_hash(metadata_)),
-	left_(static_cast<std::uint64_t>(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size))
+inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : torrent_metadata_(std::move(torrent_metadata)), 
+	info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_)),
+	left_(static_cast<std::uint64_t>(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size))
 {
 	configure_default_connections();
 }
@@ -98,6 +98,7 @@ inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() n
 
 inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) {
 	const auto raw_info_size = static_cast<std::ptrdiff_t>(metadata.raw_info_dict.size());
-	assert(raw_info_size);
-	return QCryptographicHash::hash(QByteArray(metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1);
+	const auto store = QCryptographicHash::hash(QByteArray(metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1);
+
+	return store.toHex();
 }

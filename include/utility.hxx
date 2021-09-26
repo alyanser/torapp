@@ -6,6 +6,7 @@
 #include <QString>
 #include <QUrl>
 #include <string_view>
+#include <QDebug>
 
 namespace util {
 
@@ -63,21 +64,18 @@ QString stringify_bytes(const byte_type bytes_received,const byte_type total_byt
 //todo figure SFINAE for 'q.int_.e' types
 template<typename numeric_type>
 [[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t size_required) noexcept {
+QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size) noexcept {
+	constexpr auto hex_base = 16;
+	const auto hex_size = raw_size * 2;
 
-	const auto hex_fmt = [num,size_required]{
-		constexpr auto hex_base = 16;
-		
-		auto hex_fmt = QByteArray::fromHex(QByteArray::number(num,hex_base));
+	auto hex_fmt = QByteArray::number(num,hex_base);
 
-		while(hex_fmt.size() < size_required){
-			hex_fmt.push_front('\x00');
-		}
+	//todo avoid this
+	while(hex_fmt.size() < hex_size){
+		hex_fmt.push_front('0');
+	}
 
-		return hex_fmt;
-	}();
-
-	return hex_fmt.size() == size_required ? hex_fmt : QByteArray{};
+	return hex_fmt;
 }
 
 } // namespace conversion
