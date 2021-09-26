@@ -20,17 +20,30 @@ public:
 
 	std::shared_ptr<Tcp_socket> bind_lifetime() noexcept;
 
-	void send_packet(const QByteArray & packet);
-	constexpr void set_state(State state) noexcept;
+	constexpr bool handshake_done() const noexcept;
+	constexpr void set_handshake_done(bool handshake_status) noexcept;
+
 	constexpr State state() const noexcept;
+	constexpr void set_state(State state) noexcept;
+
+	QByteArray peer_id() const noexcept;
+	void set_peer_id(QByteArray peer_id) noexcept;
+
+	QByteArray peer_info_hash() const noexcept;
+	void set_peer_info_hash(QByteArray peer_info_hash) noexcept;
+	
 	QUrl peer_url() const noexcept;
+	void send_packet(const QByteArray & packet);
 	void reset_disconnect_timer() noexcept;
 private:
 	void configure_default_connections() noexcept;
 	///
+	QByteArray peer_id_;
+	QByteArray peer_info_hash_;
 	QTimer disconnect_timer_;
 	State state_ = State::Choked;
 	QUrl peer_url_;
+	bool handshake_done_ = false;
 };
 
 inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
@@ -46,6 +59,33 @@ inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
 	},Qt::SingleShotConnection);
 
 	return shared_from_this();
+}
+
+inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
+	peer_id_ = std::move(peer_id);
+}
+
+[[nodiscard]]
+inline QByteArray Tcp_socket::peer_id() const noexcept {
+	return peer_id_;
+}
+
+[[nodiscard]]
+inline QByteArray Tcp_socket::peer_info_hash() const noexcept {
+	return peer_info_hash_;
+}
+
+inline void Tcp_socket::set_peer_info_hash(QByteArray peer_info_hash) noexcept {
+	peer_info_hash_ = std::move(peer_info_hash);
+}
+
+[[nodiscard]]
+constexpr bool Tcp_socket::handshake_done() const noexcept {
+	return handshake_done_;
+}
+
+constexpr void Tcp_socket::set_handshake_done(const bool handshake_status) noexcept {
+	handshake_done_ = handshake_status;
 }
 
 constexpr void Tcp_socket::set_state(const State state) noexcept {

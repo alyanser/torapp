@@ -1,4 +1,5 @@
 #include "udp_socket.hxx"
+#include "utility.hxx"
 
 void Udp_socket::configure_default_connections() noexcept {
 
@@ -49,12 +50,9 @@ void Udp_socket::send_packet(const QByteArray & packet) noexcept {
 	write(raw_fmt);
 
 	constexpr auto txn_id_offset = 12;
-	constexpr auto txn_id_bytes = 4;
-	constexpr auto hex_base = 16;
-
 	bool conversion_success = true;
 	
-	const auto sent_txn_id = raw_fmt.sliced(txn_id_offset,txn_id_bytes).toHex().toUInt(&conversion_success,hex_base);
+	const auto sent_txn_id = util::extract_integer<std::uint32_t>(raw_fmt,txn_id_offset);
 
 	assert(conversion_success);
 	set_txn_id(sent_txn_id);

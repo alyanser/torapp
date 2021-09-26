@@ -27,17 +27,17 @@ public:
 	Peer_wire_client(QByteArray peer_id,QByteArray info_sha1_hash);
 
 	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;
+
 	void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
 	static bool validate_bittorrent_protocol(const QByteArray & response) noexcept;
 signals:
 	void stop() const;
 private:
+	static std::optional<std::pair<QByteArray,QByteArray>> handle_handshake_response(Tcp_socket * socket) noexcept;
 	void extract_peer_response(const QByteArray & peer_response);
 	QByteArray craft_handshake_packet() noexcept;
-	void on_socket_ready_read(Tcp_socket * socket) noexcept;
+	void communicate_with_peer(Tcp_socket * socket) noexcept;
 	///
-	constexpr static auto hex_base = 16;
-
 	QByteArray peer_id_;
 	QByteArray info_sha1_hash_;
 	QByteArray handshake_packet_;
