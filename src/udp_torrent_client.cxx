@@ -8,7 +8,7 @@
 void Udp_torrent_client::configure_default_connections() const noexcept {
 
 	connect(this,&Udp_torrent_client::announce_response_received,[this](const Announce_response & announce_response){
-		auto peer_client = std::make_shared<Peer_wire_client>(id,info_sha1_hash_)->bind_lifetime();
+		auto peer_client = std::make_shared<Peer_wire_client>(torrent_metadata_,id,info_sha1_hash_)->bind_lifetime();
 		assert(!announce_response.peer_urls.empty());
 		peer_client->do_handshake(announce_response.peer_urls);
 	});

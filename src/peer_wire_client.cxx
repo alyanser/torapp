@@ -139,9 +139,11 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
 	constexpr auto message_offset = 5;
 	const auto payload_length = packet_length - 1;
 
-	//? consider throwing if message is packet than excepted
+	auto extract_piece_metadata = [&response,payload_length]{
 
-	auto extract_piece_metadata = [&response]{
+		if(constexpr auto standard_metadata_length = 12;payload_length != standard_metadata_length){
+			throw std::length_error("length of received piece metadata packet is non-standard");
+		}
 
 		const auto piece_index = [&response]{
 			return util::extract_integer<std::uint32_t>(response,message_offset);
@@ -204,8 +206,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
 		}
 
 		case Message_Id::Have : {
-
-			if(constexpr auto standard_have_length = 12;payload_length != standard_have_length){
+			if(constexpr auto standard_have_length = 4;payload_length != standard_have_length){
 				throw std::length_error("length of received 'Have' packet is non-standard");
 			}
 			
@@ -219,11 +220,6 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
 		}
 
 		case Message_Id::Request : {
-
-			if(constexpr auto standard_request_length = 12;payload_length != standard_request_length){
-				throw std::length_error("length of received 'Request' packet is non-standard");
-			}
-
 			const auto [requested_piece_index,requested_piece_offset,requested_piece_length] = extract_piece_metadata();
 			// min should be 16kb and max should be 128kb
 			break;
@@ -253,11 +249,6 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
 		}
 
 		case Message_Id::Cancel : {
-
-			if(constexpr auto standard_cancel_length = 12;payload_length != standard_cancel_length){
-				throw std::length_error("length of received 'Cancel' packet is non-standard");
-			}
-
 			const auto [cancelled_piece_index,cancelled_piece_offset,cancelled_piece_length] = extract_piece_metadata();
 			break;
 		}

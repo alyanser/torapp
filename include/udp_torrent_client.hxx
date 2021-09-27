@@ -49,7 +49,7 @@ public:
 	std::shared_ptr<Udp_torrent_client> bind_lifetime() noexcept;
 	void send_connect_requests() noexcept;
 signals:
-	void stop() const;
+	void shutdown() const;
 	void announce_response_received(const Announce_response & announce_response) const;
 	void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
 	void error_received(const QByteArray & array) const;
@@ -89,9 +89,7 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
 }
 
 inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() noexcept {
-
-	connect(this,&Udp_torrent_client::stop,this,[self = shared_from_this()]{
-	},Qt::SingleShotConnection);
+	connect(this,&Udp_torrent_client::shutdown,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
 
 	return shared_from_this();
 }
