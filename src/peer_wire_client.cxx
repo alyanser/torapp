@@ -129,16 +129,20 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 				}else{
 					if(auto peer_info_opt = verify_handshake_response(socket)){
 						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
-						
+
+						socket->set_handshake_done(true);
 						socket->set_peer_info_hash(std::move(peer_info_hash));
 						socket->set_peer_id(std::move(peer_id));
+
+						{
+							socket->send_packet(keep_alive_message_.data());
+						}
 					}else{
 						socket->disconnectFromHost();
 					}
 				}
 
 			}catch(const std::exception & exception){
-				qDebug() << exception.what();
 				socket->disconnectFromHost();
 			}
 		});
@@ -199,8 +203,6 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 	assert(socket->handshake_done());
 
-	qInfo() << "here after the handshake";
-	
 	const auto response = socket->readAll();
 	
 	const auto message_length = [&response]{
@@ -218,7 +220,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 		return static_cast<Message_Id>(util::extract_integer<std::uint8_t>(response,message_id_offset));
 	}();
 
-	qInfo() << message_id << message_length;
+	qInfo() << message_id;
 
 	constexpr auto message_offset = 5;
 	const auto payload_length = message_length - 1;
@@ -290,6 +292,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 		}
 
 		case Message_Id::Have : {
+			
 			if(constexpr auto standard_have_length = 4;payload_length != standard_have_length){
 				throw std::length_error("length of received 'Have' message is non-standard");
 			}

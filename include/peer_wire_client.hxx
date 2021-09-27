@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QDebug>
+#include <QCryptographicHash>
 
 class Tcp_socket;
 
@@ -37,7 +38,8 @@ private:
 	static QByteArray craft_packet_cancel_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
 	static QByteArray craft_piece_message(std::uint32_t index,std::uint32_t offset,const QByteArray & content) noexcept;
 	static std::uint64_t calculate_total_pieces(const bencode::Metadata & metadata) noexcept;
-	
+	bool verify_hash(std::size_t piece_index,const QByteArray & received_packet) const noexcept;
+
 	void extract_peer_response(const QByteArray & peer_response) const noexcept;
 	QByteArray craft_handshake_message() const noexcept;
 	static void communicate_with_peer(Tcp_socket * socket);
@@ -70,6 +72,14 @@ inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexc
 inline std::uint64_t Peer_wire_client::calculate_total_pieces(const bencode::Metadata & metadata) noexcept {
 	const auto torrent_size = metadata.single_file ? metadata.single_file_size : metadata.multiple_files_size;
 	assert(metadata.piece_length && torrent_size);
-	
 	return static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size) / static_cast<double>(metadata.piece_length)));
+}
+
+[[nodiscard]]
+inline bool Peer_wire_client::verify_hash(const std::size_t piece_index,const QByteArray & received_packet) const noexcept {
+	assert(piece_index < total_pieces_);
+	constexpr auto hash_length = 20;
+	assert(piece_index * hash_length < torrent_metadata_.pieces.size());
+	const auto piece_hash = QByteArray(torrent_metadata_.pieces.substr(piece_index * hash_length,hash_length).data(),hash_length);
+	return piece_hash == QCryptographicHash::hash(received_packet,QCryptographicHash::Sha1);
 }
