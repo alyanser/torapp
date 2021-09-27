@@ -37,20 +37,21 @@ void Udp_torrent_client::send_connect_requests() noexcept {
 
 [[nodiscard]]
 QByteArray Udp_torrent_client::craft_connect_request() noexcept {
+	using util::conversion::convert_to_hex;
 
 	QByteArray connect_request = []{
 		constexpr quint64_be protocol_constant(0x41727101980);
-		return util::conversion::convert_to_hex(protocol_constant,sizeof(protocol_constant));
+		return convert_to_hex(protocol_constant);
 	}();
 
 	connect_request += []{
 		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Connect));
-		return util::conversion::convert_to_hex(connect_action,sizeof(connect_action));
+		return convert_to_hex(connect_action);
 	}();
 
 	connect_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		return util::conversion::convert_to_hex(txn_id,sizeof(txn_id));
+		return convert_to_hex(txn_id);
 	}();
 
 	return connect_request;
@@ -60,43 +61,43 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_connection_id) const noexcept {
 	using util::conversion::convert_to_hex;
 
-	QByteArray announce_request = convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
+	QByteArray announce_request = convert_to_hex(tracker_connection_id);
 
 	announce_request += []{
 		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Announce));
-		return convert_to_hex(connect_action,sizeof(connect_action));
+		return convert_to_hex(connect_action);
 	}();
 
 	announce_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		return convert_to_hex(txn_id,sizeof(txn_id));
+		return convert_to_hex(txn_id);
 	}();
 
 	announce_request += info_sha1_hash_;
 	announce_request += id;
-	announce_request += convert_to_hex(downloaded_,sizeof(downloaded_));
-	announce_request += convert_to_hex(left_,sizeof(left_));
-	announce_request += convert_to_hex(uploaded_,sizeof(uploaded_));
-	announce_request += convert_to_hex(static_cast<std::uint32_t>(event_),sizeof(event_));
+	announce_request += convert_to_hex(downloaded_);
+	announce_request += convert_to_hex(left_);
+	announce_request += convert_to_hex(uploaded_);
+	announce_request += convert_to_hex(static_cast<std::uint32_t>(event_));
 
 	announce_request += []{
 		constexpr auto default_ip_address = 0;
-		return convert_to_hex(default_ip_address,sizeof(default_ip_address));
+		return convert_to_hex(default_ip_address);
 	}();
 
 	announce_request += []{
 		const quint32_be random_key(random_id_range(random_generator));
-		return convert_to_hex(random_key,sizeof(random_key));
+		return convert_to_hex(random_key);
 	}();
 
 	announce_request += []{
 		constexpr qint32_be default_num_want(-1);
-		return convert_to_hex(default_num_want,sizeof(default_num_want));
+		return convert_to_hex(default_num_want);
 	}();
 
 	announce_request += []{
 		constexpr quint32_be default_port(6889);
-		return convert_to_hex(default_port,sizeof(default_port));
+		return convert_to_hex(default_port);
 	}();
 
 	return announce_request;
@@ -105,19 +106,21 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const quint64_be tracker_connection_id) noexcept {
 	using util::conversion::convert_to_hex;
 	
-	auto scrape_request = convert_to_hex(tracker_connection_id,sizeof(tracker_connection_id));
+	auto scrape_request = convert_to_hex(tracker_connection_id);
 
 	scrape_request += []{
 		constexpr quint32_be scrape_action(static_cast<std::uint32_t>(Action_Code::Scrape));
-		return convert_to_hex(scrape_action,sizeof(scrape_action));
+		return convert_to_hex(scrape_action);
 	}();
 
 	scrape_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
-		return convert_to_hex(txn_id,sizeof(txn_id));
+		return convert_to_hex(txn_id);
 	}();
 
-	return scrape_request + QByteArray(metadata.pieces.data(),static_cast<std::ptrdiff_t>(metadata.pieces.size()));
+	scrape_request += QByteArray(metadata.pieces.data(),static_cast<std::ptrdiff_t>(metadata.pieces.size()));
+	
+	return scrape_request;
 }
 
 [[nodiscard]]
@@ -220,7 +223,7 @@ std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QBy
 
 [[nodiscard]]
 Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::uint32_t sent_txn_id){
-	
+
 	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}

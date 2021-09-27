@@ -90,7 +90,6 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
 
 inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() noexcept {
 	connect(this,&Udp_torrent_client::shutdown,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
-
 	return shared_from_this();
 }
 
