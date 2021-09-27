@@ -5,7 +5,7 @@
 #include <QUrl>
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_packet_request_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept {
+QByteArray Peer_wire_client::craft_packet_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
 	using util::conversion::convert_to_hex;
 
 	auto packet_request_message = []{
@@ -21,12 +21,13 @@ QByteArray Peer_wire_client::craft_packet_request_message(std::uint32_t index,st
 	packet_request_message += convert_to_hex(index);
 	packet_request_message += convert_to_hex(offset);
 	packet_request_message += convert_to_hex(length);
+
 	assert(packet_request_message.size() == 34);
 	return packet_request_message;
 }
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_packet_cancel_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept {
+QByteArray Peer_wire_client::craft_packet_cancel_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
 	//todo exactly the same as request message except the id 
 	using util::conversion::convert_to_hex;
 
@@ -43,6 +44,7 @@ QByteArray Peer_wire_client::craft_packet_cancel_message(std::uint32_t index,std
 	packet_cancel_message += convert_to_hex(index);
 	packet_cancel_message += convert_to_hex(offset);
 	packet_cancel_message += convert_to_hex(length);
+
 	assert(packet_cancel_message.size() == 34);
 	return packet_cancel_message;
 }
@@ -62,6 +64,7 @@ QByteArray Peer_wire_client::craft_packet_have_message(const std::uint32_t piece
 	}();
 
 	packet_have_message += convert_to_hex(piece_index);
+	
 	assert(packet_have_message.size() == 18);
 	return packet_have_message;
 }
@@ -87,7 +90,8 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 	return handshake_message;
 }
 
-inline QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t index,const std::uint32_t offset,const QByteArray & content) noexcept {
+[[nodiscard]]
+QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t index,const std::uint32_t offset,const QByteArray & content) noexcept {
 	using util::conversion::convert_to_hex;
 
 	auto piece_message = [&content]{
@@ -117,15 +121,15 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 			socket->send_packet(handshake_message_);
 		});
 
-		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
+		connect(socket.get(),&Tcp_socket::readyRead,this,[socket = socket.get()]{
 
 			try {
 				if(socket->handshake_done()){
 					communicate_with_peer(socket);
 				}else{
-					if(auto peer_info_opt = handle_handshake_response(socket)){
+					if(auto peer_info_opt = verify_handshake_response(socket)){
 						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
-						//todo add the counter and increment
+						
 						socket->set_peer_info_hash(std::move(peer_info_hash));
 						socket->set_peer_id(std::move(peer_id));
 					}else{
@@ -141,25 +145,28 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 	}
 }
 
-std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handshake_response(Tcp_socket * const socket){
+[[nodiscard]]
+std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handshake_response(Tcp_socket * const socket){
 	const auto response = socket->readAll();
-	
-	const auto protocol_label_len = [&response]{
-		constexpr auto protocol_label_len_offset = 0;
-		return util::extract_integer<std::uint8_t>(response,protocol_label_len_offset);
-	}();
 
-	if(constexpr auto expected_protocol_label_len = 19;protocol_label_len != expected_protocol_label_len){
-		return {};
-	}
+	{
+		const auto protocol_label_len = [&response]{
+			constexpr auto protocol_label_len_offset = 0;
+			return util::extract_integer<std::uint8_t>(response,protocol_label_len_offset);
+		}();
 
-	const auto protocol_label = [&response,protocol_label_len]{
-		constexpr auto protocol_label_offset = 1;
-		return response.sliced(protocol_label_offset,protocol_label_len);
-	}();
+		if(constexpr auto expected_protocol_label_len = 19;protocol_label_len != expected_protocol_label_len){
+			return {};
+		}
 
-	if(constexpr std::string_view expected_protocol_label("BitTorrent protocol");protocol_label.data() != expected_protocol_label){
-		return {};
+		const auto protocol_label = [response,protocol_label_len]{
+			constexpr auto protocol_label_offset = 1;
+			return response.sliced(protocol_label_offset,protocol_label_len);
+		}();
+
+		if(constexpr std::string_view expected_protocol("BitTorrent protocol");protocol_label.data() != expected_protocol){
+			return {};
+		}
 	}
 
 	{
@@ -173,10 +180,6 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handsha
 		}
 	}
 
-	if(constexpr auto expected_response_size = 68;response.size() != expected_response_size){
-		return {};
-	}
-
 	auto peer_info_hash = [&response]{
 		constexpr auto sha1_hash_offset = 28;
 		constexpr auto sha1_hash_length = 20;
@@ -187,14 +190,13 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::handle_handsha
 	auto peer_id = [&response]{
 		constexpr auto peer_id_offset = 48;
 		constexpr auto peer_id_length = 20;
-
 		return response.sliced(peer_id_offset,peer_id_length).toHex();
 	}();
 
 	return std::make_pair(std::move(peer_info_hash),std::move(peer_id));
 }
 
-void Peer_wire_client::communicate_with_peer(Tcp_socket * socket) const {
+void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 	assert(socket->handshake_done());
 
 	qInfo() << "here after the handshake";

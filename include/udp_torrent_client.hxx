@@ -75,6 +75,7 @@ private:
 
 	bencode::Metadata torrent_metadata_;
 	QByteArray info_sha1_hash_;
+	std::uint64_t total_ = 0;
 	quint64_be downloaded_ {};
 	quint64_be uploaded_ {};
 	quint64_be left_ {};
@@ -83,7 +84,7 @@ private:
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : torrent_metadata_(std::move(torrent_metadata)), 
 	info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_)),
-	left_(static_cast<std::uint64_t>(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size))
+	total_(static_cast<std::uint64_t>(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)), left_(total_)
 {
 	configure_default_connections();
 }

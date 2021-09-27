@@ -55,7 +55,6 @@ inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
 
 inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
 	connect(this,&QTcpSocket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
-
 	return shared_from_this();
 }
 
@@ -64,8 +63,7 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
-	const auto raw_fmt = QByteArray::fromHex(packet);
-	write(raw_fmt.data(),raw_fmt.size());
+	write(QByteArray::fromHex(packet));
 }
 
 [[nodiscard]]

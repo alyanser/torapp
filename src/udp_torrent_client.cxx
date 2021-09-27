@@ -249,6 +249,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 		constexpr auto peers_ip_offset = 20;
 		constexpr auto peer_url_bytes = 6;
 
+		//! using response.size() might be invalid
 		for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_bytes){
 			constexpr auto ip_bytes = 4;
 			
