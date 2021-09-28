@@ -108,34 +108,34 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
 
 } // namespace conversion
 
-template<typename integer_type,typename = std::enable_if_t<std::is_arithmetic_v<integer_type>>>
+template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
 [[nodiscard]]
-integer_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
-	constexpr auto bytes = static_cast<std::ptrdiff_t>(sizeof(integer_type));
+result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
+	constexpr auto bytes = static_cast<std::ptrdiff_t>(sizeof(result_type));
 
 	if(offset + bytes > raw_data.size()){
 		throw std::out_of_range("extraction out of bounds");
 	}
 
 	bool conversion_success = true;
-	integer_type integer = 0;
+	result_type resultant_integer = 0;
 	const auto hex_fmt = raw_data.sliced(offset,bytes).toHex();
 	constexpr auto hex_base = 16;
 
-	if constexpr (std::is_same_v<integer_type,std::uint32_t>){
-		integer = hex_fmt.toUInt(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::int32_t>){
-		integer = hex_fmt.toInt(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::uint64_t>){
-		integer = hex_fmt.toULongLong(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::int64_t>){
-		integer = hex_fmt.toLongLong(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::uint16_t>){
-		integer = hex_fmt.toUShort(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::int16_t>){
-		integer = hex_fmt.toShort(&conversion_success,hex_base);
-	}else if constexpr (std::is_same_v<integer_type,std::int8_t> || std::is_same_v<integer_type,std::uint8_t>){
-		integer = static_cast<integer_type>(hex_fmt.toUShort(&conversion_success,hex_base));
+	if constexpr (std::is_same_v<result_type,std::uint32_t>){
+		resultant_integer = hex_fmt.toUInt(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::int32_t>){
+		resultant_integer = hex_fmt.toInt(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::uint64_t>){
+		resultant_integer = hex_fmt.toULongLong(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::int64_t>){
+		resultant_integer = hex_fmt.toLongLong(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::uint16_t>){
+		resultant_integer = hex_fmt.toUShort(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::int16_t>){
+		resultant_integer = hex_fmt.toShort(&conversion_success,hex_base);
+	}else if constexpr (std::is_same_v<result_type,std::int8_t> || std::is_same_v<result_type,std::uint8_t>){
+		resultant_integer = static_cast<result_type>(hex_fmt.toUShort(&conversion_success,hex_base));
 	}else{
 		throw std::domain_error("invalid type");
 	}
@@ -144,7 +144,7 @@ integer_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t of
 		throw std::overflow_error("content could not fit in the specified type");
 	}
 
-	return integer;
+	return resultant_integer;
 }
 
 struct Download_request {

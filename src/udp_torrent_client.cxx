@@ -103,6 +103,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	return announce_request;
 }
 
+[[nodiscard]]
 QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const quint64_be tracker_connection_id) noexcept {
 	using util::conversion::convert_to_hex;
 	
@@ -127,7 +128,6 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
 bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t sent_txn_id){
 	constexpr auto txn_id_offset = 4;
 	const auto received_txn_id = util::extract_integer<std::uint32_t>(response,txn_id_offset);
-
 	return sent_txn_id == received_txn_id;
 }
 
@@ -135,20 +135,17 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 
-		if(const auto connection_id_opt = extract_connect_response(tracker_response,socket->txn_id())){
-			const auto connection_id = connection_id_opt.value();
-
-			socket->set_announce_request(craft_announce_request(connection_id));
-			socket->set_scrape_request(craft_scrape_request(torrent_metadata_,connection_id));
-
+		if(const auto connection_id = extract_connect_response(tracker_response,socket->txn_id())){
+			socket->set_announce_request(craft_announce_request(*connection_id));
+			socket->set_scrape_request(craft_scrape_request(torrent_metadata_,*connection_id));
 			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
 		}
 	};
 
 	auto on_tracker_action_announce = [this,socket](const QByteArray & response){
 
-		if(const auto announce_response_opt = extract_announce_response(response,socket->txn_id())){
-			emit announce_response_received(announce_response_opt.value());
+		if(const auto announce_response = extract_announce_response(response,socket->txn_id())){
+			emit announce_response_received(*announce_response);
 		}else{
 			socket->disconnectFromHost();
 		}
@@ -156,8 +153,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 	auto on_tracker_action_scrape = [this,socket](const QByteArray & response){
 
-		if(const auto scrape_response_opt = extract_scrape_response(response,socket->txn_id())){
-			emit swarm_metadata_received(scrape_response_opt.value());
+		if(const auto scrape_response = extract_scrape_response(response,socket->txn_id())){
+			emit swarm_metadata_received(*scrape_response);
 		}else{
 			socket->disconnectFromHost();
 		}
@@ -165,8 +162,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 	auto on_tracker_action_error = [this,socket](const QByteArray & response){
 
-		if(const auto tracker_error_opt = extract_tracker_error(response,socket->txn_id())){
-			emit error_received(tracker_error_opt.value());
+		if(const auto tracker_error = extract_tracker_error(response,socket->txn_id())){
+			emit error_received(*tracker_error);
 		}else{
 			socket->disconnectFromHost();
 		}
@@ -203,7 +200,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 			default : {
 				socket->disconnectFromHost();
-				return;
 			}
 		}
 	}
@@ -217,7 +213,6 @@ std::optional<quint64_be> Udp_torrent_client::extract_connect_response(const QBy
 	}
 	
 	constexpr auto connection_id_offset = 8;
-
 	return quint64_be(util::extract_integer<std::uint64_t>(response,connection_id_offset));
 }
 
@@ -249,7 +244,6 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 		constexpr auto peers_ip_offset = 20;
 		constexpr auto peer_url_bytes = 6;
 
-		//! using response.size() might be invalid
 		for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_bytes){
 			constexpr auto ip_bytes = 4;
 			
@@ -294,13 +288,12 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 }
 
 [[nodiscard]]
-Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,std::uint32_t sent_txn_id){
+Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,const std::uint32_t sent_txn_id){
 
 	if(!verify_txn_id(response,sent_txn_id)){
 		return {};
 	}
 
 	constexpr auto error_offset = 8;
-
 	return response.sliced(error_offset);
 }

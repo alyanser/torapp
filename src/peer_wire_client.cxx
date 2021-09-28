@@ -3,6 +3,7 @@
 
 #include <QHostAddress>
 #include <QUrl>
+#include <map>
 
 [[nodiscard]]
 QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
@@ -148,14 +149,15 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 				if(socket->handshake_done()){
 					communicate_with_peer(socket);
 				}else{
-					if(auto peer_info_opt = verify_handshake_response(socket)){
-						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
+					if(auto peer_info = verify_handshake_response(socket)){
+						//todo add peer id check when supporting TCP tracker
+						auto & [peer_info_hash,peer_id] = *peer_info;
 
 						if(info_sha1_hash_ == peer_info_hash){
 							socket->set_handshake_done(true);
 							socket->set_peer_id(std::move(peer_id));
 
-							if(received_pieces_){
+							if(downloaded_pieces_count_){
 								socket->send_packet(craft_bitfield_message(bitfield_));
 							}
 
@@ -231,11 +233,11 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 	auto response_opt = socket->receive_packet();
 
-	if(!response_opt.has_value()){
+	if(!response_opt){
 		return;
 	}
 
-	auto & [response_length,response] = response_opt.value();
+	auto & [response_length,response] = *response_opt;
 
 	assert(response_length && response_length == response.size());
 	
@@ -295,8 +297,8 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			if(!bitfield_[verified_piece_index]){
 				qInfo() << "requesting piece #" << verified_piece_index;
 				socket->send_packet(interested_message.data());
-				// socket->send_packet(unchoke_message.data());
-				socket->send_packet(craft_request_message(verified_piece_index,0,100));
+				socket->send_packet(unchoke_message.data());
+				// socket->send_packet(craft_request_message(verified_piece_index,0,1 << 14));
 			}
 
 			break;

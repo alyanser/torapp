@@ -52,7 +52,7 @@ private:
 	constexpr static std::string_view interested_message {"0000000102"};
 	constexpr static std::string_view uninterested_message {"0000000103"};
 	
-	std::uint64_t received_pieces_ = 0;
+	std::uint64_t downloaded_pieces_count_ = 0;
 
 	bencode::Metadata torrent_metadata_;
 	QByteArray id_;
@@ -86,7 +86,7 @@ inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexc
 inline std::size_t Peer_wire_client::calculate_total_pieces(const bencode::Metadata & metadata) noexcept {
 	const auto torrent_size = metadata.single_file ? metadata.single_file_size : metadata.multiple_files_size;
 	assert(metadata.piece_length && torrent_size);
-
+	
 	return static_cast<std::size_t>(std::ceil(static_cast<double>(torrent_size) / static_cast<double>(metadata.piece_length)));
 }
 

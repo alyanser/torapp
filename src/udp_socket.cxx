@@ -5,7 +5,6 @@ void Udp_socket::configure_default_connections() noexcept {
 
 	connect(this,&Udp_socket::connected,[this]{
 		send_initial_request(connect_request_,State::Connect);
-		connection_timer_.start(get_timeout());
 	});
 	
 	connect(this,&Udp_socket::readyRead,[&connection_timer_ = connection_timer_]{

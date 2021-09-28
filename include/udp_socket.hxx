@@ -56,10 +56,7 @@ inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request) : con
 }
 
 inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
-
-	connect(this,&Udp_socket::disconnected,this,[self = shared_from_this()]{
-	},Qt::SingleShotConnection);
-
+	connect(this,&Udp_socket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
 	return shared_from_this();
 }
 
@@ -141,9 +138,6 @@ inline void Udp_socket::set_scrape_request(QByteArray scrape_request) noexcept {
 constexpr std::chrono::seconds Udp_socket::get_timeout() const noexcept {
 	constexpr auto protocol_constant = 15;
 	const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
-
-	[[maybe_unused]] constexpr std::chrono::seconds max_timeout_seconds(3840);
-	assert(timeout_seconds <= max_timeout_seconds);
-
+	assert(timeout_seconds <= std::chrono::seconds{3840});
 	return timeout_seconds;
 }
