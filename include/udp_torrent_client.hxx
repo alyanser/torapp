@@ -48,7 +48,7 @@ public:
 	explicit Udp_torrent_client(bencode::Metadata torrent_metadata);
 
 	std::shared_ptr<Udp_torrent_client> bind_lifetime() noexcept;
-	void send_connect_requests() noexcept;
+	void send_connect_request() noexcept;
 signals:
 	void shutdown() const;
 	void announce_response_received(const Announce_response & announce_response) const;

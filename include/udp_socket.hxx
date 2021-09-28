@@ -3,6 +3,7 @@
 #include <QUdpSocket>
 #include <QTimer>
 #include <QUrl>
+#include <iostream>
 
 class Udp_socket : public QUdpSocket, public std::enable_shared_from_this<Udp_socket> {
 	Q_OBJECT
@@ -11,7 +12,7 @@ public :
 		Connect,
 		Scrape,
 		Announce
-	};
+	}; Q_ENUM(State);
 
 	Udp_socket(const QUrl & url,QByteArray connect_request);
 
@@ -28,6 +29,8 @@ public :
 	const QByteArray & connect_request() const noexcept;
 	const QByteArray & announce_request() const noexcept;
 	const QByteArray & scrape_request() const noexcept;
+
+	void start_interval_timer(std::chrono::seconds interval_seconds) noexcept;
 
 	void send_initial_request(const QByteArray & request,State new_state) noexcept;
 private:
@@ -107,6 +110,10 @@ inline const QByteArray & Udp_socket::announce_request() const noexcept {
 [[nodiscard]]
 inline const QByteArray & Udp_socket::scrape_request() const noexcept {
 	return scrape_request_;
+}
+
+inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval_seconds) noexcept {
+	interval_timer_.start(interval_seconds);
 }
 
 inline void Udp_socket::send_initial_request(const QByteArray & request,const State new_state) noexcept {
