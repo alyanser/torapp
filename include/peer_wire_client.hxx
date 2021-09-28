@@ -2,10 +2,10 @@
 
 #include "utility.hxx"
 
-#include <QObject>
-#include <QDebug>
 #include <QCryptographicHash>
 #include <QBitArray>
+#include <QObject>
+#include <QSet>
 
 class Tcp_socket;
 
@@ -51,8 +51,9 @@ private:
 	constexpr static std::string_view unchoke_message {"0000000101"};
 	constexpr static std::string_view interested_message {"0000000102"};
 	constexpr static std::string_view uninterested_message {"0000000103"};
-	
+
 	std::uint64_t downloaded_pieces_count_ = 0;
+	mutable QSet<QUrl> active_peers_;
 
 	bencode::Metadata torrent_metadata_;
 	QByteArray id_;

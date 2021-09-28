@@ -38,15 +38,17 @@ private:
 	void send_packet(const QByteArray & packet) noexcept;
 	void reset_time_specs() noexcept;
 	///
-	QByteArray connect_request_;
 	QByteArray announce_request_;
 	QByteArray scrape_request_;
 	QTimer connection_timer_;
+	QTimer interval_timer_;
 	std::chrono::seconds interval_time_ {};
 	State state_ = State::Connect;
 	std::uint32_t txn_id_ = 0;
 	std::uint8_t timeout_factor_ = 0;
 	bool connection_id_valid_ = true;
+
+	QByteArray connect_request_;
 };
 
 inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request) : connect_request_(std::move(connect_request)){
@@ -83,7 +85,7 @@ constexpr std::uint32_t Udp_socket::txn_id() const noexcept {
 	return txn_id_;
 }
 
-constexpr void Udp_socket::set_interval_time(std::chrono::seconds interval_time) noexcept {
+constexpr void Udp_socket::set_interval_time(const std::chrono::seconds interval_time) noexcept {
 	interval_time_ = interval_time;
 }
 

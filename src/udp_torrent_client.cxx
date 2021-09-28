@@ -7,10 +7,9 @@
 
 void Udp_torrent_client::configure_default_connections() const noexcept {
 
-	connect(this,&Udp_torrent_client::announce_response_received,[this](const Announce_response & announce_response){
-		auto peer_client = std::make_shared<Peer_wire_client>(torrent_metadata_,id,info_sha1_hash_)->bind_lifetime();
+	connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_](const Announce_response & announce_response){
 		assert(!announce_response.peer_urls.empty());
-		peer_client->do_handshake(announce_response.peer_urls);
+		peer_client_.do_handshake(announce_response.peer_urls);
 	});
 }
 
@@ -136,6 +135,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 
 		if(const auto connection_id = extract_connect_response(tracker_response,socket->txn_id())){
+			qInfo() << "got connect response";
 			socket->set_announce_request(craft_announce_request(*connection_id));
 			socket->set_scrape_request(craft_scrape_request(torrent_metadata_,*connection_id));
 			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
@@ -145,6 +145,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 	auto on_tracker_action_announce = [this,socket](const QByteArray & response){
 
 		if(const auto announce_response = extract_announce_response(response,socket->txn_id())){
+			qInfo() << "got announce response";
 			emit announce_response_received(*announce_response);
 		}else{
 			socket->disconnectFromHost();

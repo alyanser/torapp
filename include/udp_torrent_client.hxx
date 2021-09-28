@@ -2,6 +2,7 @@
 
 #include "udp_socket.hxx"
 #include "utility.hxx"
+#include "peer_wire_client.hxx"
 
 #include <QCryptographicHash>
 #include <QObject>
@@ -79,6 +80,7 @@ private:
 
 	bencode::Metadata torrent_metadata_;
 	QByteArray info_sha1_hash_;
+	Peer_wire_client peer_client_;
 	std::uint64_t total_ = 0;
 	quint64_be left_ {};
 };
@@ -86,6 +88,7 @@ private:
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : 
 	torrent_metadata_(std::move(torrent_metadata)),
 	info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_)),
+	peer_client_(torrent_metadata_,id,info_sha1_hash_),
 	total_(static_cast<std::uint64_t>(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)),
 	left_(total_)
 {

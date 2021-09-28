@@ -11,7 +11,13 @@ void Udp_socket::configure_default_connections() noexcept {
 		connection_timer_.stop();
 	});
 
-	connect(&connection_timer_,&QTimer::timeout,[this]{
+	interval_timer_.callOnTimeout([this]{
+		qInfo() << "interval timer timeout out" << interval_timer_.intervalAsDuration().count();
+		send_request(announce_request_);
+	});
+
+	connection_timer_.callOnTimeout([this]{
+		qInfo() << "connection timer timed out";
 		constexpr auto protocol_max_factor_limit = 8;
 
 		if(++timeout_factor_ <= protocol_max_factor_limit){

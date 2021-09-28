@@ -137,10 +137,23 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
 
 	for(const auto & peer_url : peer_urls){
+
+		if(active_peers_.contains(peer_url)){
+			continue;
+		}
+
+		active_peers_.insert(peer_url);
+		
 		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
 
 		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
 			socket->send_packet(handshake_message_);
+		});
+
+		connect(socket.get(),&Tcp_socket::destroyed,this,[peer_url,&active_peers_ = active_peers_]{
+			const auto peer_itr = active_peers_.find(peer_url);
+			assert(peer_itr != active_peers_.end());
+			active_peers_.erase(peer_itr);
 		});
 
 		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
@@ -318,8 +331,8 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 			for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
 
-				if(!bitfield_[bit_idx]){
-					// socket->send_packet(craft_request_message(bit_idx,0,100));
+				if(!bitfield_[bit_idx] && !socket->peer_choked()){
+					socket->send_packet(craft_request_message(bit_idx,0,100));
 				}
 			}
 			
