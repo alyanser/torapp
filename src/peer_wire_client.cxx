@@ -87,6 +87,8 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 
 	handshake_message += info_sha1_hash_ + id_;
 
+	assert(handshake_message.size() == 136);
+
 	return handshake_message;
 }
 
@@ -174,10 +176,11 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 
 [[nodiscard]]
 std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handshake_response(Tcp_socket * const socket){
-	const auto response = socket->readAll();
+	constexpr auto expected_response_length = 68;
+	const auto response = socket->read(expected_response_length);
 
 	{
-		const auto protocol_label_len = [&response]{
+		const auto protocol_label_len = [&response = response]{
 			constexpr auto protocol_label_len_offset = 0;
 			return util::extract_integer<std::uint8_t>(response,protocol_label_len_offset);
 		}();
@@ -186,7 +189,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 			return {};
 		}
 
-		const auto protocol_label = [response,protocol_label_len]{
+		const auto protocol_label = [&response = response,protocol_label_len]{
 			constexpr auto protocol_label_offset = 1;
 			return response.sliced(protocol_label_offset,protocol_label_len);
 		}();
@@ -197,7 +200,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 	}
 
 	{
-		const auto reserved_bytes_content = [&response]{
+		const auto reserved_bytes_content = [&response = response]{
 			constexpr auto reserved_bytes_offset = 20;
 			return util::extract_integer<std::uint32_t>(response,reserved_bytes_offset);
 		}();
@@ -207,14 +210,14 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 		}
 	}
 
-	auto peer_info_hash = [&response]{
+	auto peer_info_hash = [&response = response]{
 		constexpr auto sha1_hash_offset = 28;
 		constexpr auto sha1_hash_length = 20;
 
 		return response.sliced(sha1_hash_offset,sha1_hash_length).toHex();
 	}();
 
-	auto peer_id = [&response]{
+	auto peer_id = [&response = response]{
 		constexpr auto peer_id_offset = 48;
 		constexpr auto peer_id_length = 20;
 		return response.sliced(peer_id_offset,peer_id_length).toHex();
@@ -225,45 +228,44 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	assert(socket->handshake_done());
-	const auto response = socket->readAll();
-	
-	const auto message_length = [&response]{
-		constexpr auto length_offset = 0;
-		return util::extract_integer<std::uint32_t>(response,length_offset);
-	}();
-	
-	if(!message_length){ // keep-alive message
-		socket->reset_disconnect_timer();
+
+	auto response_opt = socket->receive_packet();
+
+	if(!response_opt.has_value()){
 		return;
 	}
 
-	const auto message_id = [&response]{
-		constexpr auto message_id_offset = 4;
+	auto & [response_length,response] = response_opt.value();
+
+	assert(response_length && response_length == response.size());
+	
+	const auto message_id = [&response = response]{
+		constexpr auto message_id_offset = 0;
 		return static_cast<Message_Id>(util::extract_integer<std::uint8_t>(response,message_id_offset));
 	}();
 
 	qInfo() << message_id;
 
-	constexpr auto message_offset = 5;
-	const auto payload_length = message_length - 1;
+	constexpr auto message_offset = 1;
+	const auto payload_length = response_length - 1;
 
-	auto extract_piece_metadata = [&response,payload_length]{
+	auto extract_piece_metadata = [&response = response,payload_length]{
 
 		if(constexpr auto standard_metadata_length = 12;payload_length != standard_metadata_length){
 			throw std::length_error("length of received piece metadata message is non-standard");
 		}
 
-		const auto piece_index = [&response]{
+		const auto piece_index = [&response = response]{
 			return util::extract_integer<std::uint32_t>(response,message_offset);
 		}();
 
-		const auto piece_offset = [&response]{
-			constexpr auto piece_begin_offset = 9;
+		const auto piece_offset = [&response = response]{
+			constexpr auto piece_begin_offset = 5;
 			return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
 		}();
 
-		const auto piece_length = [&response]{
-			constexpr auto piece_length_offset = 13;
+		const auto piece_length = [&response = response]{
+			constexpr auto piece_length_offset = 9;
 			return util::extract_integer<std::uint32_t>(response,piece_length_offset);
 		}();
 
@@ -275,7 +277,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	switch(message_id){
 		case Message_Id::Choke : {
 
-			if(message_length != status_modifier_length){
+			if(response_length != status_modifier_length){
 				throw std::length_error("length of received 'Choke' message is non-standard");
 			}
 			
@@ -285,7 +287,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Unchoke : {
 
-			if(message_length != status_modifier_length){
+			if(response_length != status_modifier_length){
 				throw std::length_error("length of received 'Unchoke' message is non-standard");
 			}
 
@@ -295,7 +297,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Interested : {
 
-			if(message_length != status_modifier_length){
+			if(response_length != status_modifier_length){
 				throw std::length_error("length of received 'Interested' message is non-standard");
 			}
 
@@ -305,7 +307,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Uninterested : {
 
-			if(message_length != status_modifier_length){
+			if(response_length != status_modifier_length){
 				throw std::length_error("length of received 'Uninterested' message is non-standard");
 			}
 
@@ -323,7 +325,9 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 			if(!bitfield_[verified_piece_index]){
 				qInfo() << "requesting piece #" << verified_piece_index;
-				socket->send_packet(craft_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
+				socket->send_packet(unchoke_message.data());
+				socket->send_packet(interested_message.data());
+				// socket->send_packet(craft_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
 			}
 
 			break;
@@ -334,16 +338,17 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			if(payload_length * 8 != bitfield_.size()){
 				socket->disconnectFromHost();
 			}else{
-				const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset));
+				const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
+
+				qInfo() << peer_bitfield.size() << bitfield_.size();
 
 				for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
 
 					if(!bitfield_[bit_idx]){
 						//todo figure test
-						qInfo() << "requesting piece" << bit_idx;
 						socket->send_packet(unchoke_message.data());
 						socket->send_packet(interested_message.data());
-						socket->send_packet(craft_request_message(bit_idx,0,torrent_metadata_.piece_length));
+						// socket->send_packet(craft_request_message(bit_idx,0,torrent_metadata_.piece_length));
 					}
 				}
 			}
@@ -363,17 +368,17 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 				throw std::length_error("length of received 'Piece' message is non-standard");
 			}
 
-			const auto received_piece_index = [&response]{
+			const auto received_piece_index = [&response = response]{
 				return util::extract_integer<std::uint32_t>(response,message_offset);
 			}();
 
-			const auto received_piece_offset = [&response]{
-				constexpr auto piece_begin_offset = 9;
+			const auto received_piece_offset = [&response = response]{
+				constexpr auto piece_begin_offset = 5;
 				return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
 			}();
 
-			const auto received_piece_content = [&response]{
-				constexpr auto piece_content_offset = 13;
+			const auto received_piece_content = [&response = response]{
+				constexpr auto piece_content_offset = 9;
 				return response.sliced(piece_content_offset);
 			}();
 

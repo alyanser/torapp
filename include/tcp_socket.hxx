@@ -4,6 +4,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
+#include "utility.hxx"
 
 class Tcp_socket : public QTcpSocket, public std::enable_shared_from_this<Tcp_socket> {
 	Q_OBJECT
@@ -24,6 +25,8 @@ public:
 	constexpr void set_peer_interested(bool peer_interested) noexcept;
 	constexpr bool am_interested() const noexcept;
 	constexpr bool peer_interested() const noexcept;
+
+	std::optional<std::pair<std::uint32_t,QByteArray>> receive_packet();
 
 	QByteArray peer_id() const noexcept;
 	void set_peer_id(QByteArray peer_id) noexcept;
@@ -85,6 +88,28 @@ constexpr bool Tcp_socket::am_interested() const noexcept {
 [[nodiscard]]
 constexpr bool Tcp_socket::peer_interested() const noexcept {
 	return peer_interested_;
+}
+
+inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
+	assert(handshake_done_);
+
+	const auto message_length = [this]{
+		const auto length_buffer = read(sizeof(std::uint32_t));
+		constexpr auto length_offset = 0;
+		return util::extract_integer<std::uint32_t>(length_buffer,length_offset);
+	}();
+
+	if(!message_length){ // keep alive packet
+		reset_disconnect_timer();
+		return {};
+	}
+
+	if(auto message = read(message_length);message.size() == message_length){
+		assert(!message.isEmpty());
+		return std::make_pair(message_length,std::move(message));
+	}
+
+	return {};
 }
 
 constexpr void Tcp_socket::set_peer_choked(bool peer_choked) noexcept {
