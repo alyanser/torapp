@@ -134,7 +134,7 @@ bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::uint32_t
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
-		
+
 		if(const auto connection_id_opt = extract_connect_response(tracker_response,socket->txn_id())){
 			const auto connection_id = connection_id_opt.value();
 

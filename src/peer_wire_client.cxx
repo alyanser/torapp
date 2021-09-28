@@ -121,7 +121,7 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 			socket->send_packet(handshake_message_);
 		});
 
-		connect(socket.get(),&Tcp_socket::readyRead,this,[socket = socket.get()]{
+		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
 
 			try {
 				if(socket->handshake_done()){
@@ -130,19 +130,22 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 					if(auto peer_info_opt = verify_handshake_response(socket)){
 						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
 
+						if(info_sha1_hash_ != peer_info_hash){
+							socket->disconnectFromHost();
+						}
+
 						socket->set_handshake_done(true);
-						socket->set_peer_info_hash(std::move(peer_info_hash));
 						socket->set_peer_id(std::move(peer_id));
 
-						{
-							socket->send_packet(keep_alive_message_.data());
-						}
+						// todo make the bitarray packet and send if it's not all null
+						// socket->send_packet(bit_field_);
 					}else{
 						socket->disconnectFromHost();
 					}
 				}
 
 			}catch(const std::exception & exception){
+				qDebug() << exception.what();
 				socket->disconnectFromHost();
 			}
 		});
@@ -200,7 +203,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 	return std::make_pair(std::move(peer_info_hash),std::move(peer_id));
 }
 
-void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
+void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	assert(socket->handshake_done());
 
 	const auto response = socket->readAll();
@@ -245,7 +248,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 			return util::extract_integer<std::uint32_t>(response,piece_length_offset);
 		}();
 
-		return std::tuple{piece_index,piece_offset,piece_length};
+		return std::make_tuple(piece_index,piece_offset,piece_length);
 	};
 
 	constexpr auto status_modifier_length = 1;
@@ -257,7 +260,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 				throw std::length_error("length of received 'Choke' message is non-standard");
 			}
 			
-			socket->set_state(Tcp_socket::State::Choked);
+			socket->set_peer_choked(true);
 			break;
 		}
 
@@ -267,7 +270,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 				throw std::length_error("length of received 'Unchoke' message is non-standard");
 			}
 
-			socket->set_state(Tcp_socket::State::Unchoked);
+			socket->set_peer_choked(false);
 			break;
 		}
 
@@ -277,7 +280,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 				throw std::length_error("length of received 'Interested' message is non-standard");
 			}
 
-			socket->set_state(Tcp_socket::State::Interested);
+			socket->set_peer_interested(true);
 			break;
 		}
 
@@ -287,22 +290,39 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 				throw std::length_error("length of received 'Uninterested' message is non-standard");
 			}
 
-			socket->set_state(Tcp_socket::State::Uninterested);
+			socket->set_peer_interested(false);
 			break;
 		}
 
 		case Message_Id::Have : {
-			
+
 			if(constexpr auto standard_have_length = 4;payload_length != standard_have_length){
 				throw std::length_error("length of received 'Have' message is non-standard");
 			}
 			
 			const auto verified_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
+
+			if(!bitfield_[verified_piece_index]){
+				qInfo() << "requesting piece #" << verified_piece_index;
+				socket->send_packet(craft_packet_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
+			}
+
 			break;
 		}
 
 		case Message_Id::Bitfield : {
-			//todo bitarray
+
+			qInfo() << payload_length << bitfield_size_;
+
+			if(payload_length != bitfield_size_){
+				socket->disconnectFromHost();
+			}else{
+				qInfo() << "valid bitfield";
+				const auto bitfield = response.sliced(message_offset);
+				qInfo() << bitfield;
+				// extract it
+			}
+
 			break;
 		}
 
