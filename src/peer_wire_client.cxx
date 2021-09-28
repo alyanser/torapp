@@ -155,9 +155,9 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 							socket->set_handshake_done(true);
 							socket->set_peer_id(std::move(peer_id));
 
-							// if(received_pieces_){
+							if(received_pieces_){
 								socket->send_packet(craft_bitfield_message(bitfield_));
-							// }
+							}
 
 							return;
 						}
@@ -249,11 +249,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	constexpr auto message_offset = 1;
 	const auto payload_length = response_length - 1;
 
-	auto extract_piece_metadata = [&response = response,payload_length]{
-
-		if(constexpr auto standard_metadata_length = 12;payload_length != standard_metadata_length){
-			throw std::length_error("length of received piece metadata message is non-standard");
-		}
+	auto extract_piece_metadata = [&response = response]{
 
 		const auto piece_index = [&response = response]{
 			return util::extract_integer<std::uint32_t>(response,message_offset);
@@ -272,62 +268,35 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		return std::make_tuple(piece_index,piece_offset,piece_length);
 	};
 
-	constexpr auto status_modifier_length = 1;
-
 	switch(message_id){
 		case Message_Id::Choke : {
-
-			if(response_length != status_modifier_length){
-				throw std::length_error("length of received 'Choke' message is non-standard");
-			}
-			
 			socket->set_peer_choked(true);
 			break;
 		}
 
 		case Message_Id::Unchoke : {
-
-			if(response_length != status_modifier_length){
-				throw std::length_error("length of received 'Unchoke' message is non-standard");
-			}
-
 			socket->set_peer_choked(false);
 			break;
 		}
 
 		case Message_Id::Interested : {
-
-			if(response_length != status_modifier_length){
-				throw std::length_error("length of received 'Interested' message is non-standard");
-			}
-
 			socket->set_peer_interested(true);
 			break;
 		}
 
 		case Message_Id::Uninterested : {
-
-			if(response_length != status_modifier_length){
-				throw std::length_error("length of received 'Uninterested' message is non-standard");
-			}
-
 			socket->set_peer_interested(false);
 			break;
 		}
 
 		case Message_Id::Have : {
-
-			if(constexpr auto standard_have_length = 4;payload_length != standard_have_length){
-				throw std::length_error("length of received 'Have' message is non-standard");
-			}
-			
 			const auto verified_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
 
 			if(!bitfield_[verified_piece_index]){
 				qInfo() << "requesting piece #" << verified_piece_index;
-				socket->send_packet(unchoke_message.data());
 				socket->send_packet(interested_message.data());
-				// socket->send_packet(craft_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
+				// socket->send_packet(unchoke_message.data());
+				socket->send_packet(craft_request_message(verified_piece_index,0,100));
 			}
 
 			break;
@@ -335,24 +304,23 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Bitfield : {
 
-			if(payload_length * 8 != bitfield_.size()){
+			if(static_cast<std::ptrdiff_t>(payload_length) * 8 != bitfield_.size()){
 				socket->disconnectFromHost();
-			}else{
-				const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
-
-				qInfo() << peer_bitfield.size() << bitfield_.size();
-
-				for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
-
-					if(!bitfield_[bit_idx]){
-						//todo figure test
-						socket->send_packet(unchoke_message.data());
-						socket->send_packet(interested_message.data());
-						// socket->send_packet(craft_request_message(bit_idx,0,torrent_metadata_.piece_length));
-					}
-				}
+				return;
 			}
 
+			const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
+
+			socket->send_packet(interested_message.data());
+			socket->send_packet(unchoke_message.data());
+
+			for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
+
+				if(!bitfield_[bit_idx]){
+					// socket->send_packet(craft_request_message(bit_idx,0,100));
+				}
+			}
+			
 			break;
 		}
 
@@ -363,10 +331,6 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		}
 
 		case Message_Id::Piece : {
-
-			if(constexpr auto min_piece_length = 8;payload_length < min_piece_length){
-				throw std::length_error("length of received 'Piece' message is non-standard");
-			}
 
 			const auto received_piece_index = [&response = response]{
 				return util::extract_integer<std::uint32_t>(response,message_offset);
