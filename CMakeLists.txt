@@ -22,7 +22,6 @@ set(SOURCES
 	src/udp_torrent_client.cxx
 	src/peer_wire_client.cxx
 	src/udp_socket.cxx
-	src/tcp_socket.cxx
 )
 
 set(MOC_INCLUDES
@@ -65,4 +64,10 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
 	[["QAbstractSocket"]]
 	[["QUdpSocket"]]
 	[["QTimer"]]
+	[["QTime"]]
+	[["QByteArray"]]
+	[["QBitArray"]]
+	[["QTcpSocket"]]
+	[["QUdpSocket"]]
+	[["QAbstractSocket"]]
 )

@@ -22,9 +22,7 @@ public:
 		Request,
 		Piece,
 		Cancel,
-	};
-
-	Q_ENUM(Message_Id);
+	}; Q_ENUM(Message_Id);
 
 	Peer_wire_client(bencode::Metadata torrent_metadata,QByteArray peer_id,QByteArray info_sha1_hash);
 
@@ -33,14 +31,14 @@ public:
 signals:
 	void shutdown() const;
 private:
-	static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
-
-	static QByteArray craft_packet_have_message(std::uint32_t piece_index) noexcept;
-	static QByteArray craft_packet_request_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
-	static QByteArray craft_packet_cancel_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
+	static QByteArray craft_have_message(std::uint32_t piece_index) noexcept;
+	static QByteArray craft_request_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
+	static QByteArray craft_cancel_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
 	static QByteArray craft_piece_message(std::uint32_t index,std::uint32_t offset,const QByteArray & content) noexcept;
+	static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
 
 	static std::size_t calculate_total_pieces(const bencode::Metadata & metadata) noexcept;
+	static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
 
 	bool verify_hash(std::size_t piece_index,const QByteArray & received_packet) const noexcept;
 
@@ -48,18 +46,20 @@ private:
 	QByteArray craft_handshake_message() const noexcept;
 	void communicate_with_peer(Tcp_socket * socket) const;
 	///
-	static constexpr std::string_view keep_alive_message_ {"00000000"};
-	static constexpr std::string_view choke_message_ {"0000000100"};
-	static constexpr std::string_view unchoke_message_ {"0000000101"};
-	static constexpr std::string_view interested_message_ {"0000000102"};
-	static constexpr std::string_view uninterested_message_ {"0000000103"};
+	constexpr static std::string_view keep_alive_message {"00000000"};
+	constexpr static std::string_view choke_message {"0000000100"};
+	constexpr static std::string_view unchoke_message {"0000000101"};
+	constexpr static std::string_view interested_message {"0000000102"};
+	constexpr static std::string_view uninterested_message {"0000000103"};
 	
+	std::uint64_t received_pieces_ = 0;
+
 	bencode::Metadata torrent_metadata_;
 	QByteArray id_;
 	QByteArray info_sha1_hash_;
 	QByteArray handshake_message_;
 	std::uint64_t total_pieces_ = 0;
-	std::uint64_t bitfield_size_ = 0;
+	std::uint64_t pieces_bits_ = 0;
 	std::uint64_t spare_bitfield_bits_ = 0;
 	QBitArray bitfield_;
 };
@@ -70,11 +70,11 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QBy
 	info_sha1_hash_(std::move(info_sha1_hash)),
 	handshake_message_(craft_handshake_message()), 
 	total_pieces_(calculate_total_pieces(torrent_metadata)), 
-	bitfield_size_(static_cast<std::size_t>(std::ceil(static_cast<double>(total_pieces_) / 8.0))),
-	spare_bitfield_bits_(8 * bitfield_size_ - total_pieces_),
-	bitfield_(static_cast<std::ptrdiff_t>(bitfield_size_))
+	pieces_bits_(total_pieces_),
+	spare_bitfield_bits_(pieces_bits_ % 8 ? 8 - pieces_bits_ % 8 : 0),
+	bitfield_(static_cast<std::ptrdiff_t>(pieces_bits_ + spare_bitfield_bits_))
 {
-	assert(bitfield_size_);
+	assert(pieces_bits_);
 	assert(total_pieces_);
 }
 

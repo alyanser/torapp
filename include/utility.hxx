@@ -3,10 +3,9 @@
 #include "bencode_parser.hxx"
 
 #include <QBigEndianStorageType>
-#include <QString>
+#include <QBitArray>
 #include <QUrl>
 #include <string_view>
-#include <QDebug>
 
 namespace util {
 
@@ -65,6 +64,7 @@ QString stringify_bytes(const byte_type bytes_received,const byte_type total_byt
 template<typename numeric_type>
 [[nodiscard]]
 QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size = sizeof(numeric_type)) noexcept {
+	// todo remove after testing
 	assert(raw_size == sizeof(numeric_type));
 
 	constexpr auto hex_base = 16;
@@ -80,14 +80,40 @@ QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size =
 	return hex_fmt;
 }
 
+inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
+	constexpr auto bits_in_byte = 8;
+	QBitArray bits(bytes.size() * bits_in_byte);
+
+	for(std::ptrdiff_t byte_idx = 0;byte_idx < bytes.size();byte_idx++){
+
+		for(std::ptrdiff_t bit_idx = 0;bit_idx < bits_in_byte;bit_idx++){
+			bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << bit_idx);
+		}
+	}
+
+	return bits;
+}
+
+inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
+	constexpr auto bits_in_byte = 8;
+	assert(bits.size() % bits_in_byte == 0);
+	QByteArray bytes(bits.size() / bits_in_byte,'\x00');
+
+	for(std::ptrdiff_t bit_idx = 0;bit_idx < bits.size();bit_idx++){
+		bytes[static_cast<qsizetype>(bit_idx / bits_in_byte)] |= bits[bit_idx] << bit_idx % bits_in_byte;
+	}
+
+	return bytes.toHex();
+}
+
 } // namespace conversion
 
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
+[[nodiscard]]
 result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
 	constexpr std::ptrdiff_t bytes = sizeof(result_type);
 
 	if(offset + bytes > raw_data.size()){
-		qDebug() << "extraction out of bounds" << raw_data.size() << offset << bytes;
 		throw std::out_of_range("extraction out of bounds");
 	}
 
@@ -115,7 +141,6 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 	}
 
 	if(!conversion_success){
-		qDebug() << "conversion failure" << raw_data << offset << bytes;
 		throw std::overflow_error("content could not fit in the specified type");
 	}
 

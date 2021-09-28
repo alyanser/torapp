@@ -5,7 +5,7 @@
 #include <QUrl>
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_packet_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
+QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
 	using util::conversion::convert_to_hex;
 
 	auto packet_request_message = []{
@@ -27,7 +27,7 @@ QByteArray Peer_wire_client::craft_packet_request_message(const std::uint32_t in
 }
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_packet_cancel_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
+QByteArray Peer_wire_client::craft_cancel_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
 	//todo exactly the same as request message except the id 
 	using util::conversion::convert_to_hex;
 
@@ -50,7 +50,7 @@ QByteArray Peer_wire_client::craft_packet_cancel_message(const std::uint32_t ind
 }
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_packet_have_message(const std::uint32_t piece_index) noexcept {
+QByteArray Peer_wire_client::craft_have_message(const std::uint32_t piece_index) noexcept {
 	using util::conversion::convert_to_hex;
 
 	auto packet_have_message = []{
@@ -112,6 +112,25 @@ QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t index,const
 	return piece_message;
 }
 
+QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) noexcept {
+	assert(bitfield.size() % 8 == 0);
+
+	QByteArray bitfield_message = [&bitfield]{
+		const auto length = 1 + static_cast<std::uint32_t>(bitfield.size()) / 8;
+		return util::conversion::convert_to_hex(length);
+	}();
+
+	bitfield_message += []{
+		constexpr auto bitfield_message_id = static_cast<std::uint8_t>(Message_Id::Bitfield);
+		return util::conversion::convert_to_hex(bitfield_message_id);
+	}();
+
+	assert(bitfield_message.size() == 10);
+	bitfield_message += util::conversion::convert_to_hex_bytes(bitfield);
+
+	return bitfield_message;
+}
+
 void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
 
 	for(const auto & peer_url : peer_urls){
@@ -130,18 +149,19 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 					if(auto peer_info_opt = verify_handshake_response(socket)){
 						auto & [peer_info_hash,peer_id] = peer_info_opt.value();
 
-						if(info_sha1_hash_ != peer_info_hash){
-							socket->disconnectFromHost();
+						if(info_sha1_hash_ == peer_info_hash){
+							socket->set_handshake_done(true);
+							socket->set_peer_id(std::move(peer_id));
+
+							// if(received_pieces_){
+								socket->send_packet(craft_bitfield_message(bitfield_));
+							// }
+
+							return;
 						}
-
-						socket->set_handshake_done(true);
-						socket->set_peer_id(std::move(peer_id));
-
-						// todo make the bitarray packet and send if it's not all null
-						// socket->send_packet(bit_field_);
-					}else{
-						socket->disconnectFromHost();
 					}
+
+					socket->disconnectFromHost();
 				}
 
 			}catch(const std::exception & exception){
@@ -205,7 +225,6 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	assert(socket->handshake_done());
-
 	const auto response = socket->readAll();
 	
 	const auto message_length = [&response]{
@@ -304,7 +323,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 			if(!bitfield_[verified_piece_index]){
 				qInfo() << "requesting piece #" << verified_piece_index;
-				socket->send_packet(craft_packet_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
+				socket->send_packet(craft_request_message(verified_piece_index,0,torrent_metadata_.piece_length));
 			}
 
 			break;
@@ -312,15 +331,21 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Bitfield : {
 
-			qInfo() << payload_length << bitfield_size_;
-
-			if(payload_length != bitfield_size_){
+			if(payload_length * 8 != bitfield_.size()){
 				socket->disconnectFromHost();
 			}else{
-				qInfo() << "valid bitfield";
-				const auto bitfield = response.sliced(message_offset);
-				qInfo() << bitfield;
-				// extract it
+				const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset));
+
+				for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
+
+					if(!bitfield_[bit_idx]){
+						//todo figure test
+						qInfo() << "requesting piece" << bit_idx;
+						socket->send_packet(unchoke_message.data());
+						socket->send_packet(interested_message.data());
+						socket->send_packet(craft_request_message(bit_idx,0,torrent_metadata_.piece_length));
+					}
+				}
 			}
 
 			break;
