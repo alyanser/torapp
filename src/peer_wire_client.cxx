@@ -1,12 +1,62 @@
 #include "peer_wire_client.hxx"
 #include "tcp_socket.hxx"
 
-#include <QHostAddress>
-#include <QUrl>
-#include <map>
+void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
+
+	for(const auto & peer_url : peer_urls){
+
+		if(active_peers_.contains(peer_url)){
+			continue;
+		}
+
+		active_peers_.insert(peer_url);
+		
+		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
+
+		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
+			socket->send_packet(handshake_message_);
+		});
+
+		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_]{
+			[[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
+			assert(remove_success);
+		});
+
+		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
+
+			try {
+				if(socket->handshake_done()){
+					communicate_with_peer(socket);
+				}else{
+					if(auto peer_info = verify_handshake_response(socket)){
+						//todo add peer id check when supporting TCP tracker
+						auto & [peer_info_hash,peer_id] = *peer_info;
+
+						if(info_sha1_hash_ == peer_info_hash){
+							socket->set_handshake_done(true);
+							socket->set_peer_id(std::move(peer_id));
+
+							if(downloaded_pieces_count_){
+								socket->send_packet(craft_bitfield_message(bitfield_));
+							}
+
+							return;
+						}
+					}
+
+					socket->disconnectFromHost();
+				}
+
+			}catch(const std::exception & exception){
+				qDebug() << exception.what();
+				socket->disconnectFromHost();
+			}
+		});
+	}
+}
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length) noexcept {
+QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length = 1 << 14) noexcept {
 	using util::conversion::convert_to_hex;
 
 	auto packet_request_message = []{
@@ -115,6 +165,7 @@ QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t index,const
 	return piece_message;
 }
 
+[[nodiscard]]
 QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) noexcept {
 	assert(bitfield.size() % 8 == 0);
 
@@ -132,61 +183,6 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 	bitfield_message += util::conversion::convert_to_hex_bytes(bitfield);
 
 	return bitfield_message;
-}
-
-void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
-
-	for(const auto & peer_url : peer_urls){
-
-		if(active_peers_.contains(peer_url)){
-			continue;
-		}
-
-		active_peers_.insert(peer_url);
-		
-		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
-
-		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
-			socket->send_packet(handshake_message_);
-		});
-
-		connect(socket.get(),&Tcp_socket::destroyed,this,[peer_url,&active_peers_ = active_peers_]{
-			const auto peer_itr = active_peers_.find(peer_url);
-			assert(peer_itr != active_peers_.end());
-			active_peers_.erase(peer_itr);
-		});
-
-		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
-
-			try {
-				if(socket->handshake_done()){
-					communicate_with_peer(socket);
-				}else{
-					if(auto peer_info = verify_handshake_response(socket)){
-						//todo add peer id check when supporting TCP tracker
-						auto & [peer_info_hash,peer_id] = *peer_info;
-
-						if(info_sha1_hash_ == peer_info_hash){
-							socket->set_handshake_done(true);
-							socket->set_peer_id(std::move(peer_id));
-
-							if(downloaded_pieces_count_){
-								socket->send_packet(craft_bitfield_message(bitfield_));
-							}
-
-							return;
-						}
-					}
-
-					socket->disconnectFromHost();
-				}
-
-			}catch(const std::exception & exception){
-				qDebug() << exception.what();
-				socket->disconnectFromHost();
-			}
-		});
-	}
 }
 
 [[nodiscard]]
@@ -301,17 +297,17 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Uninterested : {
 			socket->set_peer_interested(false);
+			
 			break;
 		}
 
 		case Message_Id::Have : {
-			const auto verified_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
+			const auto peer_have_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
 
-			if(!bitfield_[verified_piece_index]){
-				qInfo() << "requesting piece #" << verified_piece_index;
+			if(!bitfield_[peer_have_piece_index]){
+				qInfo() << "requesting piece #" << peer_have_piece_index;
 				socket->send_packet(interested_message.data());
-				socket->send_packet(unchoke_message.data());
-				// socket->send_packet(craft_request_message(verified_piece_index,0,1 << 14));
+				socket->send_packet(craft_request_message(peer_have_piece_index,0));
 			}
 
 			break;

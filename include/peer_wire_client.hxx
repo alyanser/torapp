@@ -6,6 +6,7 @@
 #include <QBitArray>
 #include <QObject>
 #include <QSet>
+#include <QDebug>
 
 class Tcp_socket;
 
@@ -87,7 +88,6 @@ inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexc
 inline std::size_t Peer_wire_client::calculate_total_pieces(const bencode::Metadata & metadata) noexcept {
 	const auto torrent_size = metadata.single_file ? metadata.single_file_size : metadata.multiple_files_size;
 	assert(metadata.piece_length && torrent_size);
-	
 	return static_cast<std::size_t>(std::ceil(static_cast<double>(torrent_size) / static_cast<double>(metadata.piece_length)));
 }
 
@@ -96,7 +96,7 @@ inline bool Peer_wire_client::verify_hash(const std::size_t piece_index,const QB
 	assert(piece_index < total_pieces_);
 	constexpr auto hash_length = 20;
 	assert(piece_index * hash_length < torrent_metadata_.pieces.size());
-	const auto piece_hash = QByteArray(torrent_metadata_.pieces.substr(piece_index * hash_length,hash_length).data(),hash_length);
 
+	const auto piece_hash = QByteArray(torrent_metadata_.pieces.substr(piece_index * hash_length,hash_length).data(),hash_length);
 	return piece_hash == QCryptographicHash::hash(received_packet,QCryptographicHash::Sha1);
 }

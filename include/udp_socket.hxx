@@ -112,8 +112,8 @@ inline const QByteArray & Udp_socket::scrape_request() const noexcept {
 	return scrape_request_;
 }
 
-inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval_seconds) noexcept {
-	interval_timer_.start(interval_seconds);
+inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
+	interval_timer_.start(interval_timeout);
 }
 
 inline void Udp_socket::send_initial_request(const QByteArray & request,const State new_state) noexcept {
