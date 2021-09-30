@@ -14,16 +14,24 @@ void Udp_torrent_client::configure_default_connections() const noexcept {
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {
-	auto socket = std::make_shared<Udp_socket>(QUrl(torrent_metadata_.announce_url.data()),craft_connect_request())->bind_lifetime();
-	
-	connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
-		try {
-			on_socket_ready_read(socket);
-		}catch(const std::exception & exception){
-			qDebug() << exception.what();
-			socket->disconnectFromHost();
-		}
-	});
+	auto & tracker_urls = metadata_.announce_url_list;
+
+	if(tracker_urls.empty()){
+		tracker_urls.push_back(metadata_.announce_url);
+	}
+
+	for(const auto & tracker_url : tracker_urls){
+		auto socket = std::make_shared<Udp_socket>(QUrl(tracker_url.data()),craft_connect_request())->bind_lifetime();
+		
+		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
+			try {
+				on_socket_ready_read(socket);
+			}catch(const std::exception & exception){
+				qDebug() << exception.what();
+				socket->disconnectFromHost();
+			}
+		});
+	}
 }
 
 [[nodiscard]]
@@ -129,7 +137,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 		if(const auto connection_id = extract_connect_response(tracker_response,socket->txn_id())){
 			qInfo() << "got connect response";
 			socket->set_announce_request(craft_announce_request(*connection_id));
-			socket->set_scrape_request(craft_scrape_request(torrent_metadata_,*connection_id));
+			socket->set_scrape_request(craft_scrape_request(metadata_,*connection_id));
 			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
 		}
 	};

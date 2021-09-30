@@ -34,9 +34,12 @@ public:
 	QUrl peer_url() const noexcept;
 	void send_packet(const QByteArray & packet);
 	void reset_disconnect_timer() noexcept;
+	void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;
+	const QSet<std::uint32_t> & pending_pieces() const noexcept;
 private:
 	void configure_default_connections() noexcept;
 	///
+	QSet<std::uint32_t> pending_pieces_;
 	QByteArray peer_id_;
 	QTimer disconnect_timer_;
 	QUrl peer_url_;
@@ -100,7 +103,6 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 	}();
 
 	if(!message_length){ // keep alive packet
-		reset_disconnect_timer();
 		return {};
 	}
 
@@ -112,7 +114,7 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 	return {};
 }
 
-constexpr void Tcp_socket::set_peer_choked(bool peer_choked) noexcept {
+constexpr void Tcp_socket::set_peer_choked(const bool peer_choked) noexcept {
 	peer_choked_ = peer_choked;
 }
 
@@ -121,10 +123,7 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
-
-	if(!handshake_done_ || !peer_choked_){
-		write(QByteArray::fromHex(packet));
-	}
+	write(QByteArray::fromHex(packet));
 }
 
 [[nodiscard]]
@@ -148,12 +147,21 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 
 inline void Tcp_socket::configure_default_connections() noexcept {
 
-	connect(&disconnect_timer_,&QTimer::timeout,[this]{
+	disconnect_timer_.callOnTimeout([this]{
+		qInfo() << "disconnecting from host due to timer";
 		disconnectFromHost();
-	});
+	});;
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
-	constexpr std::chrono::minutes disconnect_timeout(2);
-	disconnect_timer_.start(disconnect_timeout);
+	constexpr std::chrono::minutes standard_disconnect_timeout(2);
+	disconnect_timer_.start(standard_disconnect_timeout);
+}
+
+inline void Tcp_socket::add_pending_piece(const std::uint32_t pending_piece_idx) noexcept {
+	pending_pieces_.insert(pending_piece_idx);
+}
+
+inline const QSet<std::uint32_t> & Tcp_socket::pending_pieces() const noexcept {
+	return pending_pieces_;
 }

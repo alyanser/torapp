@@ -49,7 +49,6 @@ void Udp_socket::configure_default_connections() noexcept {
 }
 
 void Udp_socket::send_packet(const QByteArray & packet) noexcept {
-	qInfo() << "sending new packet to tracker";
 	const auto raw_fmt = QByteArray::fromHex(packet);
 	write(raw_fmt);
 

@@ -1,5 +1,6 @@
 #include "peer_wire_client.hxx"
 #include "tcp_socket.hxx"
+#include <experimental/net>
 
 void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
 
@@ -10,26 +11,30 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 		}
 
 		active_peers_.insert(peer_url);
-		
+
 		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
 
 		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
 			socket->send_packet(handshake_message_);
 		});
 
-		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_]{
+		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_,socket]{
 			[[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
 			assert(remove_success);
 		});
 
 		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
+			socket->reset_disconnect_timer();
 
 			try {
-				if(socket->handshake_done()){
-					communicate_with_peer(socket);
-				}else{
+				while(socket->bytesAvailable()){
+
+					if(socket->handshake_done()){
+						communicate_with_peer(socket);
+						continue;
+					}
+
 					if(auto peer_info = verify_handshake_response(socket)){
-						//todo add peer id check when supporting TCP tracker
 						auto & [peer_info_hash,peer_id] = *peer_info;
 
 						if(info_sha1_hash_ == peer_info_hash){
@@ -40,11 +45,13 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 								socket->send_packet(craft_bitfield_message(bitfield_));
 							}
 
-							return;
+							continue;
 						}
+
 					}
 
 					socket->disconnectFromHost();
+					break;
 				}
 
 			}catch(const std::exception & exception){
@@ -56,7 +63,8 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 }
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset,const std::uint32_t length = 1 << 14) noexcept {
+QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset) const noexcept {
+	
 	using util::conversion::convert_to_hex;
 
 	auto packet_request_message = []{
@@ -71,7 +79,17 @@ QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,con
 
 	packet_request_message += convert_to_hex(index);
 	packet_request_message += convert_to_hex(offset);
-	packet_request_message += convert_to_hex(length);
+
+	packet_request_message += [index,offset,total_pieces_ = total_pieces_,torrent_size_ = torrent_size_,piece_size_ = piece_size_]{
+		assert(total_pieces_);
+
+		const auto piece_size = index == total_pieces_ - 1 && torrent_size_ % piece_size_ ? torrent_size_ % piece_size_ : piece_size_;
+		const auto total_blocks = static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size) / max_block_size));
+
+		const auto length = offset == total_blocks - 1 && piece_size % max_block_size ? piece_size % max_block_size : max_block_size;
+
+		return convert_to_hex(static_cast<std::uint32_t>(length));
+	}();
 
 	assert(packet_request_message.size() == 34);
 	return packet_request_message;
@@ -128,7 +146,7 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 		constexpr std::string_view protocol("BitTorrent protocol");
 		static_assert(protocol.size() == pstrlen);
 		
-		return util::conversion::convert_to_hex(pstrlen) + QByteArray(protocol.data()).toHex();
+		return util::conversion::convert_to_hex(pstrlen) + QByteArray(protocol.data(),protocol.size()).toHex();
 	}();
 
 	handshake_message += []{
@@ -137,9 +155,7 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 	}();
 
 	handshake_message += info_sha1_hash_ + id_;
-
-	assert(handshake_message.size() == 136);
-
+	
 	return handshake_message;
 }
 
@@ -167,9 +183,9 @@ QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t index,const
 
 [[nodiscard]]
 QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) noexcept {
-	assert(bitfield.size() % 8 == 0);
 
 	QByteArray bitfield_message = [&bitfield]{
+		assert(bitfield.size() % 8 == 0);
 		const auto length = 1 + static_cast<std::uint32_t>(bitfield.size()) / 8;
 		return util::conversion::convert_to_hex(length);
 	}();
@@ -189,6 +205,10 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handshake_response(Tcp_socket * const socket){
 	constexpr auto expected_response_length = 68;
 	const auto response = socket->read(expected_response_length);
+
+	if(response.size() != expected_response_length){
+		return {};
+	}
 
 	{
 		const auto protocol_label_len = [&response = response]{
@@ -216,6 +236,8 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 			return util::extract_integer<std::uint32_t>(response,reserved_bytes_offset);
 		}();
 
+		// todo support fast connect extension here
+
 		if(reserved_bytes_content){
 			return {};
 		}
@@ -224,7 +246,6 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 	auto peer_info_hash = [&response = response]{
 		constexpr auto sha1_hash_offset = 28;
 		constexpr auto sha1_hash_length = 20;
-
 		return response.sliced(sha1_hash_offset,sha1_hash_length).toHex();
 	}();
 
@@ -239,7 +260,6 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	assert(socket->handshake_done());
-
 	auto response_opt = socket->receive_packet();
 
 	if(!response_opt){
@@ -287,6 +307,16 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Unchoke : {
 			socket->set_peer_choked(false);
+
+			if(!socket->pending_pieces().isEmpty()){
+				const auto pending_piece_idx = *socket->pending_pieces().begin();
+
+				for(std::uint64_t block_idx = 0;block_idx < average_blocks_;block_idx++){
+					qInfo() << "sending request packet here";
+					socket->send_packet(craft_request_message(pending_piece_idx,static_cast<std::uint32_t>(block_idx)));
+				}
+			}
+			
 			break;
 		}
 
@@ -297,17 +327,15 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 		case Message_Id::Uninterested : {
 			socket->set_peer_interested(false);
-			
 			break;
 		}
 
 		case Message_Id::Have : {
-			const auto peer_have_piece_index = util::extract_integer<std::uint32_t>(response,message_offset);
+			const auto peer_have_piece_idx = util::extract_integer<std::uint32_t>(response,message_offset);
 
-			if(!bitfield_[peer_have_piece_index]){
-				qInfo() << "requesting piece #" << peer_have_piece_index;
-				socket->send_packet(interested_message.data());
-				socket->send_packet(craft_request_message(peer_have_piece_index,0));
+			if(!bitfield_[peer_have_piece_idx]){
+				socket->set_am_interested(true);
+				socket->add_pending_piece(peer_have_piece_idx);
 			}
 
 			break;
@@ -322,28 +350,30 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 
 			const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
 
-			socket->send_packet(interested_message.data());
-			socket->send_packet(unchoke_message.data());
-
 			for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
 
-				if(!bitfield_[bit_idx] && !socket->peer_choked()){
-					socket->send_packet(craft_request_message(bit_idx,0,100));
+				if(peer_bitfield[bit_idx] && !bitfield_[bit_idx]){
+				 	socket->set_am_interested(true);
+					socket->add_pending_piece(static_cast<std::uint32_t>(bit_idx));
 				}
 			}
-			
+
+			if(socket->am_interested()){
+				socket->send_packet(interested_message.data());
+			}
+
 			break;
 		}
 
 		case Message_Id::Request : {
-			const auto [requested_piece_index,requested_piece_offset,requested_piece_length] = extract_piece_metadata();
+			const auto [requested_piece_idx,requested_piece_offset,requested_piece_length] = extract_piece_metadata();
 			// min should be 16kb and max should be 128kb
 			break;
 		}
 
 		case Message_Id::Piece : {
 
-			const auto received_piece_index = [&response = response]{
+			const auto received_piece_idx = [&response = response]{
 				return util::extract_integer<std::uint32_t>(response,message_offset);
 			}();
 
@@ -357,11 +387,13 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 				return response.sliced(piece_content_offset);
 			}();
 
+			qInfo() << received_piece_idx << received_piece_offset << received_piece_content.size();
+
 			break;
 		}
 
 		case Message_Id::Cancel : {
-			const auto [cancelled_piece_index,cancelled_piece_offset,cancelled_piece_length] = extract_piece_metadata();
+			const auto [cancelled_piece_idx,cancelled_piece_offset,cancelled_piece_length] = extract_piece_metadata();
 			break;
 		}
 	}

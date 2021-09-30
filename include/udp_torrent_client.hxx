@@ -78,7 +78,7 @@ private:
 	quint64_be uploaded_ {};
 	Download_Event event_ {};
 
-	bencode::Metadata torrent_metadata_;
+	bencode::Metadata metadata_;
 	QByteArray info_sha1_hash_;
 	Peer_wire_client peer_client_;
 	std::uint64_t total_ = 0;
@@ -86,10 +86,10 @@ private:
 };
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : 
-	torrent_metadata_(std::move(torrent_metadata)),
-	info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_)),
-	peer_client_(torrent_metadata_,id,info_sha1_hash_),
-	total_(static_cast<std::uint64_t>(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)),
+	metadata_(std::move(torrent_metadata)),
+	info_sha1_hash_(calculate_info_sha1_hash(metadata_)),
+	peer_client_(metadata_,id,info_sha1_hash_),
+	total_(static_cast<std::uint64_t>(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)),
 	left_(total_)
 {
 	configure_default_connections();
