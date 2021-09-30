@@ -1,6 +1,5 @@
 #include "peer_wire_client.hxx"
 #include "tcp_socket.hxx"
-#include <experimental/net>
 
 void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const noexcept {
 
@@ -15,56 +14,59 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
 
 		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
+			qInfo() << "connected";
 			socket->send_packet(handshake_message_);
 		});
 
 		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_,socket]{
+			qInfo() << "being disconnected" << peer_url;
 			[[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
 			assert(remove_success);
 		});
 
 		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
-			socket->reset_disconnect_timer();
+			on_socket_ready_read(socket);
+		});
+	}
+}
 
-			try {
-				while(socket->bytesAvailable()){
 
-					if(socket->handshake_done()){
-						communicate_with_peer(socket);
-						continue;
+void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) const noexcept {
+	socket->reset_disconnect_timer();
+
+	try {
+		while(socket->bytesAvailable()){
+
+			if(socket->handshake_done()){
+				communicate_with_peer(socket);
+			}else if(auto peer_info = verify_handshake_response(socket)){
+				auto & [peer_info_hash,peer_id] = *peer_info;
+
+				if(info_sha1_hash_ == peer_info_hash){
+					socket->set_handshake_done(true);
+					socket->set_peer_id(std::move(peer_id));
+
+					if(downloaded_pieces_count_){
+						socket->send_packet(craft_bitfield_message(bitfield_));
 					}
-
-					if(auto peer_info = verify_handshake_response(socket)){
-						auto & [peer_info_hash,peer_id] = *peer_info;
-
-						if(info_sha1_hash_ == peer_info_hash){
-							socket->set_handshake_done(true);
-							socket->set_peer_id(std::move(peer_id));
-
-							if(downloaded_pieces_count_){
-								socket->send_packet(craft_bitfield_message(bitfield_));
-							}
-
-							continue;
-						}
-
-					}
-
+				}else{
+					qInfo() << "Client's hash doesnt' match";
 					socket->disconnectFromHost();
 					break;
 				}
-
-			}catch(const std::exception & exception){
-				qDebug() << exception.what();
-				socket->disconnectFromHost();
+			}else{
+				break;
 			}
-		});
+		}
+
+	}catch(const std::exception & exception){
+		qDebug() << exception.what();
+		socket->disconnectFromHost();
 	}
 }
 
 [[nodiscard]]
 QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,const std::uint32_t offset) const noexcept {
-	
 	using util::conversion::convert_to_hex;
 
 	auto packet_request_message = []{
@@ -80,7 +82,7 @@ QByteArray Peer_wire_client::craft_request_message(const std::uint32_t index,con
 	packet_request_message += convert_to_hex(index);
 	packet_request_message += convert_to_hex(offset);
 
-	packet_request_message += [index,offset,total_pieces_ = total_pieces_,torrent_size_ = torrent_size_,piece_size_ = piece_size_]{
+	packet_request_message += [index,offset,total_pieces_ = total_pieces_count_,torrent_size_ = torrent_size_,piece_size_ = piece_size_]{
 		assert(total_pieces_);
 
 		const auto piece_size = index == total_pieces_ - 1 && torrent_size_ % piece_size_ ? torrent_size_ % piece_size_ : piece_size_;
@@ -258,6 +260,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
 	return std::make_pair(std::move(peer_info_hash),std::move(peer_id));
 }
 
+
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	assert(socket->handshake_done());
 	auto response_opt = socket->receive_packet();
@@ -275,7 +278,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		return static_cast<Message_Id>(util::extract_integer<std::uint8_t>(response,message_id_offset));
 	}();
 
-	qInfo() << message_id;
+	qInfo() << message_id << socket->peer_url();
 
 	constexpr auto message_offset = 1;
 	const auto payload_length = response_length - 1;
@@ -299,6 +302,86 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		return std::make_tuple(piece_index,piece_offset,piece_length);
 	};
 
+	auto on_unchoke_message_received = [this,socket](){
+		socket->set_peer_choked(false);
+
+		if(!socket->pending_pieces().isEmpty()){
+			const auto pending_piece_idx = *socket->pending_pieces().begin();
+
+			for(std::uint64_t block_idx = 0;block_idx < std::min(average_blocks_count_,5UL);block_idx++){
+				socket->send_packet(craft_request_message(pending_piece_idx,static_cast<std::uint32_t>(block_idx)));
+			}
+		}
+	};
+
+	auto on_have_message_received = [this,socket,&response = response](){
+		const auto peer_have_piece_idx = util::extract_integer<std::uint32_t>(response,message_offset);
+
+		if(!bitfield_[peer_have_piece_idx]){
+			socket->set_am_interested(true);
+
+			if(socket->peer_choked()){
+				socket->add_pending_piece(peer_have_piece_idx);
+			}else{
+				qInfo() << "sending request" << socket->peer_url();
+				socket->send_packet(craft_request_message(peer_have_piece_idx,0));
+			}
+		}
+	};
+
+	auto on_bitfield_received = [socket,payload_length,&bitfield_ = bitfield_,&response = response](){
+
+		if(static_cast<std::ptrdiff_t>(payload_length * 8) != bitfield_.size()){
+			qInfo() << "Invalid bitfield size";
+			socket->disconnectFromHost();
+			return;
+		}
+
+		const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
+
+		for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
+
+			if(peer_bitfield[bit_idx] && !bitfield_[bit_idx]){
+				socket->set_am_interested(true);
+				socket->add_pending_piece(static_cast<std::uint32_t>(bit_idx));
+			}
+		}
+
+		if(socket->am_interested()){
+			socket->send_packet(interested_message.data());
+		}
+	};
+
+	auto on_piece_received = [this,&response = response]{
+
+		const auto received_piece_idx = [&response = response]{
+			return util::extract_integer<std::uint32_t>(response,message_offset);
+		}();
+
+		const auto received_block_idx = [&response = response]{
+			constexpr auto piece_begin_offset = 5;
+			return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
+		}();
+
+		const auto received_content = [&response = response]{
+			constexpr auto piece_content_offset = 9;
+			return response.sliced(piece_content_offset);
+		}();
+
+		if(received_piece_idx >= total_pieces_count_ || received_block_idx > average_blocks_count_){
+			return;
+		}
+
+		auto & current_content = pieces_[received_piece_idx];
+
+		if(current_content.isEmpty()){
+			current_content.resize(static_cast<std::ptrdiff_t>(piece_size_));
+		}
+
+		std::memcpy(current_content.data() + received_block_idx,received_content.data(),static_cast<size_t>(received_content.size()));
+		qInfo() << current_content;
+	};
+
 	switch(message_id){
 		case Message_Id::Choke : {
 			socket->set_peer_choked(true);
@@ -306,17 +389,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		}
 
 		case Message_Id::Unchoke : {
-			socket->set_peer_choked(false);
-
-			if(!socket->pending_pieces().isEmpty()){
-				const auto pending_piece_idx = *socket->pending_pieces().begin();
-
-				for(std::uint64_t block_idx = 0;block_idx < average_blocks_;block_idx++){
-					qInfo() << "sending request packet here";
-					socket->send_packet(craft_request_message(pending_piece_idx,static_cast<std::uint32_t>(block_idx)));
-				}
-			}
-			
+			on_unchoke_message_received();
 			break;
 		}
 
@@ -331,37 +404,12 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		}
 
 		case Message_Id::Have : {
-			const auto peer_have_piece_idx = util::extract_integer<std::uint32_t>(response,message_offset);
-
-			if(!bitfield_[peer_have_piece_idx]){
-				socket->set_am_interested(true);
-				socket->add_pending_piece(peer_have_piece_idx);
-			}
-
+			on_have_message_received();
 			break;
 		}
 
 		case Message_Id::Bitfield : {
-
-			if(static_cast<std::ptrdiff_t>(payload_length) * 8 != bitfield_.size()){
-				socket->disconnectFromHost();
-				return;
-			}
-
-			const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
-
-			for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
-
-				if(peer_bitfield[bit_idx] && !bitfield_[bit_idx]){
-				 	socket->set_am_interested(true);
-					socket->add_pending_piece(static_cast<std::uint32_t>(bit_idx));
-				}
-			}
-
-			if(socket->am_interested()){
-				socket->send_packet(interested_message.data());
-			}
-
+			on_bitfield_received();
 			break;
 		}
 
@@ -372,23 +420,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		}
 
 		case Message_Id::Piece : {
-
-			const auto received_piece_idx = [&response = response]{
-				return util::extract_integer<std::uint32_t>(response,message_offset);
-			}();
-
-			const auto received_piece_offset = [&response = response]{
-				constexpr auto piece_begin_offset = 5;
-				return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
-			}();
-
-			const auto received_piece_content = [&response = response]{
-				constexpr auto piece_content_offset = 9;
-				return response.sliced(piece_content_offset);
-			}();
-
-			qInfo() << received_piece_idx << received_piece_offset << received_piece_content.size();
-
+			on_piece_received();
 			break;
 		}
 

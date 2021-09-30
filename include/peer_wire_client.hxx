@@ -39,8 +39,8 @@ private:
 	QByteArray craft_request_message(std::uint32_t index,std::uint32_t offset) const noexcept;
 
 	static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
-
-	bool verify_hash(std::size_t piece_index,const QByteArray & received_packet) const noexcept;
+	void on_socket_ready_read(Tcp_socket * socket) const noexcept;
+	bool verify_hash(std::size_t piece_idx,const QByteArray & received_packet) const noexcept;
 
 	void extract_peer_response(const QByteArray & peer_response) const noexcept;
 	QByteArray craft_handshake_message() const noexcept;
@@ -62,10 +62,11 @@ private:
 	QByteArray handshake_message_;
 	std::uint64_t torrent_size_ = 0;
 	std::uint64_t piece_size_ = 0;
-	std::uint64_t total_pieces_ = 0;
+	std::uint64_t total_pieces_count_ = 0;
 	std::uint64_t spare_bitfield_bits_ = 0;
 	QBitArray bitfield_;
-	std::uint64_t average_blocks_ = 0;
+	std::uint64_t average_blocks_count_ = 0;
+	mutable std::vector<QByteArray> pieces_;
 };
 
 inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QByteArray peer_id,QByteArray info_sha1_hash) : 
@@ -75,10 +76,11 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QBy
 	handshake_message_(craft_handshake_message()), 
 	torrent_size_(static_cast<std::uint64_t>(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)),
 	piece_size_(static_cast<std::uint64_t>(metadata_.piece_length)),
-	total_pieces_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_)))), 
-	spare_bitfield_bits_(total_pieces_ % 8 ? 8 - total_pieces_ % 8 : 0),
-	bitfield_(static_cast<std::ptrdiff_t>(total_pieces_ + spare_bitfield_bits_)),
-	average_blocks_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size)))
+	total_pieces_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_)))), 
+	spare_bitfield_bits_(total_pieces_count_ % 8 ? 8 - total_pieces_count_ % 8 : 0),
+	bitfield_(static_cast<std::ptrdiff_t>(total_pieces_count_ + spare_bitfield_bits_)),
+	average_blocks_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size))),
+	pieces_(total_pieces_count_)
 {
 }
 
@@ -90,7 +92,7 @@ inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexc
 [[nodiscard]]
 inline bool Peer_wire_client::verify_hash(const std::size_t piece_idx,const QByteArray & received_packet) const noexcept {
 	constexpr auto sha1_hash_length = 20;
-	assert(piece_idx  < total_pieces_ && piece_idx * sha1_hash_length < metadata_.pieces.size());
+	assert(piece_idx  < total_pieces_count_ && piece_idx * sha1_hash_length < metadata_.pieces.size());
 
 	QByteArray piece_hash(metadata_.pieces.substr(piece_idx * sha1_hash_length,sha1_hash_length).data(),sha1_hash_length);
 	assert(piece_hash.size() % sha1_hash_length == 0);
