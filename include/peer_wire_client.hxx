@@ -32,20 +32,26 @@ public:
 signals:
 	void shutdown() const;
 private:
-	static QByteArray craft_have_message(std::uint32_t piece_index) noexcept;
-	static QByteArray craft_cancel_message(std::uint32_t index,std::uint32_t offset,std::uint32_t length) noexcept;
-	static QByteArray craft_piece_message(std::uint32_t index,std::uint32_t offset,const QByteArray & content) noexcept;
+	static QByteArray craft_have_message(std::uint32_t piece_idx) noexcept;
+	static QByteArray craft_cancel_message(std::uint32_t piece_idx,std::uint32_t block_idx) noexcept;
+	static QByteArray craft_piece_message(std::uint32_t piece_idx,std::uint32_t block_idx,const QByteArray & content) noexcept;
 	static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
-	QByteArray craft_request_message(std::uint32_t index,std::uint32_t offset) const noexcept;
+	QByteArray craft_request_message(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
 
 	static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
 	void on_socket_ready_read(Tcp_socket * socket) const noexcept;
 	bool verify_hash(std::size_t piece_idx,const QByteArray & received_packet) const noexcept;
 
+	void on_unchoke_message_received(Tcp_socket * socket) const noexcept;
+	void on_have_message_received(Tcp_socket * socket,const QByteArray & response) const noexcept;
+	void on_bitfield_received(Tcp_socket * socket,const QByteArray & response,std::uint32_t payload_size) const noexcept;
+	void on_piece_received(const QByteArray & response) const noexcept;
+
 	void extract_peer_response(const QByteArray & peer_response) const noexcept;
 	QByteArray craft_handshake_message() const noexcept;
 	void communicate_with_peer(Tcp_socket * socket) const;
 	bool block_present(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
+	std::uint32_t get_block_size(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
 	///
 	constexpr static std::string_view keep_alive_message {"00000000"};
 	constexpr static std::string_view choke_message {"0000000100"};
@@ -65,8 +71,8 @@ private:
 	std::uint64_t piece_size_ = 0;
 	std::uint64_t total_pieces_count_ = 0;
 	std::uint64_t spare_bitfield_bits_ = 0;
-	QBitArray bitfield_;
 	std::uint64_t average_blocks_count_ = 0;
+	QBitArray bitfield_;
 	mutable std::vector<std::pair<std::pair<std::uint32_t,std::vector<bool>>,QByteArray>> pieces_;
 };
 
@@ -77,10 +83,10 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QBy
 	handshake_message_(craft_handshake_message()), 
 	torrent_size_(static_cast<std::uint64_t>(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)),
 	piece_size_(static_cast<std::uint64_t>(metadata_.piece_length)),
-	total_pieces_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_)))), 
+	total_pieces_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_)))),
 	spare_bitfield_bits_(total_pieces_count_ % 8 ? 8 - total_pieces_count_ % 8 : 0),
-	bitfield_(static_cast<std::ptrdiff_t>(total_pieces_count_ + spare_bitfield_bits_)),
 	average_blocks_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size))),
+	bitfield_(static_cast<std::ptrdiff_t>(total_pieces_count_ + spare_bitfield_bits_)),
 	pieces_(total_pieces_count_)
 {
 }
@@ -113,4 +119,14 @@ inline bool Peer_wire_client::block_present(std::uint32_t piece_idx,std::uint32_
 	}
 
 	return blocks_status[block_idx];
+}
+
+inline std::uint32_t Peer_wire_client::get_block_size(const std::uint32_t piece_idx,const std::uint32_t block_idx) const noexcept {
+	assert(total_pieces_count_);
+	assert(piece_size_);
+
+	const auto piece_size = piece_idx == total_pieces_count_ - 1 && torrent_size_ % piece_size_ ? torrent_size_ % piece_size_ : piece_size_;
+	
+	const auto total_blocks = static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size) / max_block_size));
+	return block_idx == total_blocks - 1 && piece_size % max_block_size ? piece_size % max_block_size : max_block_size;
 }
