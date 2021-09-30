@@ -14,12 +14,10 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) const n
 		auto socket = std::make_shared<Tcp_socket>(peer_url)->bind_lifetime();
 
 		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_message_ = handshake_message_,socket = socket.get()]{
-			qInfo() << "connected";
 			socket->send_packet(handshake_message_);
 		});
 
 		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_,socket]{
-			qInfo() << "being disconnected" << peer_url;
 			[[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
 			assert(remove_success);
 		});
@@ -278,29 +276,9 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 		return static_cast<Message_Id>(util::extract_integer<std::uint8_t>(response,message_id_offset));
 	}();
 
-	qInfo() << message_id << socket->peer_url();
-
-	constexpr auto message_offset = 1;
+	qInfo() << message_id;
+	
 	const auto payload_length = response_length - 1;
-
-	auto extract_piece_metadata = [&response = response]{
-
-		const auto piece_index = [&response = response]{
-			return util::extract_integer<std::uint32_t>(response,message_offset);
-		}();
-
-		const auto piece_offset = [&response = response]{
-			constexpr auto piece_begin_offset = 5;
-			return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
-		}();
-
-		const auto piece_length = [&response = response]{
-			constexpr auto piece_length_offset = 9;
-			return util::extract_integer<std::uint32_t>(response,piece_length_offset);
-		}();
-
-		return std::make_tuple(piece_index,piece_offset,piece_length);
-	};
 
 	auto on_unchoke_message_received = [this,socket](){
 		socket->set_peer_choked(false);
@@ -309,13 +287,18 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			const auto pending_piece_idx = *socket->pending_pieces().begin();
 
 			for(std::uint64_t block_idx = 0;block_idx < std::min(average_blocks_count_,5UL);block_idx++){
-				socket->send_packet(craft_request_message(pending_piece_idx,static_cast<std::uint32_t>(block_idx)));
+
+				if(!block_present(pending_piece_idx,static_cast<std::uint32_t>(block_idx))){
+					socket->send_packet(craft_request_message(pending_piece_idx,static_cast<std::uint32_t>(block_idx)));
+				}
 			}
 		}
 	};
 
+	constexpr auto message_begin_offset = 1;
+
 	auto on_have_message_received = [this,socket,&response = response](){
-		const auto peer_have_piece_idx = util::extract_integer<std::uint32_t>(response,message_offset);
+		const auto peer_have_piece_idx = util::extract_integer<std::uint32_t>(response,message_begin_offset);
 
 		if(!bitfield_[peer_have_piece_idx]){
 			socket->set_am_interested(true);
@@ -323,7 +306,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			if(socket->peer_choked()){
 				socket->add_pending_piece(peer_have_piece_idx);
 			}else{
-				qInfo() << "sending request" << socket->peer_url();
+				// todo loop through and send the request for all subsets
 				socket->send_packet(craft_request_message(peer_have_piece_idx,0));
 			}
 		}
@@ -337,7 +320,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			return;
 		}
 
-		const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_offset,payload_length));
+		const auto peer_bitfield = util::conversion::convert_to_bits(response.sliced(message_begin_offset,payload_length));
 
 		for(std::ptrdiff_t bit_idx = 0;bit_idx < peer_bitfield.size();bit_idx++){
 
@@ -353,10 +336,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 	};
 
 	auto on_piece_received = [this,&response = response]{
-
-		const auto received_piece_idx = [&response = response]{
-			return util::extract_integer<std::uint32_t>(response,message_offset);
-		}();
+		const auto received_piece_idx = util::extract_integer<std::uint32_t>(response,message_begin_offset);
 
 		const auto received_block_idx = [&response = response]{
 			constexpr auto piece_begin_offset = 5;
@@ -368,18 +348,55 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) const {
 			return response.sliced(piece_content_offset);
 		}();
 
-		if(received_piece_idx >= total_pieces_count_ || received_block_idx > average_blocks_count_){
+		if(received_piece_idx >= total_pieces_count_ || received_block_idx >= average_blocks_count_){
+			//! consider disconnecting
 			return;
 		}
 
-		auto & current_content = pieces_[received_piece_idx];
+		auto & [piece_metadata,piece] = pieces_[received_piece_idx];
+		auto & [received_blocks_count,blocks_status] = piece_metadata;
 
-		if(current_content.isEmpty()){
-			current_content.resize(static_cast<std::ptrdiff_t>(piece_size_));
+		if(piece.isEmpty()){
+			assert(blocks_status.empty());
+			piece.resize(static_cast<std::ptrdiff_t>(piece_size_));
+			//todo change the size after setting up helper
+			blocks_status.resize(average_blocks_count_);
 		}
 
-		std::memcpy(current_content.data() + received_block_idx,received_content.data(),static_cast<size_t>(received_content.size()));
-		qInfo() << current_content;
+		assert(!blocks_status[received_block_idx]);
+
+		received_blocks_count++;
+		blocks_status[received_block_idx] = true;
+
+		std::memcpy(&piece[received_block_idx],received_content.data(),static_cast<std::size_t>(received_content.size()));
+
+		// todo change after the getter
+		if(received_blocks_count == average_blocks_count_){
+			//todo verify the hash
+			//todo send packet from all the sockets about have and update the bitfield
+			downloaded_pieces_count_++;
+		}
+		
+		qInfo() << "stored the piece" << received_piece_idx << received_block_idx;
+	};
+
+	auto extract_piece_metadata = [&response = response]{
+
+		const auto piece_index = [&response = response]{
+			return util::extract_integer<std::uint32_t>(response,message_begin_offset);
+		}();
+
+		const auto piece_offset = [&response = response]{
+			constexpr auto piece_begin_offset = 5;
+			return util::extract_integer<std::uint32_t>(response,piece_begin_offset);
+		}();
+
+		const auto piece_length = [&response = response]{
+			constexpr auto piece_length_offset = 9;
+			return util::extract_integer<std::uint32_t>(response,piece_length_offset);
+		}();
+
+		return std::make_tuple(piece_index,piece_offset,piece_length);
 	};
 
 	switch(message_id){

@@ -45,6 +45,7 @@ private:
 	void extract_peer_response(const QByteArray & peer_response) const noexcept;
 	QByteArray craft_handshake_message() const noexcept;
 	void communicate_with_peer(Tcp_socket * socket) const;
+	bool block_present(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
 	///
 	constexpr static std::string_view keep_alive_message {"00000000"};
 	constexpr static std::string_view choke_message {"0000000100"};
@@ -54,7 +55,7 @@ private:
 	constexpr static auto max_block_size = 1 << 14;
 
 	mutable QSet<QUrl> active_peers_;
-	std::uint64_t downloaded_pieces_count_ = 0;
+	mutable std::uint64_t downloaded_pieces_count_ = 0;
 
 	bencode::Metadata  metadata_;
 	QByteArray id_;
@@ -66,7 +67,7 @@ private:
 	std::uint64_t spare_bitfield_bits_ = 0;
 	QBitArray bitfield_;
 	std::uint64_t average_blocks_count_ = 0;
-	mutable std::vector<QByteArray> pieces_;
+	mutable std::vector<std::pair<std::pair<std::uint32_t,std::vector<bool>>,QByteArray>> pieces_;
 };
 
 inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QByteArray peer_id,QByteArray info_sha1_hash) : 
@@ -92,10 +93,24 @@ inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexc
 [[nodiscard]]
 inline bool Peer_wire_client::verify_hash(const std::size_t piece_idx,const QByteArray & received_packet) const noexcept {
 	constexpr auto sha1_hash_length = 20;
-	assert(piece_idx  < total_pieces_count_ && piece_idx * sha1_hash_length < metadata_.pieces.size());
+	assert(piece_idx < total_pieces_count_ && piece_idx * sha1_hash_length < metadata_.pieces.size());
 
 	QByteArray piece_hash(metadata_.pieces.substr(piece_idx * sha1_hash_length,sha1_hash_length).data(),sha1_hash_length);
 	assert(piece_hash.size() % sha1_hash_length == 0);
 	
 	return piece_hash == QCryptographicHash::hash(received_packet,QCryptographicHash::Sha1);
+}
+
+inline bool Peer_wire_client::block_present(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept {
+	//todo change the check after having helper function for getting block idx
+	assert(piece_idx < total_pieces_count_ && block_idx < average_blocks_count_);
+
+	const auto & [piece_metadata,piece] = pieces_[block_idx];
+	const auto & [received_piece_count,blocks_status] = piece_metadata;
+
+	if(piece.isEmpty()){
+		return false;
+	}
+
+	return blocks_status[block_idx];
 }
