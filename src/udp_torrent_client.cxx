@@ -5,7 +5,7 @@
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
 
-void Udp_torrent_client::configure_default_connections() const noexcept {
+void Udp_torrent_client::configure_default_connections() noexcept {
 
 	connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_](const Announce_response & response){
 		assert(!response.peer_urls.empty());
@@ -65,10 +65,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 
 	QByteArray announce_request = convert_to_hex(tracker_connection_id);
 
-	announce_request += []{
-		constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Announce));
-		return convert_to_hex(connect_action);
-	}();
+	announce_request += convert_to_hex(quint32_be(static_cast<std::uint32_t>(Action_Code::Announce)));
 
 	announce_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));
@@ -77,10 +74,10 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 
 	announce_request += info_sha1_hash_;
 	announce_request += id;
-	announce_request += convert_to_hex(downloaded_);
-	announce_request += convert_to_hex(left_);
-	announce_request += convert_to_hex(uploaded_);
-	announce_request += convert_to_hex(static_cast<std::uint32_t>(event_));
+	announce_request += convert_to_hex(quint64_be(downloaded_));
+	announce_request += convert_to_hex(quint64_be(left_));
+	announce_request += convert_to_hex(quint64_be(uploaded_));
+	announce_request += convert_to_hex(quint32_be(static_cast<std::uint32_t>(event_)));
 
 	announce_request += []{
 		constexpr auto default_ip_address = 0;
@@ -98,7 +95,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const quint64_be tracker_c
 	}();
 
 	announce_request += []{
-		constexpr quint32_be default_port(6889);
+		constexpr quint32_be default_port(6890);
 		return convert_to_hex(default_port);
 	}();
 
@@ -111,10 +108,7 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
 	
 	auto scrape_request = convert_to_hex(tracker_connection_id);
 
-	scrape_request += []{
-		constexpr quint32_be scrape_action(static_cast<std::uint32_t>(Action_Code::Scrape));
-		return convert_to_hex(scrape_action);
-	}();
+	scrape_request += convert_to_hex(quint32_be(static_cast<std::uint32_t>(Action_Code::Scrape)));
 
 	scrape_request += []{
 		const quint32_be txn_id(random_id_range(random_generator));

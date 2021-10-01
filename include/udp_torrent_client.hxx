@@ -68,21 +68,21 @@ private:
 	static QByteArray calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept;
 
 	void on_socket_ready_read(Udp_socket * socket);
-	void configure_default_connections() const noexcept;
+	void configure_default_connections() noexcept;
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
 	inline const static auto id = QByteArray("-TA0001-012345012345").toHex();
 
-	quint64_be downloaded_ {};
-	quint64_be uploaded_ {};
+	std::uint64_t downloaded_ {};
+	std::uint64_t uploaded_ {};
 	Download_Event event_ {};
 
 	bencode::Metadata metadata_;
 	QByteArray info_sha1_hash_;
 	Peer_wire_client peer_client_;
 	std::uint64_t total_ = 0;
-	quint64_be left_ {};
+	std::uint64_t left_ {};
 };
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : 

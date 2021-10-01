@@ -37,9 +37,12 @@ public:
 	void reset_disconnect_timer() noexcept;
 	void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;
 	QSet<std::uint32_t> & pending_pieces() noexcept;
+signals:
+	void got_choked() const;
 private:
 	void configure_default_connections() noexcept;
 	///
+
 	QSet<std::uint32_t> pending_pieces_;
 	QByteArray peer_id_;
 	QTimer disconnect_timer_;
@@ -78,7 +81,7 @@ constexpr bool Tcp_socket::peer_choked() const noexcept {
 	return peer_choked_;
 }
 
-constexpr void Tcp_socket::set_am_interested(bool am_interested) noexcept {
+constexpr void Tcp_socket::set_am_interested(const bool am_interested) noexcept {
 	am_interested_ = am_interested;
 }
 
@@ -119,6 +122,10 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 
 constexpr void Tcp_socket::set_peer_choked(const bool peer_choked) noexcept {
 	peer_choked_ = peer_choked;
+
+	if(peer_choked_){
+		emit got_choked();
+	}
 }
 
 inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
@@ -151,8 +158,8 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 inline void Tcp_socket::configure_default_connections() noexcept {
 
 	disconnect_timer_.callOnTimeout([this]{
-		// qInfo() << "disconnecting from host due to timer";
-		// disconnectFromHost();
+		qInfo() << "disconnecting from host due to timer";
+		disconnectFromHost();
 	});;
 }
 
