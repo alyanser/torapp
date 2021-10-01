@@ -142,7 +142,7 @@ inline std::string extract_any(const std::any & value,const std::uint64_t value_
 	};
 
 	const static auto label_type_hash = typeid(std::string).hash_code();
-	const static auto integer_type_hash = typeid(std::int64_t).hash_code();
+	const static auto integer_type_hash = typeid(std::uint64_t).hash_code();
 	const static auto list_Type_hash = typeid(list).hash_code();
 
 	if(value_type_hash == label_type_hash){
@@ -150,7 +150,7 @@ inline std::string extract_any(const std::any & value,const std::uint64_t value_
 	}
 
 	if(value_type_hash == integer_type_hash){
-		return std::to_string(std::any_cast<std::int64_t>(value));
+		return std::to_string(std::any_cast<std::uint64_t>(value));
 	}
 
 	if(value_type_hash == list_Type_hash){
@@ -179,11 +179,11 @@ struct Metadata {
 	std::string pieces;
 	std::string md5sum;
 	std::string raw_info_dict;
-	std::vector<std::pair<std::string,std::int64_t>> file_info; // [file_path,file_size : bytes]
+	std::vector<std::pair<std::string,std::uint64_t>> file_info; // [file_path,file_size : bytes]
 	std::vector<std::string> announce_url_list;
-	std::int64_t piece_length = 0;
-	std::int64_t single_file_size = 0;
-	std::int64_t multiple_files_size = 0;
+	std::uint64_t piece_length = 0;
+	std::uint64_t single_file_size = 0;
+	std::uint64_t multiple_files_size = 0;
 	bool single_file = true;
 };
 
@@ -243,7 +243,7 @@ inline Metadata extract_metadata(const dictionary & parsed_content) noexcept {
 	for(const auto & [dict_key,value] : parsed_content){
 
 		if(dict_key == "creation date"){
-			metadata.creation_date = std::to_string(std::any_cast<std::int64_t>(value));
+			metadata.creation_date = std::to_string(std::any_cast<std::uint64_t>(value));
 		}else if(dict_key == "created by"){
 			metadata.created_by = std::any_cast<std::string>(value);
 		}else if(dict_key == "encoding"){
@@ -269,7 +269,7 @@ inline Metadata extract_metadata(const dictionary & parsed_content) noexcept {
 
 namespace impl {
 
-using integer_result = std::optional<std::pair<std::int64_t,std::size_t>>;
+using integer_result = std::optional<std::pair<std::uint64_t,std::size_t>>;
 using label_result = std::optional<std::pair<std::string,std::size_t>>;
 using value_result = std::optional<std::pair<std::any,std::size_t>>;
 
@@ -303,7 +303,7 @@ integer_result extract_integer(Bencoded && content,const std::size_t content_len
 
 	const bool negative = content[index] == '-';
 	index += negative;
-	std::int64_t result = 0;
+	std::uint64_t result = 0;
 
 	for(;index < content_length && content[index] != 'e';++index){
 
@@ -498,7 +498,7 @@ inline void extract_files_info(const list & file_info_list,Metadata & metadata) 
 			assert(file_key == "length" || file_key == "path");
 
 			if(file_key == "length"){
-				file_length = std::any_cast<std::int64_t>(file_value);
+				file_length = std::any_cast<std::uint64_t>(file_value);
 			}else{
 				const auto extracted_file_path = std::any_cast<list>(file_value);
 
@@ -523,9 +523,9 @@ inline void extract_info_dictionary(const dictionary & info_dictionary,Metadata 
 		if(info_key == "name"){
 			metadata.name = std::any_cast<std::string>(value);
 		}else if(info_key == "length"){
-			metadata.single_file_size = std::any_cast<std::int64_t>(value);
+			metadata.single_file_size = std::any_cast<std::uint64_t>(value);
 		}else if(info_key == "piece length"){
-			metadata.piece_length = std::any_cast<std::int64_t>(value);
+			metadata.piece_length = std::any_cast<std::uint64_t>(value);
 		}else if(info_key == "pieces"){
 			metadata.pieces = std::any_cast<std::string>(value);
 		}else if(info_key == "md5sum"){

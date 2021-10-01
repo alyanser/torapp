@@ -1,10 +1,11 @@
 #pragma once
 
+#include "utility.hxx"
+
 #include <QHostAddress>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
-#include "utility.hxx"
 
 class Tcp_socket : public QTcpSocket, public std::enable_shared_from_this<Tcp_socket> {
 	Q_OBJECT
@@ -35,7 +36,7 @@ public:
 	void send_packet(const QByteArray & packet);
 	void reset_disconnect_timer() noexcept;
 	void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;
-	const QSet<std::uint32_t> & pending_pieces() const noexcept;
+	QSet<std::uint32_t> & pending_pieces() noexcept;
 private:
 	void configure_default_connections() noexcept;
 	///
@@ -54,6 +55,8 @@ inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
 	configure_default_connections();
 	connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
 	reset_disconnect_timer();
+
+	disconnect_timer_.setSingleShot(true);
 }
 
 inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
@@ -96,19 +99,19 @@ constexpr bool Tcp_socket::peer_interested() const noexcept {
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
 	assert(handshake_done_);
 
-	const auto message_length = [this]{
-		const auto length_buffer = read(sizeof(std::uint32_t));
-		constexpr auto length_offset = 0;
-		return util::extract_integer<std::uint32_t>(length_buffer,length_offset);
+	const auto message_size = [this]{
+		const auto size_buffer = read(sizeof(std::uint32_t));
+		constexpr auto size_offset = 0;
+		return util::extract_integer<std::uint32_t>(size_buffer,size_offset);
 	}();
 
-	if(!message_length){ // keep alive packet
+	if(!message_size){ // keep alive packet
 		return {};
 	}
 
-	if(auto message = read(message_length);message.size() == message_length){
+	if(auto message = read(message_size);message.size() == message_size){
 		assert(!message.isEmpty());
-		return std::make_pair(message_length,std::move(message));
+		return std::make_pair(message_size,std::move(message));
 	}
 
 	return {};
@@ -148,8 +151,8 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 inline void Tcp_socket::configure_default_connections() noexcept {
 
 	disconnect_timer_.callOnTimeout([this]{
-		qInfo() << "disconnecting from host due to timer";
-		disconnectFromHost();
+		// qInfo() << "disconnecting from host due to timer";
+		// disconnectFromHost();
 	});;
 }
 
@@ -162,6 +165,6 @@ inline void Tcp_socket::add_pending_piece(const std::uint32_t pending_piece_idx)
 	pending_pieces_.insert(pending_piece_idx);
 }
 
-inline const QSet<std::uint32_t> & Tcp_socket::pending_pieces() const noexcept {
+inline QSet<std::uint32_t> & Tcp_socket::pending_pieces() noexcept {
 	return pending_pieces_;
 }

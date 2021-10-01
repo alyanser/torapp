@@ -1,8 +1,8 @@
 #pragma once
 
 #include "udp_socket.hxx"
-#include "utility.hxx"
 #include "peer_wire_client.hxx"
+#include "utility.hxx"
 
 #include <QCryptographicHash>
 #include <QObject>
@@ -28,16 +28,16 @@ public:
 	};
 
 	struct Swarm_metadata {
-		std::uint32_t seeds_count = 0;
+		std::uint32_t seed_count = 0;
 		std::uint32_t completed_count = 0;
-		std::uint32_t leechers_count = 0;
+		std::uint32_t leecher_count = 0;
 	};
 
 	struct Announce_response {
 		std::vector<QUrl> peer_urls;
 		std::uint32_t interval_time = 0;
-		std::uint32_t leechers_count = 0;
-		std::uint32_t seeds_count = 0;
+		std::uint32_t leecher_count = 0;
+		std::uint32_t seed_count = 0;
 	};
 
 	using connect_optional = std::optional<quint64_be>;
@@ -89,7 +89,7 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
 	metadata_(std::move(torrent_metadata)),
 	info_sha1_hash_(calculate_info_sha1_hash(metadata_)),
 	peer_client_(metadata_,id,info_sha1_hash_),
-	total_(static_cast<std::uint64_t>(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)),
+	total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size),
 	left_(total_)
 {
 	configure_default_connections();

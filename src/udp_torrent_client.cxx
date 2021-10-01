@@ -7,9 +7,9 @@
 
 void Udp_torrent_client::configure_default_connections() const noexcept {
 
-	connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_](const Announce_response & announce_response){
-		assert(!announce_response.peer_urls.empty());
-		peer_client_.do_handshake(announce_response.peer_urls);
+	connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_](const Announce_response & response){
+		assert(!response.peer_urls.empty());
+		peer_client_.do_handshake(response.peer_urls);
 	});
 }
 
@@ -24,8 +24,11 @@ void Udp_torrent_client::send_connect_request() noexcept {
 		auto socket = std::make_shared<Udp_socket>(QUrl(tracker_url.data()),craft_connect_request())->bind_lifetime();
 		
 		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
+
 			try {
-				on_socket_ready_read(socket);
+				while(socket->bytesAvailable()){
+					on_socket_ready_read(socket);
+				}
 			}catch(const std::exception & exception){
 				qDebug() << exception.what();
 				socket->disconnectFromHost();
@@ -135,7 +138,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 	auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
 
 		if(const auto connection_id = extract_connect_response(tracker_response,socket->txn_id())){
-			qInfo() << "got connect response";
 			socket->set_announce_request(craft_announce_request(*connection_id));
 			socket->set_scrape_request(craft_scrape_request(metadata_,*connection_id));
 			socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
@@ -201,9 +203,12 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
 			default : {
 				socket->disconnectFromHost();
+				break;
 			}
 		}
 	}
+
+	assert(!socket->bytesAvailable());
 }
 
 [[nodiscard]]
@@ -229,12 +234,12 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 		return util::extract_integer<std::uint32_t>(response,interval_offset);
 	}();
 
-	const auto leechers_count = [&response]{
+	const auto leecher_count = [&response]{
 		constexpr auto leechers_offset = 12;
 		return util::extract_integer<std::uint32_t>(response,leechers_offset);
 	}();
 
-	const auto seeds_count = [&response]{
+	const auto seed_count = [&response]{
 		constexpr auto seeders_offset = 16;
 		return util::extract_integer<std::uint32_t>(response,seeders_offset);
 	}();
@@ -260,7 +265,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 		return peer_urls;
 	}();
 
-	return Announce_response{std::move(peer_urls),interval_time,leechers_count,seeds_count};
+	return Announce_response{std::move(peer_urls),interval_time,leecher_count,seed_count};
 }
 
 [[nodiscard]]
@@ -270,9 +275,9 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 		return {};
 	}
 
-	const auto seeds_count = [&response]{
-		constexpr auto seeds_count_offset = 8;
-		return util::extract_integer<std::uint32_t>(response,seeds_count_offset);
+	const auto seed_count = [&response]{
+		constexpr auto seed_count_offset = 8;
+		return util::extract_integer<std::uint32_t>(response,seed_count_offset);
 	}();
 
 	const auto completed_count = [&response]{
@@ -280,12 +285,12 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 		return util::extract_integer<std::uint32_t>(response,download_count_offset);
 	}();
 
-	const auto leechers_count = [&response]{
-		constexpr auto leechers_count_offset = 16;
-		return util::extract_integer<std::uint32_t>(response,leechers_count_offset);
+	const auto leecher_count = [&response]{
+		constexpr auto leecher_count_offset = 16;
+		return util::extract_integer<std::uint32_t>(response,leecher_count_offset);
 	}();
 
-	return Swarm_metadata{seeds_count,completed_count,leechers_count};
+	return Swarm_metadata{seed_count,completed_count,leecher_count};
 }
 
 [[nodiscard]]

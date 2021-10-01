@@ -82,12 +82,12 @@ QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size =
 
 inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	constexpr auto bits_in_byte = 8;
-	QBitArray bits(bytes.size() * bits_in_byte);
+	QBitArray bits(bytes.size() * bits_in_byte,false);
 
-	for(std::ptrdiff_t byte_idx = 0;byte_idx < bytes.size();byte_idx++){
+	for(std::ptrdiff_t byte_idx = 0;byte_idx < bytes.size();++byte_idx){
 
-		for(std::ptrdiff_t bit_idx = 0;bit_idx < bits_in_byte;bit_idx++){
-			bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << bit_idx);
+		for(std::ptrdiff_t bit_idx = 0;bit_idx < bits_in_byte;++bit_idx){
+			bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << (bits_in_byte - 1 - bit_idx));
 		}
 	}
 
@@ -99,7 +99,7 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
 	assert(bits.size() % bits_in_byte == 0);
 	QByteArray bytes(bits.size() / bits_in_byte,'\x00');
 
-	for(std::ptrdiff_t bit_idx = 0;bit_idx < bits.size();bit_idx++){
+	for(std::ptrdiff_t bit_idx = 0;bit_idx < bits.size();++bit_idx){
 		bytes[static_cast<qsizetype>(bit_idx / bits_in_byte)] |= bits[bit_idx] << bit_idx % bits_in_byte;
 	}
 
