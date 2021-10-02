@@ -30,8 +30,7 @@ public :
 	const QByteArray & announce_request() const noexcept;
 	const QByteArray & scrape_request() const noexcept;
 
-	void start_interval_timer(std::chrono::seconds interval_seconds) noexcept;
-
+	void start_interval_timer(std::chrono::seconds interval_timeout) noexcept;
 	void send_initial_request(const QByteArray & request,State new_state) noexcept;
 private:
 	constexpr void set_txn_id(std::uint32_t txn_id) noexcept;

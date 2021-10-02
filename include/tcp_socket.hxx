@@ -42,7 +42,6 @@ signals:
 private:
 	void configure_default_connections() noexcept;
 	///
-
 	QSet<std::uint32_t> pending_pieces_;
 	QByteArray peer_id_;
 	QTimer disconnect_timer_;
@@ -63,7 +62,7 @@ inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
 }
 
 inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
-	connect(this,&QTcpSocket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
+	connect(this,&Tcp_socket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
 	return shared_from_this();
 }
 
@@ -133,7 +132,7 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
-	write(QByteArray::fromHex(packet));
+	write(QByteArray::fromHex(packet.data()));
 }
 
 [[nodiscard]]
@@ -157,9 +156,9 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 
 inline void Tcp_socket::configure_default_connections() noexcept {
 
-	disconnect_timer_.callOnTimeout([this]{
-		qInfo() << "disconnecting from host due to timer";
-		disconnectFromHost();
+	disconnect_timer_.callOnTimeout([]{
+		// qInfo() << "disconnecting from host due to timer";
+		// disconnectFromHost();
 	});;
 }
 

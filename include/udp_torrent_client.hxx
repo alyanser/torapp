@@ -72,7 +72,7 @@ private:
 	///
 	inline static std::mt19937 random_generator {std::random_device{}()};
 	inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
-	inline const static auto id = QByteArray("-TA0001-012345012345").toHex();
+	inline const static auto id = QByteArray("-TA0001-ABC134ALIlli").toHex();
 
 	std::uint64_t downloaded_ {};
 	std::uint64_t uploaded_ {};
@@ -85,12 +85,12 @@ private:
 	std::uint64_t left_ {};
 };
 
-inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata) : 
-	metadata_(std::move(torrent_metadata)),
-	info_sha1_hash_(calculate_info_sha1_hash(metadata_)),
-	peer_client_(metadata_,id,info_sha1_hash_),
-	total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size),
-	left_(total_)
+inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata)
+	: metadata_(std::move(torrent_metadata))
+	, info_sha1_hash_(calculate_info_sha1_hash(metadata_))
+	, peer_client_(metadata_,id,info_sha1_hash_)
+	, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+	, left_(total_)
 {
 	configure_default_connections();
 }

@@ -80,6 +80,7 @@ QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size =
 	return hex_fmt;
 }
 
+[[nodiscard]]
 inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	constexpr auto bits_in_byte = 8;
 	QBitArray bits(bytes.size() * bits_in_byte,false);
@@ -94,6 +95,7 @@ inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	return bits;
 }
 
+[[nodiscard]]
 inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
 	constexpr auto bits_in_byte = 8;
 	assert(bits.size() % bits_in_byte == 0);
@@ -118,24 +120,24 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 	}
 
 	bool conversion_success = true;
-	result_type resultant_integer = 0;
+	result_type result = 0;
 	const auto hex_fmt = raw_data.sliced(offset,bytes).toHex();
 	constexpr auto hex_base = 16;
 
 	if constexpr (std::is_same_v<result_type,std::uint32_t>){
-		resultant_integer = hex_fmt.toUInt(&conversion_success,hex_base);
+		result = hex_fmt.toUInt(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::int32_t>){
-		resultant_integer = hex_fmt.toInt(&conversion_success,hex_base);
+		result = hex_fmt.toInt(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::uint64_t>){
-		resultant_integer = hex_fmt.toULongLong(&conversion_success,hex_base);
+		result = hex_fmt.toULongLong(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::int64_t>){
-		resultant_integer = hex_fmt.toLongLong(&conversion_success,hex_base);
+		result = hex_fmt.toLongLong(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::uint16_t>){
-		resultant_integer = hex_fmt.toUShort(&conversion_success,hex_base);
+		result = hex_fmt.toUShort(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::int16_t>){
-		resultant_integer = hex_fmt.toShort(&conversion_success,hex_base);
+		result = hex_fmt.toShort(&conversion_success,hex_base);
 	}else if constexpr (std::is_same_v<result_type,std::int8_t> || std::is_same_v<result_type,std::uint8_t>){
-		resultant_integer = static_cast<result_type>(hex_fmt.toUShort(&conversion_success,hex_base));
+		result = static_cast<result_type>(hex_fmt.toUShort(&conversion_success,hex_base));
 	}else{
 		throw std::domain_error("invalid type");
 	}
@@ -144,7 +146,7 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 		throw std::overflow_error("content could not fit in the specified type");
 	}
 
-	return resultant_integer;
+	return result;
 }
 
 struct Download_request {
