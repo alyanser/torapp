@@ -23,8 +23,15 @@ public:
 		Bitfield,
 		Request,
 		Piece,
-		Cancel
+		Cancel,
+		Suggest_Piece = 0x0d,
+		Have_All,
+		Have_None,
+		Reject_Request,
+		Allowed_Fast
 	}; 
+
+	static_assert(static_cast<std::uint32_t>(Message_Id::Allowed_Fast) == 17);
 
 	Q_ENUM(Message_Id);
 
@@ -70,21 +77,22 @@ private:
 	Piece_metadata get_piece_info(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
 	void send_block_requests(Tcp_socket * socket,std::uint32_t piece_idx) noexcept;
 	std::uint32_t get_current_target_piece() const noexcept;
+	static bool valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
 	///
-	constexpr static std::string_view keep_alive_message {"00000000"};
-	constexpr static std::string_view choke_message {"0000000100"};
-	constexpr static std::string_view unchoke_message {"0000000101"};
-	constexpr static std::string_view interested_message {"0000000102"};
-	constexpr static std::string_view uninterested_message {"0000000103"};
-	constexpr static std::uint64_t extension_bytes {0x80000000}; // fast extension
+	constexpr static std::string_view keep_alive_msg {"00000000"};
+	constexpr static std::string_view choke_msg {"0000000100"};
+	constexpr static std::string_view unchoke_msg {"0000000101"};
+	constexpr static std::string_view interested_msg {"0000000102"};
+	constexpr static std::string_view uninterested_msg {"0000000103"};
 	constexpr static auto max_block_size = 1 << 14;
+	inline static const QByteArray reserved_bytes {"\x00\x00\x00\x00\x00\x00\x00\x04",8}; // fast extension
 
 	QSet<QUrl> active_peers_;
 	QSet<std::uint32_t> remaining_pieces_;
 	bencode::Metadata metadata_;
 	QByteArray id_;
 	QByteArray info_sha1_hash_;
-	QByteArray handshake_message_;
+	QByteArray handshake_msg_;
 	QTimer acquire_piece_timer_;
 	std::uint64_t torrent_size_ = 0;
 	std::uint64_t piece_size_ = 0;
@@ -99,7 +107,7 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QByteArray 
 	: metadata_(std::move(metadata))
 	, id_(std::move(peer_id))
 	, info_sha1_hash_(std::move(info_sha1_hash))
-	, handshake_message_(craft_handshake_message())
+	, handshake_msg_(craft_handshake_message())
 	, torrent_size_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
 	, piece_size_(metadata_.piece_length)
 	, total_piece_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_))))

@@ -27,6 +27,9 @@ public:
 	constexpr bool am_interested() const noexcept;
 	constexpr bool peer_interested() const noexcept;
 
+	constexpr bool fast_ext_enabled() const noexcept;
+	constexpr void set_fast_ext_enabled(bool fast_ext_enabled) noexcept;
+
 	std::optional<std::pair<std::uint32_t,QByteArray>> receive_packet();
 
 	QByteArray peer_id() const noexcept;
@@ -51,6 +54,7 @@ private:
 	bool peer_choked_ = true;
 	bool am_interested_ = false;
 	bool peer_interested_ = false;
+	bool fast_ext_enabled_ = false;
 };
 
 inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
@@ -98,22 +102,30 @@ constexpr bool Tcp_socket::peer_interested() const noexcept {
 	return peer_interested_;
 }
 
+constexpr bool Tcp_socket::fast_ext_enabled() const noexcept {
+	return fast_ext_enabled_;
+}
+
+constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noexcept {
+	fast_ext_enabled_ = fast_ext_enabled;
+}
+
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
 	assert(handshake_done_);
 
-	const auto message_size = [this]{
+	const auto msg_size = [this]{
 		const auto size_buffer = read(sizeof(std::uint32_t));
 		constexpr auto size_offset = 0;
 		return util::extract_integer<std::uint32_t>(size_buffer,size_offset);
 	}();
 
-	if(!message_size){ // keep alive packet
+	if(!msg_size){ // keep alive packet
 		return {};
 	}
 
-	if(auto message = read(message_size);message.size() == message_size){
-		assert(!message.isEmpty());
-		return std::make_pair(message_size,std::move(message));
+	if(auto msg = read(msg_size);msg.size() == msg_size){
+		assert(!msg.isEmpty());
+		return std::make_pair(msg_size,std::move(msg));
 	}
 
 	return {};
