@@ -42,6 +42,7 @@ public:
 	QSet<std::uint32_t> & pending_pieces() noexcept;
 signals:
 	void got_choked() const;
+	void shutdown() const;
 private:
 	void configure_default_connections() noexcept;
 	///
@@ -66,7 +67,12 @@ inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
 }
 
 inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
-	connect(this,&Tcp_socket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
+	const auto lifetime_connection = connect(this,&Tcp_socket::shutdown,this,[]{},Qt::SingleShotConnection);
+
+	connect(this,&Tcp_socket::disconnected,[lifetime_connection]{
+		QTimer::singleShot(0,[lifetime_connection]{ disconnect(lifetime_connection); });
+	});
+	
 	return shared_from_this();
 }
 
@@ -144,7 +150,8 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
-	write(QByteArray::fromHex(packet.data()));
+	assert(!packet.isEmpty());
+	write(QByteArray::fromHex(packet));
 }
 
 [[nodiscard]]

@@ -13,7 +13,7 @@
 #include <QTimer>
 #include <QTime>
 
-class Download_tracker : public QWidget, public std::enable_shared_from_this<Download_tracker> {
+class Download_tracker : public QWidget {
          Q_OBJECT
 public:
          enum class Error { 
@@ -24,20 +24,21 @@ public:
 		Custom
 	};
 
-         explicit Download_tracker(util::Download_request download_request);
+         explicit Download_tracker(util::Download_request download_request,QWidget * parent = nullptr);
+	// todo define this
+         explicit Download_tracker(bencode::Metadata ,QWidget *  = nullptr){};
 
 	constexpr Error error() const noexcept;
          std::uint32_t get_elapsed_seconds() const noexcept;
-         std::shared_ptr<Download_tracker> bind_lifetime() noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
 signals:
-         void request_satisfied() const;
-         void retry_url_download(const util::Download_request & download_request) const;
-         void retry_torrent_download(const bencode::Metadata & metadata) const;
+         void retry_download(const util::Download_request & download_request) const;
+         void retry_download(const bencode::Metadata & metadata) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
+	void request_satisfied() const;
 public slots:
          void download_progress_update(std::int64_t bytes_received,std::int64_t total_bytes) noexcept;
          void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
@@ -97,15 +98,6 @@ private:
          QPushButton delete_button_ {"Delete"};
          QPushButton open_directory_button_ {"Open directory"};
 };
-
-inline std::shared_ptr<Download_tracker> Download_tracker::bind_lifetime() noexcept {
-
-         connect(this,&Download_tracker::request_satisfied,this,[self = shared_from_this()]{
-                  assert(self.use_count() <= 2);
-         },Qt::SingleShotConnection);
-
-	return shared_from_this();
-}
 
 inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);

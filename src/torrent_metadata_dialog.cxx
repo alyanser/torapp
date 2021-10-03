@@ -36,7 +36,6 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & metadata) 
 		const auto file_size_bytes = file_size_kbs * 1024;
 		const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_bytes,conversion_format);
 
-		//! consider alt
 		auto * const file_label = new QLabel(this);
 
 		file_label->setText(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data());

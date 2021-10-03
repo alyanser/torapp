@@ -4,7 +4,10 @@
 #include <QDesktopServices>
 #include <QMessageBox>
 
-Download_tracker::Download_tracker(){
+Download_tracker::Download_tracker(util::Download_request download_request,QWidget * const parent) : QWidget(parent){
+         assert(!download_request.url.isEmpty());
+         assert(!download_request.download_path.isEmpty());
+
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -12,50 +15,35 @@ Download_tracker::Download_tracker(){
          update_error_line();
          configure_default_connections();
 
-         time_elapsed_timer_.start(std::chrono::milliseconds(1000));
+         time_elapsed_timer_.start(std::chrono::seconds(1));
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
-}
-
-Download_tracker::Download_tracker(util::Download_request download_request) : Download_tracker(){
-         assert(!download_request.url.isEmpty());
-         assert(!download_request.download_path.isEmpty());
-
          package_name_label_.setText(download_request.url.fileName());
          download_path_label_.setText(download_request.download_path);
 
          {	
-                  auto on_open_button_clicked = [this,path = download_request.download_path,name = download_request.package_name]{
+                  connect(&open_button_,&QPushButton::clicked,[this,path = download_request.download_path,name = download_request.package_name]{
 
                            if(!QDesktopServices::openUrl(path + name)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
-				
                                     QMessageBox::critical(this,message_title.data(),message_body.data());
                            }
-                  };
+		});
 
-
-                  auto on_open_directory_button_clicked = [this,download_path = download_request.download_path]{
+                  connect(&open_directory_button_,&QPushButton::clicked,[this,download_path = download_request.download_path]{
 
                            if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
-
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
-                  };
+		});
 
-                  auto on_retry_button_clicked = [this,download_request = std::move(download_request)]{
-                           emit retry_url_download(download_request);
-                           emit request_satisfied();
-                  };
-
-		//! download request moved from
-
-                  connect(&open_button_,&QPushButton::clicked,on_open_button_clicked);
-                  connect(&open_directory_button_,&QPushButton::clicked,on_open_directory_button_clicked);
-                  connect(&retry_button_,&QPushButton::clicked,this,on_retry_button_clicked,Qt::SingleShotConnection);
+                  connect(&retry_button_,&QPushButton::clicked,this,[this,download_request = std::move(download_request)]{
+                           emit retry_download(download_request);
+			emit request_satisfied();
+		});
          }
 }
 
@@ -138,27 +126,16 @@ void Download_tracker::download_progress_update(const std::int64_t bytes_receive
          const auto speed = bytes_received / seconds_elapsed;
 
 	constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
-
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
          download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
 
 void Download_tracker::configure_default_connections() noexcept {
+	connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 
-         auto on_cancel_button_clicked = [this]{
-                  constexpr std::string_view question_title("Cancel Download");
-                  constexpr std::string_view question_body("Are you sure you want to cancel the download?");
-                  constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
-                  
-                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
-
-                  if(response == QMessageBox::StandardButton::Yes){
-                           emit request_satisfied();
-                  }
-         };
-
-         auto on_delete_button_clicked = [this]{
+         connect(&delete_button_,&QPushButton::clicked,[this]{
                   QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::Button::NoButton);
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
@@ -169,18 +146,26 @@ void Download_tracker::configure_default_connections() noexcept {
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
                   connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::request_satisfied);
                   connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::request_satisfied);
-                  
+
                   query_box.exec();
-         };
+	});
+
+         connect(&cancel_button_,&QPushButton::clicked,[this]{
+                  constexpr std::string_view question_title("Cancel Download");
+                  constexpr std::string_view question_body("Are you sure you want to cancel the download?");
+                  constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
+                  
+                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+
+                  if(response == QMessageBox::StandardButton::Yes){
+			emit request_satisfied();
+                  }
+	});
 
          connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
                   time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
          });
-
-         connect(&delete_button_,&QPushButton::clicked,on_delete_button_clicked);
-         connect(&cancel_button_,&QPushButton::clicked,this,on_cancel_button_clicked);
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 }
 
 void Download_tracker::switch_to_finished_state() noexcept {
@@ -198,10 +183,10 @@ void Download_tracker::switch_to_finished_state() noexcept {
 }
 
 void Download_tracker::update_error_line() noexcept {
-         constexpr std::string_view null_error_info("Download completed successfully. Press the open button to view");
-         constexpr std::string_view file_write_error_info("Given file could not be opened for writing");
+         constexpr std::string_view null_error_info("Download completed successfully. Click on Open button to view");
+         constexpr std::string_view file_write_error_info("Given file could not be opened for writing.");
          constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
-         constexpr std::string_view file_lock_error_info("Same file is held by another download. Cancel that download and retry");
+         constexpr std::string_view file_lock_error_info("Same file is held by another process. Stop that process and retry");
 
          switch(error_){
                   case Error::Null : {

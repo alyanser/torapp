@@ -4,7 +4,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-Url_input_widget::Url_input_widget(QWidget * parent) : QDialog(parent){
+Url_input_widget::Url_input_widget(QWidget * const parent) : QDialog(parent){
          setFixedSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
@@ -111,8 +111,7 @@ void Url_input_widget::on_input_received() noexcept {
                            return;
                   }
          }
-
-         reset_lines();
+	
          emit new_request_received({std::move(package_name),std::move(path),std::move(url)});
 	accept();
 }

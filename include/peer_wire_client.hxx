@@ -67,9 +67,10 @@ private:
 	bool verify_hash(std::size_t piece_idx,const QByteArray & received_packet) const noexcept;
 
 	void on_unchoke_message_received(Tcp_socket * socket) noexcept;
-	void on_have_message_received(Tcp_socket * socket,const QByteArray & response) noexcept;
+	void on_have_message_received(Tcp_socket * socket,std::uint32_t peer_have_piece_idx) noexcept;
 	void on_bitfield_received(Tcp_socket * socket,const QByteArray & response,std::uint32_t payload_size) noexcept;
 	void on_piece_received(Tcp_socket * socket,const QByteArray & response) noexcept;
+	void on_allowed_fast_received(Tcp_socket * socket,std::uint32_t allowed_piece_idx) noexcept;
 
 	void extract_peer_response(const QByteArray & peer_response) const noexcept;
 	QByteArray craft_handshake_message() const noexcept;
@@ -84,6 +85,8 @@ private:
 	constexpr static std::string_view unchoke_msg {"0000000101"};
 	constexpr static std::string_view interested_msg {"0000000102"};
 	constexpr static std::string_view uninterested_msg {"0000000103"};
+	constexpr static std::string_view have_all_msg {"000000010f"};
+	constexpr static std::string_view have_none_msg {"000000010f"};
 	constexpr static auto max_block_size = 1 << 14;
 	inline static const QByteArray reserved_bytes {"\x00\x00\x00\x00\x00\x00\x00\x04",8}; // fast extension
 
@@ -121,12 +124,11 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QByteArray 
 	for(std::uint32_t piece_idx = 0;piece_idx < total_piece_count_;++piece_idx){
 		remaining_pieces_.insert(piece_idx);
 	}
-
-	assert(static_cast<std::uint64_t>(remaining_pieces_.size()) == total_piece_count_);
 }
 
 inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexcept {
 	connect(this,&Peer_wire_client::shutdown,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
+	
 	return shared_from_this();
 }
 

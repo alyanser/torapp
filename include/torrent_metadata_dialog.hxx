@@ -14,11 +14,11 @@
 class Torrent_metadata_dialog : public QDialog {
 	Q_OBJECT
 public:
-	explicit Torrent_metadata_dialog(const QString & file_path,QWidget * parent = nullptr);
+	explicit Torrent_metadata_dialog(std::string_view file_path,QWidget * parent = nullptr);
 signals:
 	void new_request_received(const bencode::Metadata & metadata) const;
 private:
-	void extract_metadata(const QString & file_path) noexcept;
+	void extract_metadata(std::string_view file_path) noexcept;
 	void setup_layout() noexcept;
 	void setup_display(const bencode::Metadata & metadata) noexcept;
 	void configure_default_connections() noexcept;
@@ -42,16 +42,15 @@ private:
 	QVBoxLayout file_layout_;
 };
 
-inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & file_path,QWidget * const parent) : QDialog(parent){
+inline Torrent_metadata_dialog::Torrent_metadata_dialog(const std::string_view file_path,QWidget * const parent) : QDialog(parent){
 	setWindowTitle("Add New Torrent");
 	setup_layout();
 	extract_metadata(file_path);
 	configure_default_connections();
 }
 
-inline void Torrent_metadata_dialog::extract_metadata(const QString & file_path) noexcept {
-	auto metadata = bencode::extract_metadata(bencode::parse_file(file_path.toStdString()));
-	
+inline void Torrent_metadata_dialog::extract_metadata(const std::string_view file_path) noexcept {
+	auto metadata = bencode::extract_metadata(bencode::parse_file(file_path.data()));
 	setup_display(metadata);
 
 	connect(&begin_download_button_,&QPushButton::clicked,this,[this,metadata = std::move(metadata)]{

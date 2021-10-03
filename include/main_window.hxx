@@ -3,6 +3,7 @@
 #include "url_input_dialog.hxx"
 #include "network_manager.hxx"
 #include "download_tracker.hxx"
+#include "file_manager.hxx"
 
 #include <QActionGroup>
 #include <QCloseEvent>
@@ -21,18 +22,15 @@ public:
          Main_window & operator = (const Main_window & rhs) = delete;
          Main_window & operator = (Main_window && rhs) = delete;
          ~Main_window() override = default;
-signals:
-         void quit() const;
-	void forward_url_download_request(const util::Download_request & download_request) const;
-	void forward_torrent_download_request(const bencode::Metadata & metadata) const;
+
+	template<typename request_type>
+	void initiate_download(request_type && download_request) noexcept;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
-         void configure_default_connections() noexcept;
          void setup_menu_bar() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
-         void confirm_quit() noexcept;
          ///
          QWidget central_widget_;
          QVBoxLayout central_layout_ {&central_widget_};
@@ -41,26 +39,62 @@ private:
          QMenu sort_menu_ {"Sort",menuBar()};
          QActionGroup sort_action_group_ {this};
          Network_manager network_manager_;
+	File_manager file_manager_;
 };
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
-         event->ignore();
-         confirm_quit();
-}
-
-inline void Main_window::confirm_quit() noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of your downloads will be terminated.");
 
          const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
 
-         if(response_button == QMessageBox::Yes){
-                  emit network_manager_.terminate();
-         }
+	response_button == QMessageBox::Yes ? event->accept() : event->ignore();
 }
 
 inline void Main_window::setup_menu_bar() noexcept {
          auto * const menu_bar = menuBar();
          menu_bar->addMenu(&file_menu_);
          menu_bar->addMenu(&sort_menu_);
+}
+
+template<typename request_type>
+void Main_window::initiate_download(request_type && download_request) noexcept {
+	auto * tracker = new Download_tracker(std::forward<request_type>(download_request),&central_widget_);
+	central_layout_.addWidget(tracker);
+	
+	{
+		const auto download_signal = qOverload<request_type>(&Download_tracker::retry_download);
+		const auto download_slot = qOverload<request_type>(&Main_window::initiate_download<request_type>);
+		
+		const auto connection_success = connect(tracker,download_signal,this,download_slot);
+		assert(connection_success);
+	}
+
+	const auto [file_error,file_handles] = file_manager_.open_file_handles(std::forward<request_type>(download_request));
+
+	switch(file_error){
+		case File_manager::Error::File_Lock : {
+			[[fallthrough]];
+		}
+
+		case File_manager::Error::Already_Exists : {
+			tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
+			break;
+		}
+
+		case File_manager::Error::Permissions : {
+			tracker->set_error_and_finish(Download_tracker::Error::File_Write);
+			break;
+		}
+
+		case File_manager::Error::Null : {
+			assert(!file_handles.empty());
+			assert(tracker->error() == Download_tracker::Error::Null);
+
+			network_manager_.download({file_handles,tracker},std::forward<request_type>(download_request));
+			break;
+		};
+
+		default : __builtin_unreachable();
+	}
 }

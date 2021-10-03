@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=address,undefined -fno-omit-frame-pointer ${CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-ggdb3 -O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
 
@@ -34,6 +34,7 @@ set(MOC_INCLUDES
 	include/udp_torrent_client.hxx
 	include/udp_socket.hxx
 	include/tcp_socket.hxx
+	include/file_manager.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})

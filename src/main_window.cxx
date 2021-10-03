@@ -9,25 +9,12 @@
 
 Main_window::Main_window(){
          setWindowTitle("Torapp");
-
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
-         
+
          setup_menu_bar();
          setup_sort_menu();
          add_top_actions();
-         configure_default_connections();
-}
-
-void Main_window::configure_default_connections() noexcept {
-
-	connect(&network_manager_,&Network_manager::tracker_added,[&central_layout_ = central_layout_](Download_tracker & new_tracker){
-		central_layout_.addWidget(&new_tracker);
-	});
-
-         connect(&network_manager_,&Network_manager::all_trackers_destroyed,this,&Main_window::quit);
-	connect(this,&Main_window::forward_url_download_request,&network_manager_,&Network_manager::initiate_url_download);
-	connect(this,&Main_window::forward_torrent_download_request,&network_manager_,&Network_manager::initiate_torrent_download);
 }
 
 void Main_window::add_top_actions() noexcept {
@@ -46,29 +33,34 @@ void Main_window::add_top_actions() noexcept {
          torrent_action->setToolTip("Download a torrent file");
          exit_action->setToolTip("Exit Torapp");
 
+         connect(exit_action,&QAction::triggered,this,&Main_window::close);
+
 	connect(torrent_action,&QAction::triggered,[this]{
 		constexpr std::string_view caption("Choose a torrent file");
 		constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
 		
 		const auto file_path = QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
 
-		if(!file_path.isEmpty()){
-			Torrent_metadata_dialog torrent_dialog(file_path,this);
-			const auto forward_request = qOverload<const bencode::Metadata &>(&Main_window::forward_torrent_download_request);
-
-			connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,forward_request);
-			torrent_dialog.exec();
+		if(file_path.isEmpty()){
+			return;
 		}
+
+		Torrent_metadata_dialog torrent_dialog(file_path.toStdString(),this);
+		
+		const auto slot = qOverload<const bencode::Metadata &>(&Main_window::initiate_download<const bencode::Metadata &>);
+		connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,slot);
+
+		torrent_dialog.exec();
 	});
 
 	connect(url_action,&QAction::triggered,[this]{
-		Url_input_widget url_input_widget(this);
+		Url_input_widget input_widget(this);
 
-		connect(&url_input_widget,&Url_input_widget::new_request_received,this,&Main_window::forward_url_download_request);
-		url_input_widget.exec();
+		const auto slot = qOverload<const util::Download_request &>(&Main_window::initiate_download<const util::Download_request &>);
+		connect(&input_widget,&Url_input_widget::new_request_received,this,slot);
+		
+		input_widget.exec();
 	});
-
-         connect(exit_action,&QAction::triggered,this,&Main_window::quit);
 }
 
 void Main_window::setup_sort_menu() noexcept {
