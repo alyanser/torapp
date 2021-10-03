@@ -3,20 +3,19 @@
 #include <QUdpSocket>
 #include <QTimer>
 #include <QUrl>
-#include <iostream>
 
-class Udp_socket : public QUdpSocket, public std::enable_shared_from_this<Udp_socket> {
+class Udp_socket : public QUdpSocket {
 	Q_OBJECT
 public :
 	enum class State { 
 		Connect,
 		Scrape,
 		Announce
-	}; Q_ENUM(State);
+	}; 
+	
+	Q_ENUM(State);
 
-	Udp_socket(const QUrl & url,QByteArray connect_request);
-
-	std::shared_ptr<Udp_socket> bind_lifetime() noexcept;
+	Udp_socket(const QUrl & url,QByteArray connect_request,QObject * parent);
 
 	constexpr std::uint32_t txn_id() const noexcept;
 	constexpr void set_interval_time(std::chrono::seconds interval_time) noexcept;
@@ -53,15 +52,13 @@ private:
 	QByteArray connect_request_;
 };
 
-inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request) : connect_request_(std::move(connect_request)){
+inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request,QObject * const parent) 
+	: QUdpSocket(parent)
+	, connect_request_(std::move(connect_request))
+{
 	assert(!connect_request_.isEmpty());
 	configure_default_connections();
 	connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
-}
-
-inline std::shared_ptr<Udp_socket> Udp_socket::bind_lifetime() noexcept {
-	connect(this,&Udp_socket::disconnected,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
-	return shared_from_this();
 }
 
 inline void Udp_socket::reset_time_specs() noexcept {

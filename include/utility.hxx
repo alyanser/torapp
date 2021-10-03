@@ -4,8 +4,6 @@
 
 #include <QBigEndianStorageType>
 #include <QBitArray>
-#include <QUrl>
-#include <string_view>
 
 namespace util {
 
@@ -148,11 +146,5 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 
 	return result;
 }
-
-struct Download_request {
-         QString package_name;
-         QString download_path;
-         QUrl url;
-};
 
 } // namespace util

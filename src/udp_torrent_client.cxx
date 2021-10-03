@@ -21,9 +21,9 @@ void Udp_torrent_client::send_connect_request() noexcept {
 	}
 
 	for(const auto & tracker_url : tracker_urls){
-		auto socket = std::make_shared<Udp_socket>(QUrl(tracker_url.data()),craft_connect_request())->bind_lifetime();
+		auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
 		
-		connect(socket.get(),&Udp_socket::readyRead,this,[this,socket = socket.get()]{
+		connect(socket,&Udp_socket::readyRead,this,[this,socket]{
 
 			try {
 				while(socket->bytesAvailable()){

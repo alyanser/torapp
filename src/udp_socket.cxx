@@ -2,17 +2,14 @@
 #include "utility.hxx"
 
 void Udp_socket::configure_default_connections() noexcept {
+	connect(this,&Udp_socket::disconnected,&Udp_socket::deleteLater);
+	connect(this,&Udp_socket::readyRead,&connection_timer_,&QTimer::stop);
 
 	connect(this,&Udp_socket::connected,[this]{
 		send_initial_request(connect_request_,State::Connect);
 	});
 	
-	connect(this,&Udp_socket::readyRead,[&connection_timer_ = connection_timer_]{
-		connection_timer_.stop();
-	});
-
 	interval_timer_.callOnTimeout([this]{
-		qInfo() << "interval timer timeout out" << interval_timer_.intervalAsDuration().count();
 		send_request(announce_request_);
 	});
 
@@ -48,15 +45,15 @@ void Udp_socket::configure_default_connections() noexcept {
 	});
 }
 
-void Udp_socket::send_packet(const QByteArray & packet) noexcept {
-	const auto raw_fmt = QByteArray::fromHex(packet);
-	write(raw_fmt);
+void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
+	const auto raw_packet = QByteArray::fromHex(hex_packet);
+	write(raw_packet);
 
 	constexpr auto txn_id_offset = 12;
-	bool conversion_success = true;
-	
-	const auto sent_txn_id = util::extract_integer<std::uint32_t>(raw_fmt,txn_id_offset);
 
+	bool conversion_success = true;
+	const auto sent_txn_id = util::extract_integer<std::uint32_t>(raw_packet,txn_id_offset);
 	assert(conversion_success);
-	set_txn_id(sent_txn_id);
+
+	txn_id_ = sent_txn_id;
 }

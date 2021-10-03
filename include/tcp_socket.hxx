@@ -7,10 +7,10 @@
 #include <QTimer>
 #include <QUrl>
 
-class Tcp_socket : public QTcpSocket, public std::enable_shared_from_this<Tcp_socket> {
+class Tcp_socket : public QTcpSocket {
 	Q_OBJECT
 public:
-	explicit Tcp_socket(QUrl peer_url);
+	explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
 
 	std::shared_ptr<Tcp_socket> bind_lifetime() noexcept;
 
@@ -58,22 +58,12 @@ private:
 	bool fast_ext_enabled_ = false;
 };
 
-inline Tcp_socket::Tcp_socket(QUrl peer_url) : peer_url_(std::move(peer_url)){
+inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent) : QTcpSocket(parent), peer_url_(std::move(peer_url)){
 	configure_default_connections();
 	connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
 	reset_disconnect_timer();
 
 	disconnect_timer_.setSingleShot(true);
-}
-
-inline std::shared_ptr<Tcp_socket> Tcp_socket::bind_lifetime() noexcept {
-	const auto lifetime_connection = connect(this,&Tcp_socket::shutdown,this,[]{},Qt::SingleShotConnection);
-
-	connect(this,&Tcp_socket::disconnected,[lifetime_connection]{
-		QTimer::singleShot(0,[lifetime_connection]{ disconnect(lifetime_connection); });
-	});
-	
-	return shared_from_this();
 }
 
 constexpr void Tcp_socket::set_am_choking(const bool am_choking) noexcept {
@@ -119,19 +109,27 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
 	assert(handshake_done_);
 
-	const auto msg_size = [this]{
+	const auto msg_size = [this]() -> std::optional<std::uint32_t> {
 		const auto size_buffer = read(sizeof(std::uint32_t));
+
+		if(static_cast<std::size_t>(size_buffer.size()) < sizeof(std::uint32_t)){
+			qInfo() << "couldn't have 4 bytes even";
+			return {};
+		}
+
 		constexpr auto size_offset = 0;
 		return util::extract_integer<std::uint32_t>(size_buffer,size_offset);
 	}();
 
-	if(!msg_size){ // keep alive packet
+	if(!msg_size){
+		disconnectFromHost();
+	}else if(*msg_size){ // keep alive packet
 		return {};
 	}
 
-	if(auto msg = read(msg_size);msg.size() == msg_size){
+	if(auto msg = read(*msg_size);msg.size() == msg_size){
 		assert(!msg.isEmpty());
-		return std::make_pair(msg_size,std::move(msg));
+		return std::make_pair(*msg_size,std::move(msg));
 	}
 
 	return {};
@@ -174,11 +172,9 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 }
 
 inline void Tcp_socket::configure_default_connections() noexcept {
-
-	disconnect_timer_.callOnTimeout([]{
-		// qInfo() << "disconnecting from host due to timer";
-		// disconnectFromHost();
-	});;
+	connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
+	connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
+	connect(&disconnect_timer_,&QTimer::timeout,this,&Tcp_socket::disconnectFromHost);
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {

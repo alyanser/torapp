@@ -8,13 +8,16 @@
 #include <QTimer>
 #include <QPointer>
 
-void Network_manager::download(const Download_resources & resources,const util::Download_request & download_request) noexcept {
+void Network_manager::download(const Download_resources & resources,const QUrl url) noexcept {
 	++download_count_;
-         const auto & [file_handles,tracker] = resources;
-	assert(file_handles.size() == 1 && tracker);
+
+         const auto & [path,file_handles,tracker] = resources;
+
+	assert(file_handles.size() == 1);
+	assert(tracker);
 
 	QPointer file_handle = file_handles.front();
-         QPointer network_reply = get(QNetworkRequest(download_request.url));
+         QPointer network_reply = get(QNetworkRequest(url));
 
          auto on_download_finished = [tracker = tracker,network_reply,file_handle]{
 
@@ -25,7 +28,8 @@ void Network_manager::download(const Download_resources & resources,const util::
                            file_handle->remove();
                   }
 
-		assert(network_reply && file_handle);
+		assert(network_reply);
+		assert(file_handle);
 		
 		network_reply->deleteLater();
 		file_handle->deleteLater();
@@ -65,14 +69,16 @@ void Network_manager::download(const Download_resources & resources,const util::
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::upload_progress_update);
 }
 
-void Network_manager::download(const Download_resources & ,const bencode::Metadata & torrent_metadata) noexcept {
+void Network_manager::download(const Download_resources & resources,const bencode::Metadata & torrent_metadata) noexcept {
+	static_cast<void>(resources);
 	const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
 	if(protocol == "udp"){
 		++download_count_;
-		
-		auto udp_client = std::make_shared<Udp_torrent_client>(torrent_metadata)->bind_lifetime();
-		QTimer::singleShot(0,udp_client.get(),&Udp_torrent_client::send_connect_request);
+
+		auto * udp_client = new Udp_torrent_client(torrent_metadata,this);
+
+		QTimer::singleShot(0,udp_client,&Udp_torrent_client::send_connect_request);
 	}else{
 		qDebug() << "unrecognized protocol : " << protocol;
 	}

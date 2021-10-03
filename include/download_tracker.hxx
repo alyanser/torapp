@@ -24,9 +24,8 @@ public:
 		Custom
 	};
 
-         explicit Download_tracker(util::Download_request download_request,QWidget * parent = nullptr);
-	// todo define this
-         explicit Download_tracker(bencode::Metadata ,QWidget *  = nullptr){};
+         Download_tracker(const QString & download_path,QUrl url,QWidget * parent = nullptr);
+         Download_tracker(const QString & download_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
 	constexpr Error error() const noexcept;
          std::uint32_t get_elapsed_seconds() const noexcept;
@@ -34,8 +33,8 @@ public:
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
 signals:
-         void retry_download(const util::Download_request & download_request) const;
-         void retry_download(const bencode::Metadata & metadata) const;
+         void retry_download(const QString & file_path,const QUrl & url) const;
+         void retry_download(const QString & file_path,const bencode::Metadata & metadata) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
 	void request_satisfied() const;
@@ -43,8 +42,8 @@ public slots:
          void download_progress_update(std::int64_t bytes_received,std::int64_t total_bytes) noexcept;
          void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
 private:
-	Download_tracker();
-
+	explicit Download_tracker(const QString & path,QWidget * parent = nullptr);
+	
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
          void setup_file_status_layout() noexcept;

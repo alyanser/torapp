@@ -111,7 +111,8 @@ void Url_input_widget::on_input_received() noexcept {
                            return;
                   }
          }
-	
-         emit new_request_received({std::move(package_name),std::move(path),std::move(url)});
+
+	assert(!path.isEmpty() && !package_name.isEmpty());
+         emit new_request_received(path + '/' + package_name,url);
 	accept();
 }

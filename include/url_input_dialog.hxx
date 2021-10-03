@@ -8,16 +8,12 @@
 #include <QDialog>
 #include <QDir>
 
-namespace util {
-	struct Download_request;
-}
-
 class Url_input_widget : public QDialog {
          Q_OBJECT
 public:
          explicit Url_input_widget(QWidget * parent = nullptr);
 signals:
-         void new_request_received(const util::Download_request & download_request) const;
+         void new_request_received(const QString & path,QUrl url) const;
 private:
          void configure_default_connections() noexcept;
          void reset_lines() noexcept;

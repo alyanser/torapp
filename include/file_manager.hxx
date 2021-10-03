@@ -3,10 +3,9 @@
 #include "download_tracker.hxx"
 #include "bencode_parser.hxx"
 
+#include <QFileInfo>
 #include <QObject>
 #include <QFile>
-#include <QSet>
-#include <QFileInfo>
 #include <QDir>
 
 class File_manager : public QObject {
@@ -22,7 +21,7 @@ public:
 	using handle_return_type = std::pair<Error,std::vector<QFile*>>;
 
 	handle_return_type open_file_handles(const bencode::Metadata & torrent_metadata) noexcept;
-	handle_return_type open_file_handles(const util::Download_request & request) noexcept;
+	handle_return_type open_file_handles(const QString & path) noexcept;
 };
 
 inline File_manager::handle_return_type File_manager::open_file_handles(const bencode::Metadata & torrent_metadata) noexcept {
@@ -72,10 +71,8 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const be
 	return {Error::Null,file_handles};
 }
 
-inline File_manager::handle_return_type File_manager::open_file_handles(const util::Download_request & download_request) noexcept {
-	const auto & [package_name,download_path,url] = download_request;
-	const auto file_path = download_path + '/' + package_name;
-	auto * file_handle = new QFile(file_path,this);
+inline File_manager::handle_return_type File_manager::open_file_handles(const QString & path) noexcept {
+	auto * file_handle = new QFile(path,this);
 
 	if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
 		file_handle->deleteLater();

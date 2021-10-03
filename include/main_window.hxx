@@ -24,7 +24,7 @@ public:
          ~Main_window() override = default;
 
 	template<typename request_type>
-	void initiate_download(request_type && download_request) noexcept;
+	void initiate_download(const QString & path,request_type && download_request) noexcept;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
@@ -58,19 +58,26 @@ inline void Main_window::setup_menu_bar() noexcept {
 }
 
 template<typename request_type>
-void Main_window::initiate_download(request_type && download_request) noexcept {
-	auto * tracker = new Download_tracker(std::forward<request_type>(download_request),&central_widget_);
+void Main_window::initiate_download(const QString & path,request_type && download_request) noexcept {
+	auto * tracker = new Download_tracker(path,std::forward<request_type>(download_request),&central_widget_);
 	central_layout_.addWidget(tracker);
 	
 	{
-		const auto download_signal = qOverload<request_type>(&Download_tracker::retry_download);
-		const auto download_slot = qOverload<request_type>(&Main_window::initiate_download<request_type>);
+		const auto download_signal = qOverload<const QString &,request_type>(&Download_tracker::retry_download);
+		const auto download_slot = qOverload<const QString &,request_type>(&Main_window::initiate_download<request_type>);
 		
 		const auto connection_success = connect(tracker,download_signal,this,download_slot);
 		assert(connection_success);
 	}
 
-	const auto [file_error,file_handles] = file_manager_.open_file_handles(std::forward<request_type>(download_request));
+	auto [file_error,file_handles] = [&file_manager_ = file_manager_,download_request = std::forward<request_type>(download_request),path]{
+
+		if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<request_type>>,QUrl>){
+			return file_manager_.open_file_handles(path);
+		}else{
+			return file_manager_.open_file_handles(std::forward<request_type>(download_request));
+		}
+	}();
 
 	switch(file_error){
 		case File_manager::Error::File_Lock : {
@@ -91,7 +98,7 @@ void Main_window::initiate_download(request_type && download_request) noexcept {
 			assert(!file_handles.empty());
 			assert(tracker->error() == Download_tracker::Error::Null);
 
-			network_manager_.download({file_handles,tracker},std::forward<request_type>(download_request));
+			network_manager_.download({path,file_handles,tracker},std::forward<request_type>(download_request));
 			break;
 		};
 

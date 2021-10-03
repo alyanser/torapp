@@ -7,9 +7,8 @@
 #include <QCryptographicHash>
 #include <QObject>
 #include <random>
-#include <memory>
 
-class Udp_torrent_client : public QObject, public std::enable_shared_from_this<Udp_torrent_client> {
+class Udp_torrent_client : public QObject {
 	Q_OBJECT
 public:
 	enum class Action_Code { 
@@ -45,12 +44,10 @@ public:
 	using announce_optional = std::optional<Announce_response>;
 	using error_optional = std::optional<QByteArray>;
 	
-	explicit Udp_torrent_client(bencode::Metadata torrent_metadata);
+	explicit Udp_torrent_client(bencode::Metadata torrent_metadata,QObject * parent);
 
-	std::shared_ptr<Udp_torrent_client> bind_lifetime() noexcept;
 	void send_connect_request() noexcept;
 signals:
-	void shutdown() const;
 	void announce_response_received(const Announce_response & announce_response) const;
 	void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
 	void error_received(const QByteArray & array) const;
@@ -85,19 +82,15 @@ private:
 	std::uint64_t left_ {};
 };
 
-inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata)
-	: metadata_(std::move(torrent_metadata))
+inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,QObject * const parent)
+	: QObject(parent)
+	, metadata_(std::move(torrent_metadata))
 	, info_sha1_hash_(calculate_info_sha1_hash(metadata_))
 	, peer_client_(metadata_,id,info_sha1_hash_)
 	, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
 	, left_(total_)
 {
 	configure_default_connections();
-}
-
-inline std::shared_ptr<Udp_torrent_client> Udp_torrent_client::bind_lifetime() noexcept {
-	connect(this,&Udp_torrent_client::shutdown,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
-	return shared_from_this();
 }
 
 inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {

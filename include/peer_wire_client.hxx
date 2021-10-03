@@ -37,7 +37,6 @@ public:
 
 	Peer_wire_client(bencode::Metadata torrent_metadata,QByteArray peer_id,QByteArray info_sha1_hash);
 
-	std::shared_ptr<Peer_wire_client> bind_lifetime() noexcept;
 	void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
 signals:
 	void shutdown() const;
@@ -124,12 +123,6 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QByteArray 
 	for(std::uint32_t piece_idx = 0;piece_idx < total_piece_count_;++piece_idx){
 		remaining_pieces_.insert(piece_idx);
 	}
-}
-
-inline std::shared_ptr<Peer_wire_client> Peer_wire_client::bind_lifetime() noexcept {
-	connect(this,&Peer_wire_client::shutdown,this,[self = shared_from_this()]{},Qt::SingleShotConnection);
-	
-	return shared_from_this();
 }
 
 [[nodiscard]]

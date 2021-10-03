@@ -3,11 +3,11 @@
 
 #include <QDesktopServices>
 #include <QMessageBox>
+#include <QDir>
 
-Download_tracker::Download_tracker(util::Download_request download_request,QWidget * const parent) : QWidget(parent){
-         assert(!download_request.url.isEmpty());
-         assert(!download_request.download_path.isEmpty());
-
+Download_tracker::Download_tracker(const QString & path,QWidget * const parent) 
+	: QWidget(parent)
+{
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -18,44 +18,63 @@ Download_tracker::Download_tracker(util::Download_request download_request,QWidg
          time_elapsed_timer_.start(std::chrono::seconds(1));
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
-         package_name_label_.setText(download_request.url.fileName());
-         download_path_label_.setText(download_request.download_path);
 
-         {	
-                  connect(&open_button_,&QPushButton::clicked,[this,path = download_request.download_path,name = download_request.package_name]{
-
-                           if(!QDesktopServices::openUrl(path + name)){
-                                    constexpr std::string_view message_title("Could not open file");
-                                    constexpr std::string_view message_body("Downloaded file could not be opened");
-                                    QMessageBox::critical(this,message_title.data(),message_body.data());
-                           }
-		});
-
-                  connect(&open_directory_button_,&QPushButton::clicked,[this,download_path = download_request.download_path]{
-
-                           if(!QDesktopServices::openUrl(download_path)){
+	{
+		connect(&open_directory_button_,&QPushButton::clicked,[this,path]{
+			assert(path.lastIndexOf('/') != -1);
+			//! doesn't show the error
+                           if(!QDesktopServices::openUrl(path.sliced(0,path.lastIndexOf('/') + 1))){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
 		});
 
-                  connect(&retry_button_,&QPushButton::clicked,this,[this,download_request = std::move(download_request)]{
-                           emit retry_download(download_request);
-			emit request_satisfied();
+		connect(&open_button_,&QPushButton::clicked,[this,path]{
+
+                           if(!QDesktopServices::openUrl(path)){
+                                    constexpr std::string_view message_title("Could not open file");
+                                    constexpr std::string_view message_body("Downloaded file could not be opened");
+                                    QMessageBox::critical(this,message_title.data(),message_body.data());
+                           }
 		});
-         }
+
+	}
+}
+
+Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget * const parent) 
+	: Download_tracker(path,parent)
+{
+         assert(!url.isEmpty());
+         assert(!download_path.isEmpty());
+	
+         package_name_label_.setText(url.fileName());
+         download_path_label_.setText(path);
+
+	connect(&retry_button_,&QPushButton::clicked,[this,path,url]{
+		emit retry_download(path,url);
+		emit request_satisfied();
+	});
+}
+
+Download_tracker::Download_tracker(const QString & path,bencode::Metadata torrent_metadata,QWidget * const parent) 
+	: Download_tracker(path,parent)
+{
+	package_name_label_.setText(torrent_metadata.name.data());
+
+	connect(&retry_button_,&QPushButton::clicked,[this,path,torrent_metadata = std::move(torrent_metadata)]{
+		emit retry_download(path,torrent_metadata);
+	});
 }
 
 void Download_tracker::setup_state_widget() noexcept {
          state_holder_.addWidget(&download_progress_bar_);
          state_holder_.addWidget(&error_line_);
-
-         error_line_.setAlignment(Qt::AlignCenter);
-
+	
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
 
+         error_line_.setAlignment(Qt::AlignCenter);
          assert(state_holder_.currentWidget() == &download_progress_bar_);
 }
 

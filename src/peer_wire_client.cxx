@@ -35,25 +35,23 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcep
 
 		active_peers_.insert(peer_url);
 
-		// todo add gasl owner
-		auto socket = std::make_shared<Tcp_socket>(peer_url);
+		auto * const socket = new Tcp_socket(peer_url,this);
 
-		connect(socket.get(),&Tcp_socket::connected,this,[&handshake_msg_ = handshake_msg_,socket = socket.get()]{
+		connect(socket,&Tcp_socket::connected,this,[&handshake_msg_ = handshake_msg_,socket]{
 			assert(!socket->handshake_done());
 			socket->send_packet(handshake_msg_);
 		});
 
-		connect(socket.get(),&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_]{
+		connect(socket,&Tcp_socket::disconnected,this,[peer_url,&active_peers_ = active_peers_]{
 			[[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
 			assert(remove_success);
 		});
 
-		connect(socket.get(),&Tcp_socket::readyRead,this,[this,socket = socket.get()]{
-			socket->reset_disconnect_timer();
+		connect(socket,&Tcp_socket::readyRead,this,[this,socket]{
 			on_socket_ready_read(socket);
 		});
 
-		connect(this,&Peer_wire_client::piece_downloaded,socket.get(),[socket](const std::uint32_t piece_idx){
+		connect(this,&Peer_wire_client::piece_downloaded,socket,[socket](const std::uint32_t piece_idx){
 			socket->send_packet(craft_have_message(piece_idx));
 		});
 	}
