@@ -60,7 +60,7 @@ inline void Torrent_metadata_dialog::configure_default_connections() noexcept {
          connect(&begin_download_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::accept);
          connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::reject);
 
-         connect(&path_button_,&QToolButton::clicked,[this]{
+         connect(&path_button_,&QToolButton::clicked,this,[this]{
 
                   if(const auto selected_directory = QFileDialog::getExistingDirectory(this);!selected_directory.isEmpty()){
                            path_line_.setText(selected_directory);

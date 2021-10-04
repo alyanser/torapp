@@ -35,17 +35,22 @@ public:
          QByteArray peer_id() const noexcept;
          void set_peer_id(QByteArray peer_id) noexcept;
 
+	void set_peer_bitfield(QBitArray peer_bitfield) noexcept;
+	QBitArray & peer_bitfield() noexcept;
+
          QUrl peer_url() const noexcept;
+         QSet<std::uint32_t> & pending_pieces() noexcept;
          void send_packet(const QByteArray & packet);
          void reset_disconnect_timer() noexcept;
          void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;
-         QSet<std::uint32_t> & pending_pieces() noexcept;
 signals:
          void got_choked() const;
+	void request_rejected() const;
          void shutdown() const;
 private:
          void configure_default_connections() noexcept;
          ///
+	QBitArray peer_bitfield_;
          QSet<std::uint32_t> pending_pieces_;
          QByteArray peer_id_;
          QTimer disconnect_timer_;
@@ -58,7 +63,10 @@ private:
          bool fast_ext_enabled_ = false;
 };
 
-inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent) : QTcpSocket(parent), peer_url_(std::move(peer_url)){
+inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent) 
+	: QTcpSocket(parent)
+	, peer_url_(std::move(peer_url))
+{
          configure_default_connections();
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
          reset_disconnect_timer();
@@ -98,6 +106,7 @@ constexpr bool Tcp_socket::peer_interested() const noexcept {
          return peer_interested_;
 }
 
+[[nodiscard]]
 constexpr bool Tcp_socket::fast_ext_enabled() const noexcept {
          return fast_ext_enabled_;
 }
@@ -106,6 +115,7 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
          fast_ext_enabled_ = fast_ext_enabled;
 }
 
+[[nodiscard]]
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
          assert(handshake_done_);
 
@@ -113,7 +123,6 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
                   const auto size_buffer = read(sizeof(std::uint32_t));
 
                   if(static_cast<std::size_t>(size_buffer.size()) < sizeof(std::uint32_t)){
-                           qInfo() << "couldn't have 4 bytes even";
                            return {};
                   }
 
@@ -122,8 +131,9 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
          }();
 
          if(!msg_size){
+		qInfo() << "couldn't have 4 bytes even";
                   disconnectFromHost();
-         }else if(*msg_size){ // keep alive packet
+         }else if(!*msg_size){ // keep alive packet
                   return {};
          }
 
@@ -174,7 +184,10 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
-         connect(&disconnect_timer_,&QTimer::timeout,this,&Tcp_socket::disconnectFromHost);
+
+         connect(&disconnect_timer_,&QTimer::timeout,this,[this]{
+		state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
+	});
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
@@ -186,6 +199,16 @@ inline void Tcp_socket::add_pending_piece(const std::uint32_t pending_piece_idx)
          pending_pieces_.insert(pending_piece_idx);
 }
 
+[[nodiscard]]
+inline QBitArray & Tcp_socket::peer_bitfield() noexcept {
+	return peer_bitfield_;
+}
+
+inline void Tcp_socket::set_peer_bitfield(QBitArray peer_bitfield) noexcept {
+	peer_bitfield_ = std::move(peer_bitfield);
+}
+
+[[nodiscard]]
 inline QSet<std::uint32_t> & Tcp_socket::pending_pieces() noexcept {
          return pending_pieces_;
 }

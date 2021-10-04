@@ -35,7 +35,7 @@ void Main_window::add_top_actions() noexcept {
 
          connect(exit_action,&QAction::triggered,this,&Main_window::close);
 
-	connect(torrent_action,&QAction::triggered,[this]{
+	connect(torrent_action,&QAction::triggered,this,[this]{
 		constexpr std::string_view caption("Choose a torrent file");
 		constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
 		
@@ -45,21 +45,15 @@ void Main_window::add_top_actions() noexcept {
 			return;
 		}
 		
-		Torrent_metadata_dialog torrent_dialog(file_path,this);
-		
-		const auto slot = qOverload<const QString &,const bencode::Metadata &>(&Main_window::initiate_download<const bencode::Metadata &>);
-		connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,slot);
-
-		torrent_dialog.exec();
+		Torrent_metadata_dialog dialog(file_path,this);
+		connect(&dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
+		dialog.exec();
 	});
 
-	connect(url_action,&QAction::triggered,[this]{
-		Url_input_widget input_widget(this);
-
-		const auto slot = qOverload<const QString &,const QUrl &>(&Main_window::initiate_download<const QUrl &>);
-		connect(&input_widget,&Url_input_widget::new_request_received,this,slot);
-		
-		input_widget.exec();
+	connect(url_action,&QAction::triggered,this,[this]{
+		Url_input_dialog dialog(this);
+		connect(&dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
+		dialog.exec();
 	});
 }
 

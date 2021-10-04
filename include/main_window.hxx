@@ -64,10 +64,7 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
          
          {
                   const auto download_signal = qOverload<const QString &,request_type>(&Download_tracker::retry_download);
-                  const auto download_slot = qOverload<const QString &,request_type>(&Main_window::initiate_download<request_type>);
-                  
-                  const auto connection_success = connect(tracker,download_signal,this,download_slot);
-                  assert(connection_success);
+                  connect(tracker,download_signal,this,&Main_window::initiate_download<request_type>);
          }
 
          auto [file_error,file_handles] = file_manager_.open_file_handles(path,std::forward<request_type>(download_request));

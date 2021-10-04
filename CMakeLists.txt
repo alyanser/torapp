@@ -6,6 +6,7 @@ set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
+
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=address,undefined -fno-omit-frame-pointer ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-ggdb3 -O3 -DNDEBUG ${CXX_FLAGS}")
@@ -44,10 +45,8 @@ include_directories(
 	SYSTEM "ext"
 )
 
-find_package(Qt6 COMPONENTS Core Network Widgets REQUIRED)
-
+find_package(Qt6 COMPONENTS Network Widgets REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
-         Qt6::Core
          Qt6::Network
          Qt6::Widgets
 )

@@ -24,7 +24,7 @@ public:
                   Request,
                   Piece,
                   Cancel,
-                  Suggest_Piece = 0x0d,
+                  Suggest_Piece = 13,
                   Have_All,
                   Have_None,
                   Reject_Request,
@@ -39,20 +39,19 @@ public:
 
          void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
 signals:
-         void shutdown() const;
          void piece_downloaded(std::uint32_t piece_idx) const;
 private:
          struct Piece {
                   std::vector<std::uint8_t> requested_blocks;
-                  std::vector<bool> received_blocks;
+                  std::vector<bool> received_blocks; // ? consider QBitArray
                   QByteArray piece;
                   std::uint32_t received_block_count = 0;
          };
 
          struct Piece_metadata {
-                  std::uint32_t piece_size;
-                  std::uint32_t block_size;
-                  std::uint32_t total_blocks;
+                  std::uint32_t piece_size = 0;
+                  std::uint32_t block_size = 0;
+                  std::uint32_t total_blocks = 0;
          };
 
          static QByteArray craft_have_message(std::uint32_t piece_idx) noexcept;

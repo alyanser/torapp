@@ -7,7 +7,7 @@
 
 void Udp_torrent_client::configure_default_connections() noexcept {
 
-         connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_](const Announce_response & response){
+         connect(this,&Udp_torrent_client::announce_response_received,&peer_client_,[&peer_client_ = peer_client_](const Announce_response & response){
                   assert(!response.peer_urls.empty());
                   peer_client_.do_handshake(response.peer_urls);
          });

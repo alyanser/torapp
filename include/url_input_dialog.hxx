@@ -8,10 +8,10 @@
 #include <QDialog>
 #include <QDir>
 
-class Url_input_widget : public QDialog {
+class Url_input_dialog : public QDialog {
          Q_OBJECT
 public:
-         explicit Url_input_widget(QWidget * parent = nullptr);
+         explicit Url_input_dialog(QWidget * parent = nullptr);
 signals:
          void new_request_received(const QString & path,QUrl url) const;
 private:
@@ -38,7 +38,7 @@ private:
          QPushButton cancel_button_ {"Cancel"};
 };
 
-inline void Url_input_widget::reset_lines() noexcept {
+inline void Url_input_dialog::reset_lines() noexcept {
          url_line_.clear();
          package_name_line_.clear();
          path_line_.setText(default_path_);
@@ -47,7 +47,7 @@ inline void Url_input_widget::reset_lines() noexcept {
          assert(!package_name_line_.placeholderText().isEmpty());
 }
 
-inline void Url_input_widget::setup_tab_order() noexcept {
+inline void Url_input_dialog::setup_tab_order() noexcept {
          setTabOrder(&url_line_,&package_name_line_);
          setTabOrder(&package_name_line_,&path_line_);
          setTabOrder(&path_line_,&path_button_);

@@ -4,7 +4,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-Url_input_widget::Url_input_widget(QWidget * const parent) : QDialog(parent){
+Url_input_dialog::Url_input_dialog(QWidget * const parent) : QDialog(parent){
          setFixedSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
@@ -17,27 +17,27 @@ Url_input_widget::Url_input_widget(QWidget * const parent) : QDialog(parent){
          package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
 }
 
-void Url_input_widget::configure_default_connections() noexcept {
+void Url_input_dialog::configure_default_connections() noexcept {
 
-         connect(&path_button_,&QToolButton::clicked,[this]{
+         connect(&path_button_,&QToolButton::clicked,this,[this]{
                   
                   if(const auto selected_directory = QFileDialog::getExistingDirectory(this);!selected_directory.isEmpty()){
                            path_line_.setText(selected_directory);
                   }
          });
 
-         connect(&cancel_button_,&QPushButton::clicked,[this]{
+         connect(&cancel_button_,&QPushButton::clicked,this,[this]{
                   reset_lines();
                   reject();
          });
 
-         connect(&download_button_,&QPushButton::clicked,this,&Url_input_widget::on_input_received);
-         connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
-         connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
-         connect(&path_line_,&QLineEdit::returnPressed,this,&Url_input_widget::on_input_received);
+         connect(&download_button_,&QPushButton::clicked,this,&Url_input_dialog::on_input_received);
+         connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
+         connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
+         connect(&path_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
 }
 
-void Url_input_widget::setup_layout() noexcept {
+void Url_input_dialog::setup_layout() noexcept {
          central_layout_.addLayout(&central_form_layout_);
          central_form_layout_.setSpacing(25);
 
@@ -53,7 +53,7 @@ void Url_input_widget::setup_layout() noexcept {
          button_layout_.addWidget(&cancel_button_);
 }
 
-void Url_input_widget::on_input_received() noexcept {
+void Url_input_dialog::on_input_received() noexcept {
          QUrl url(url_line_.text().simplified());
 
          if(url.isEmpty()){

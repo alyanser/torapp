@@ -20,7 +20,7 @@ Download_tracker::Download_tracker(const QString & path,QWidget * const parent)
          delete_button_.setEnabled(false);
 
          {
-                  connect(&open_directory_button_,&QPushButton::clicked,[this,path]{
+                  connect(&open_directory_button_,&QPushButton::clicked,this,[this,path]{
                            assert(path.lastIndexOf('/') != -1);
                            //! doesn't show the error
                            if(!QDesktopServices::openUrl(path.sliced(0,path.lastIndexOf('/') + 1))){
@@ -30,7 +30,7 @@ Download_tracker::Download_tracker(const QString & path,QWidget * const parent)
                            }
                   });
 
-                  connect(&open_button_,&QPushButton::clicked,[this,path]{
+                  connect(&open_button_,&QPushButton::clicked,this,[this,path]{
 
                            if(!QDesktopServices::openUrl(path)){
                                     constexpr std::string_view message_title("Could not open file");
@@ -50,7 +50,7 @@ Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget *
          package_name_label_.setText(url.fileName());
          download_path_label_.setText(path);
 
-         connect(&retry_button_,&QPushButton::clicked,[this,path,url]{
+         connect(&retry_button_,&QPushButton::clicked,this,[this,path,url]{
                   emit retry_download(path,url);
                   emit request_satisfied();
          });
@@ -61,7 +61,7 @@ Download_tracker::Download_tracker(const QString & path,bencode::Metadata torren
 {
          package_name_label_.setText(torrent_metadata.name.data());
 
-         connect(&retry_button_,&QPushButton::clicked,[this,path,torrent_metadata = std::move(torrent_metadata)]{
+         connect(&retry_button_,&QPushButton::clicked,this,[this,path,torrent_metadata = std::move(torrent_metadata)]{
                   emit retry_download(path,torrent_metadata);
                   emit request_satisfied();
          });
@@ -154,7 +154,7 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 
-         connect(&delete_button_,&QPushButton::clicked,[this]{
+         connect(&delete_button_,&QPushButton::clicked,this,[this]{
                   QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::Button::NoButton);
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
@@ -164,12 +164,12 @@ void Download_tracker::configure_default_connections() noexcept {
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
                   connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::request_satisfied);
-                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::request_satisfied);
+                  connect(this,&Download_tracker::move_file_to_trash,&Download_tracker::request_satisfied);
 
                   query_box.exec();
          });
 
-         connect(&cancel_button_,&QPushButton::clicked,[this]{
+         connect(&cancel_button_,&QPushButton::clicked,this,[this]{
                   constexpr std::string_view question_title("Cancel Download");
                   constexpr std::string_view question_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
@@ -181,10 +181,10 @@ void Download_tracker::configure_default_connections() noexcept {
                   }
          });
 
-         connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+	time_elapsed_timer_.callOnTimeout(this,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
                   time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-         });
+	});
 }
 
 void Download_tracker::switch_to_finished_state() noexcept {

@@ -87,7 +87,7 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          , metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(metadata_))
          , peer_client_(metadata_,id,info_sha1_hash_)
-         , total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
          , left_(total_)
 {
          configure_default_connections();

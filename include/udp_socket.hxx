@@ -48,8 +48,7 @@ private:
          std::uint32_t txn_id_ = 0;
          std::uint8_t timeout_factor_ = 0;
          bool connection_id_valid_ = true;
-
-         QByteArray connect_request_;
+         QByteArray connect_request_; // ? consider the order
 };
 
 inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request,QObject * const parent) 
@@ -69,7 +68,7 @@ inline void Udp_socket::reset_time_specs() noexcept {
          {
                   constexpr std::chrono::minutes protocol_validity_timeout {1};
 
-                  QTimer::singleShot(protocol_validity_timeout,[&connection_id_valid_ = connection_id_valid_]{
+                  QTimer::singleShot(protocol_validity_timeout,this,[&connection_id_valid_ = connection_id_valid_]{
                            connection_id_valid_ = false;
                   });
          }
