@@ -44,7 +44,7 @@ void Main_window::add_top_actions() noexcept {
 		if(file_path.isEmpty()){
 			return;
 		}
-
+		
 		Torrent_metadata_dialog torrent_dialog(file_path,this);
 		
 		const auto slot = qOverload<const QString &,const bencode::Metadata &>(&Main_window::initiate_download<const bencode::Metadata &>);

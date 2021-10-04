@@ -6,7 +6,7 @@
 #include <QDir>
 
 Download_tracker::Download_tracker(const QString & path,QWidget * const parent) 
-	: QWidget(parent)
+         : QWidget(parent)
 {
          setup_layout();
          setup_file_status_layout();
@@ -19,58 +19,58 @@ Download_tracker::Download_tracker(const QString & path,QWidget * const parent)
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
 
-	{
-		connect(&open_directory_button_,&QPushButton::clicked,[this,path]{
-			assert(path.lastIndexOf('/') != -1);
-			//! doesn't show the error
+         {
+                  connect(&open_directory_button_,&QPushButton::clicked,[this,path]{
+                           assert(path.lastIndexOf('/') != -1);
+                           //! doesn't show the error
                            if(!QDesktopServices::openUrl(path.sliced(0,path.lastIndexOf('/') + 1))){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
-		});
+                  });
 
-		connect(&open_button_,&QPushButton::clicked,[this,path]{
+                  connect(&open_button_,&QPushButton::clicked,[this,path]{
 
                            if(!QDesktopServices::openUrl(path)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
                                     QMessageBox::critical(this,message_title.data(),message_body.data());
                            }
-		});
-
-	}
+                  });
+         }
 }
 
 Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget * const parent) 
-	: Download_tracker(path,parent)
+         : Download_tracker(path,parent)
 {
          assert(!url.isEmpty());
-         assert(!download_path.isEmpty());
-	
+         assert(!path.isEmpty());
+         
          package_name_label_.setText(url.fileName());
          download_path_label_.setText(path);
 
-	connect(&retry_button_,&QPushButton::clicked,[this,path,url]{
-		emit retry_download(path,url);
-		emit request_satisfied();
-	});
+         connect(&retry_button_,&QPushButton::clicked,[this,path,url]{
+                  emit retry_download(path,url);
+                  emit request_satisfied();
+         });
 }
 
 Download_tracker::Download_tracker(const QString & path,bencode::Metadata torrent_metadata,QWidget * const parent) 
-	: Download_tracker(path,parent)
+         : Download_tracker(path,parent)
 {
-	package_name_label_.setText(torrent_metadata.name.data());
+         package_name_label_.setText(torrent_metadata.name.data());
 
-	connect(&retry_button_,&QPushButton::clicked,[this,path,torrent_metadata = std::move(torrent_metadata)]{
-		emit retry_download(path,torrent_metadata);
-	});
+         connect(&retry_button_,&QPushButton::clicked,[this,path,torrent_metadata = std::move(torrent_metadata)]{
+                  emit retry_download(path,torrent_metadata);
+                  emit request_satisfied();
+         });
 }
 
 void Download_tracker::setup_state_widget() noexcept {
          state_holder_.addWidget(&download_progress_bar_);
          state_holder_.addWidget(&error_line_);
-	
+         
          download_progress_bar_.setMinimum(0);
          download_progress_bar_.setValue(0);
 
@@ -144,14 +144,14 @@ void Download_tracker::download_progress_update(const std::int64_t bytes_receive
          assert(seconds_elapsed > 0);
          const auto speed = bytes_received / seconds_elapsed;
 
-	constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
+         constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
          download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
 
 void Download_tracker::configure_default_connections() noexcept {
-	connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+         connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
 
          connect(&delete_button_,&QPushButton::clicked,[this]{
@@ -167,7 +167,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::request_satisfied);
 
                   query_box.exec();
-	});
+         });
 
          connect(&cancel_button_,&QPushButton::clicked,[this]{
                   constexpr std::string_view question_title("Cancel Download");
@@ -177,9 +177,9 @@ void Download_tracker::configure_default_connections() noexcept {
                   const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
                   if(response == QMessageBox::StandardButton::Yes){
-			emit request_satisfied();
+                           emit request_satisfied();
                   }
-	});
+         });
 
          connect(&time_elapsed_timer_,&QTimer::timeout,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
@@ -209,24 +209,24 @@ void Download_tracker::update_error_line() noexcept {
 
          switch(error_){
                   case Error::Null : {
-			error_line_.setText(null_error_info.data()); 
-			break;
-		}
+                           error_line_.setText(null_error_info.data()); 
+                           break;
+                  }
 
                   case Error::File_Write : {
-			error_line_.setText(file_write_error_info.data()); 
-			break;
-		}
+                           error_line_.setText(file_write_error_info.data()); 
+                           break;
+                  }
 
                   case Error::Unknown_Network : {
-			error_line_.setText(unknown_network_error_info.data()); 
-			break;
-		}
-		
+                           error_line_.setText(unknown_network_error_info.data()); 
+                           break;
+                  }
+                  
                   case Error::File_Lock : { 
-			error_line_.setText(file_lock_error_info.data()); 
-			break;
-		}
+                           error_line_.setText(file_lock_error_info.data()); 
+                           break;
+                  }
 
                   case Error::Custom : [[fallthrough]];
                   default : __builtin_unreachable();

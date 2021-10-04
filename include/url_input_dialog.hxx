@@ -24,18 +24,18 @@ private:
          QString default_path_ = QDir::currentPath();
 
          QVBoxLayout central_layout_ {this};
-	QFormLayout central_form_layout_;
+         QFormLayout central_form_layout_;
 
-	QLineEdit url_line_;
-	QLineEdit package_name_line_;
+         QLineEdit url_line_;
+         QLineEdit package_name_line_;
 
-	QHBoxLayout path_layout_;
-	QLineEdit path_line_;
-	QToolButton path_button_;
+         QHBoxLayout path_layout_;
+         QLineEdit path_line_;
+         QToolButton path_button_;
 
-	QHBoxLayout button_layout_;
-	QPushButton download_button_ {"Download"};
-	QPushButton cancel_button_ {"Cancel"};
+         QHBoxLayout button_layout_;
+         QPushButton download_button_ {"Download"};
+         QPushButton cancel_button_ {"Cancel"};
 };
 
 inline void Url_input_widget::reset_lines() noexcept {
@@ -43,8 +43,8 @@ inline void Url_input_widget::reset_lines() noexcept {
          package_name_line_.clear();
          path_line_.setText(default_path_);
 
-	assert(!url_line_.placeholderText().isEmpty());
-	assert(!package_name_line_.placeholderText().isEmpty());
+         assert(!url_line_.placeholderText().isEmpty());
+         assert(!package_name_line_.placeholderText().isEmpty());
 }
 
 inline void Url_input_widget::setup_tab_order() noexcept {

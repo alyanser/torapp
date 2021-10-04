@@ -4,7 +4,7 @@
 
 int main(int argc,char ** argv){
          QApplication app(argc,argv);
-	Main_window window;
-	window.showMaximized();
+         Main_window window;
+         window.showMaximized();
          return QApplication::exec();
 }
