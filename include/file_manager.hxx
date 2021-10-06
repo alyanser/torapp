@@ -19,7 +19,7 @@ public:
                   Permissions
          };
 
-         using handle_return_type = std::pair<Error,std::vector<QFile*>>;
+         using handle_return_type = std::pair<Error,std::vector<QFile *>>;
 
          handle_return_type open_file_handles(const QString & path,const bencode::Metadata & torrent_metadata) noexcept;
          handle_return_type open_file_handles(const QString & path,QUrl url) noexcept;
@@ -33,7 +33,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   return {Error::Permissions,{nullptr}};
          }
 
-         std::vector<QFile*> file_handles;
+         std::vector<QFile *> file_handles;
 
          for(const auto & [file_path,size] : torrent_metadata.file_info){
                   const auto last_slash_idx = file_path.find_last_of('/');

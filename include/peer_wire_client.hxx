@@ -2,6 +2,7 @@
 
 #include "utility.hxx"
 
+#include <bencode_parser.hxx>
 #include <QCryptographicHash>
 #include <QBitArray>
 #include <QObject>
@@ -11,7 +12,7 @@
 
 class Tcp_socket;
 
-class Peer_wire_client : public QObject, public std::enable_shared_from_this<Peer_wire_client> {
+class Peer_wire_client : public QObject {
          Q_OBJECT
 public:
          enum class Message_Id {
@@ -31,11 +32,9 @@ public:
                   Allowed_Fast
          }; 
 
-         static_assert(static_cast<std::uint32_t>(Message_Id::Allowed_Fast) == 17);
-
          Q_ENUM(Message_Id);
 
-         Peer_wire_client(bencode::Metadata torrent_metadata,QByteArray peer_id,QByteArray info_sha1_hash);
+         Peer_wire_client(bencode::Metadata torrent_metadata,std::vector<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash);
 
          void do_handshake(const std::vector<QUrl> & peer_urls) noexcept;
 signals:
@@ -59,6 +58,7 @@ private:
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
          QByteArray craft_request_message(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
          QByteArray craft_cancel_message(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
+         static QByteArray craft_allowed_fast_message(std::uint32_t piece_idx) noexcept;
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
@@ -83,14 +83,16 @@ private:
          constexpr static std::string_view unchoke_msg {"0000000101"};
          constexpr static std::string_view interested_msg {"0000000102"};
          constexpr static std::string_view uninterested_msg {"0000000103"};
-         constexpr static std::string_view have_all_msg {"000000010f"};
+         constexpr static std::string_view have_all_msg {"000000010e"};
          constexpr static std::string_view have_none_msg {"000000010f"};
-         constexpr static auto max_block_size = 1 << 14;
-         inline static const QByteArray reserved_bytes {"\x00\x00\x00\x00\x00\x00\x00\x04",8}; // fast extension
+         constexpr static auto max_block_size = 1 << 13;
+	inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
          QSet<QUrl> active_peers_;
          QSet<std::uint32_t> remaining_pieces_;
+
          bencode::Metadata metadata_;
+         std::vector<QFile *> file_handles_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
@@ -102,10 +104,12 @@ private:
          std::uint64_t average_block_count_ = 0;
          QBitArray bitfield_;
          std::vector<Piece> pieces_;
+         std::uint64_t active_connection_count_ = 0;
 };
 
-inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QByteArray peer_id,QByteArray info_sha1_hash)
+inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
          : metadata_(std::move(metadata))
+         , file_handles_(std::move(file_handles))
          , id_(std::move(peer_id))
          , info_sha1_hash_(std::move(info_sha1_hash))
          , handshake_msg_(craft_handshake_message())
@@ -117,10 +121,12 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QByteArray 
          , bitfield_(static_cast<std::ptrdiff_t>(total_piece_count_ + spare_bitfield_bits_))
          , pieces_(total_piece_count_)
 {
+         assert(!file_handles_.empty());
+         
          remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(total_piece_count_));
 
          for(std::uint32_t piece_idx = 0;piece_idx < total_piece_count_;++piece_idx){
-                  remaining_pieces_.insert(piece_idx);
+		remaining_pieces_.insert(piece_idx);
          }
 }
 

@@ -1,9 +1,11 @@
 #pragma once
 
-#include "bencode_parser.hxx"
-
 #include <QBigEndianStorageType>
 #include <QBitArray>
+#include <vector>
+
+class Download_tracker;
+class QFile;
 
 namespace util {
 
@@ -62,9 +64,6 @@ QString stringify_bytes(const byte_type bytes_received,const byte_type total_byt
 template<typename numeric_type>
 [[nodiscard]]
 QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size = sizeof(numeric_type)) noexcept {
-         // todo remove after testing
-         assert(raw_size == sizeof(numeric_type));
-
          constexpr auto hex_base = 16;
          const auto hex_size = raw_size * 2;
 
@@ -146,5 +145,11 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 
          return result;
 }
+
+struct Download_resources {
+	QString file_path;
+	std::vector<QFile *> file_handles;
+	Download_tracker * tracker;
+};
 
 } // namespace util

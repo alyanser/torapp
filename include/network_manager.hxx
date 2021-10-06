@@ -8,17 +8,19 @@
 class Download_tracker;
 class QFile;
 
+namespace util {
+	struct Download_resources;
+}
+
+namespace bencode {
+	struct Metadata;
+}
+
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT
 public:
-         struct Download_resources {
-                  QString file_path;
-                  std::vector<QFile*> file_handles;
-                  Download_tracker * tracker;
-         };
-
-         void download(const Download_resources & resources,QUrl url) noexcept;
-         void download(const Download_resources & resources,const bencode::Metadata & torrent_metadata) noexcept;
+         void download(util::Download_resources resources,QUrl url) noexcept;
+         void download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept;
 
           constexpr std::uint32_t download_count() const noexcept;
 private:

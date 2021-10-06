@@ -13,6 +13,10 @@
 #include <QTimer>
 #include <QTime>
 
+namespace bencode {
+	struct Metadata;
+}
+
 class Download_tracker : public QWidget {
          Q_OBJECT
 public:

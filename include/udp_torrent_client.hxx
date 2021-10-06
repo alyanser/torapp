@@ -4,6 +4,7 @@
 #include "peer_wire_client.hxx"
 #include "utility.hxx"
 
+#include <bencode_parser.hxx>
 #include <QCryptographicHash>
 #include <QObject>
 #include <random>
@@ -39,12 +40,12 @@ public:
                   std::uint32_t seed_count = 0;
          };
 
-         using connect_optional = std::optional<quint64_be>;
+         using connect_optional = std::optional<std::uint64_t>;
          using scrape_optional = std::optional<Swarm_metadata>;
          using announce_optional = std::optional<Announce_response>;
          using error_optional = std::optional<QByteArray>;
          
-         explicit Udp_torrent_client(bencode::Metadata torrent_metadata,QObject * parent);
+         Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * parent);
 
          void send_connect_request() noexcept;
 signals:
@@ -53,8 +54,8 @@ signals:
          void error_received(const QByteArray & array) const;
 private:
          static QByteArray craft_connect_request() noexcept;
-         static QByteArray craft_scrape_request(const bencode::Metadata & metadata,quint64_be tracker_connection_id) noexcept;
-         QByteArray craft_announce_request(quint64_be tracker_connection_id) const noexcept;
+         static QByteArray craft_scrape_request(const bencode::Metadata & metadata,std::uint64_t tracker_connection_id) noexcept;
+         QByteArray craft_announce_request(std::uint64_t tracker_connection_id) const noexcept;
 
          static connect_optional extract_connect_response(const QByteArray & response,std::uint32_t sent_txn_id);
          static announce_optional extract_announce_response(const QByteArray & response,std::uint32_t sent_txn_id);
@@ -71,26 +72,33 @@ private:
          inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
          inline const static auto id = QByteArray("-TA0001-ABC134ALIlli").toHex();
 
-         std::uint64_t downloaded_ {};
-         std::uint64_t uploaded_ {};
-         Download_Event event_ {};
-
          bencode::Metadata metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
+	Download_tracker * tracker = nullptr;
          std::uint64_t total_ = 0;
-         std::uint64_t left_ {};
+         std::uint64_t left_ = 0;
+
+         std::uint64_t downloaded_ = 0;
+         std::uint64_t uploaded_ = 0;
+         Download_Event event_ {};
 };
 
-inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,QObject * const parent)
+inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
          : QObject(parent)
          , metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(metadata_))
-         , peer_client_(metadata_,id,info_sha1_hash_)
-, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+         , peer_client_(metadata_,std::move(resources.file_handles),id,info_sha1_hash_)
+	, tracker(resources.tracker)
+	, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
          , left_(total_)
 {
          configure_default_connections();
+
+	if(metadata_.announce_url_list.empty()){
+		assert(!metadata_.announce_url.empty());
+		metadata_.announce_url_list.push_back(metadata_.announce_url);
+	}
 }
 
 inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {

@@ -6,9 +6,8 @@ set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-
 set(CXX_FLAGS "-pipe -pedantic -Wall -Wextra -Wshadow -Wdouble-promotion -Wcast-align -Wconversion -Wfloat-equal -Wunreachable-code")
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=address,undefined -fno-omit-frame-pointer ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-ggdb3 -O3 -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
@@ -19,10 +18,10 @@ set(SOURCES
          src/network_manager.cxx
          src/url_input_dialog.cxx
          src/download_tracker.cxx
-	src/torrent_metadata_dialog.cxx
-	src/udp_torrent_client.cxx
-	src/peer_wire_client.cxx
-	src/udp_socket.cxx
+         src/torrent_metadata_dialog.cxx
+         src/udp_torrent_client.cxx
+         src/peer_wire_client.cxx
+         src/udp_socket.cxx
 )
 
 set(MOC_INCLUDES
@@ -30,19 +29,19 @@ set(MOC_INCLUDES
          include/url_input_dialog.hxx
          include/network_manager.hxx
          include/download_tracker.hxx
-	include/torrent_metadata_dialog.hxx
-	include/peer_wire_client.hxx
-	include/udp_torrent_client.hxx
-	include/udp_socket.hxx
-	include/tcp_socket.hxx
-	include/file_manager.hxx
+         include/torrent_metadata_dialog.hxx
+         include/peer_wire_client.hxx
+         include/udp_torrent_client.hxx
+         include/udp_socket.hxx
+         include/tcp_socket.hxx
+         include/file_manager.hxx
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
 include_directories(
          "include"
-	SYSTEM "ext"
+         SYSTEM "ext"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)
@@ -52,7 +51,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
-	[["bencode_parser.hxx"]]
+         [["bencode_parser.hxx"]]
          [["QApplication"]]
          [["QMainWindow"]]
          [["QWidget"]]
@@ -60,14 +59,14 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QDebug"]]
          [["QString"]]
          [["QObject"]]
-	[["QGridLayout"]]
-	[["QAbstractSocket"]]
-	[["QUdpSocket"]]
-	[["QTimer"]]
-	[["QTime"]]
-	[["QByteArray"]]
-	[["QBitArray"]]
-	[["QTcpSocket"]]
-	[["QUdpSocket"]]
-	[["QAbstractSocket"]]
+         [["QGridLayout"]]
+         [["QAbstractSocket"]]
+         [["QUdpSocket"]]
+         [["QTimer"]]
+         [["QTime"]]
+         [["QByteArray"]]
+         [["QBitArray"]]
+         [["QTcpSocket"]]
+         [["QUdpSocket"]]
+         [["QAbstractSocket"]]
 )

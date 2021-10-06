@@ -4,22 +4,22 @@
 
 #include <QNetworkReply>
 #include <QNetworkProxy>
-#include <QFile>
-#include <QTimer>
 #include <QPointer>
+#include <QTimer>
+#include <QFile>
 
-void Network_manager::download(const Download_resources & resources,const QUrl url) noexcept {
+void Network_manager::download(util::Download_resources resources,const QUrl url) noexcept {
 	++download_count_;
 
-         const auto & [path,file_handles,tracker] = resources;
+	const auto [path,file_handle,tracker] = [&resources]{
+		auto & [download_path,file_handles,download_tracker] = resources;
+		assert(file_handles.size() == 1);
+		return std::make_tuple(std::move(download_path),QPointer(file_handles.front()),download_tracker);
+	}();
 
-	assert(file_handles.size() == 1);
-	assert(tracker);
+         const QPointer network_reply = get(QNetworkRequest(url));
 
-	QPointer file_handle = file_handles.front();
-         QPointer network_reply = get(QNetworkRequest(url));
-
-	connect(network_reply,&QNetworkReply::finished,tracker,[tracker = tracker,file_handle,network_reply]{
+	connect(network_reply,&QNetworkReply::finished,tracker,[tracker = tracker,file_handle = file_handle,network_reply]{
 
                   if(network_reply->error() == QNetworkReply::NoError){
                            tracker->switch_to_finished_state();
@@ -35,7 +35,7 @@ void Network_manager::download(const Download_resources & resources,const QUrl u
 		file_handle->deleteLater();
 	});
 
-	connect(tracker,&Download_tracker::request_satisfied,this,[file_handle,network_reply]{
+	connect(tracker,&Download_tracker::request_satisfied,this,[file_handle = file_handle,network_reply]{
 
 		if(file_handle){
 			file_handle->deleteLater();
@@ -46,7 +46,7 @@ void Network_manager::download(const Download_resources & resources,const QUrl u
 		}
 	});
 
-         connect(network_reply,&QNetworkReply::readyRead,file_handle,[tracker = tracker,network_reply,file_handle]{
+         connect(network_reply,&QNetworkReply::readyRead,file_handle,[tracker = tracker,network_reply,file_handle = file_handle]{
 
                   if(network_reply->error() == QNetworkReply::NoError){
                            file_handle->write(network_reply->readAll());
@@ -67,16 +67,14 @@ void Network_manager::download(const Download_resources & resources,const QUrl u
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::upload_progress_update);
 }
 
-void Network_manager::download(const Download_resources & resources,const bencode::Metadata & torrent_metadata) noexcept {
-	static_cast<void>(resources);
-	const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
+void Network_manager::download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept {
+	const auto protocol = static_cast<QUrl>(torrent_metadata.announce_url.data()).scheme();
+	// const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
 	if(protocol == "udp"){
 		++download_count_;
 
-		auto * udp_client = new Udp_torrent_client(torrent_metadata,this);
-
-		connect(resources.tracker,&Download_tracker::request_satisfied,udp_client,&Peer_wire_client::deleteLater);
+		auto * udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
 
 		QTimer::singleShot(0,udp_client,&Udp_torrent_client::send_connect_request);
 	}else{
