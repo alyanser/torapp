@@ -44,7 +44,7 @@ private:
                   std::vector<std::uint8_t> requested_blocks;
                   std::vector<bool> received_blocks; // ? consider QBitArray
                   QByteArray piece;
-                  std::uint32_t received_block_count = 0;
+                  std::uint32_t received_block_cnt = 0;
          };
 
          struct Piece_metadata {
@@ -85,7 +85,7 @@ private:
          constexpr static std::string_view uninterested_msg {"0000000103"};
          constexpr static std::string_view have_all_msg {"000000010e"};
          constexpr static std::string_view have_none_msg {"000000010f"};
-         constexpr static auto max_block_size = 1 << 13;
+         constexpr static auto max_block_size = 1 << 14;
 	inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
          QSet<QUrl> active_peers_;
@@ -99,12 +99,13 @@ private:
          QTimer acquire_piece_timer_;
          std::uint64_t torrent_size_ = 0;
          std::uint64_t piece_size_ = 0;
-         std::uint64_t total_piece_count_ = 0;
+         std::uint64_t total_piece_cnt_ = 0;
          std::uint64_t spare_bitfield_bits_ = 0;
-         std::uint64_t average_block_count_ = 0;
+         std::uint64_t average_block_cnt_ = 0;
          QBitArray bitfield_;
          std::vector<Piece> pieces_;
-         std::uint64_t active_connection_count_ = 0;
+         std::uint64_t active_connection_cnt_ = 0;
+	std::uint64_t downloaded_piece_cnt_ = 0;
 };
 
 inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
@@ -115,17 +116,17 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector
          , handshake_msg_(craft_handshake_message())
          , torrent_size_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
          , piece_size_(metadata_.piece_length)
-         , total_piece_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_))))
-         , spare_bitfield_bits_(total_piece_count_ % 8 ? 8 - total_piece_count_ % 8 : 0)
-         , average_block_count_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size)))
-         , bitfield_(static_cast<std::ptrdiff_t>(total_piece_count_ + spare_bitfield_bits_))
-         , pieces_(total_piece_count_)
+         , total_piece_cnt_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_))))
+         , spare_bitfield_bits_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0)
+         , average_block_cnt_(static_cast<std::uint64_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size)))
+         , bitfield_(static_cast<std::ptrdiff_t>(total_piece_cnt_ + spare_bitfield_bits_))
+         , pieces_(total_piece_cnt_)
 {
          assert(!file_handles_.empty());
          
-         remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(total_piece_count_));
+         remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(total_piece_cnt_));
 
-         for(std::uint32_t piece_idx = 0;piece_idx < total_piece_count_;++piece_idx){
+         for(std::uint32_t piece_idx = 0;piece_idx < total_piece_cnt_;++piece_idx){
 		remaining_pieces_.insert(piece_idx);
          }
 }

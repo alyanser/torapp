@@ -36,7 +36,6 @@ public:
          void set_peer_bitfield(QBitArray peer_bitfield) noexcept;
          QBitArray & peer_bitfield() noexcept;
 
-         QUrl peer_url() const noexcept;
          QSet<std::uint32_t> & pending_pieces() noexcept;
          void send_packet(const QByteArray & packet);
          void reset_disconnect_timer() noexcept;
@@ -116,10 +115,12 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
          assert(handshake_done_);
 
+	constexpr auto len_byte_cnt = 4;
+	
          const auto msg_size = [this]() -> std::optional<std::uint32_t> {
-                  const auto size_buffer = read(sizeof(std::uint32_t));
+		const auto size_buffer = peek(len_byte_cnt);
 
-                  if(static_cast<std::size_t>(size_buffer.size()) < sizeof(std::uint32_t)){
+                  if(size_buffer.size() < len_byte_cnt){
                            return {};
                   }
 
@@ -129,14 +130,17 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 
          if(!msg_size){
                   qInfo() << "couldn't have 4 bytes even";
-                  disconnectFromHost();
-         }else if(!*msg_size){ // keep alive packet
+		return {};
+	}
+
+         if(!*msg_size){ // keep alive packet
                   return {};
          }
 
-         if(auto msg = read(*msg_size);msg.size() == msg_size){
-                  assert(!msg.isEmpty());
-                  return std::make_pair(*msg_size,std::move(msg));
+         if(const auto msg = peek(len_byte_cnt + *msg_size);msg.size() == *msg_size + len_byte_cnt){
+		[[maybe_unused]] const auto skipped_bytes = skip(len_byte_cnt + *msg_size);
+		assert(skipped_bytes == *msg_size + len_byte_cnt);
+                  return std::make_pair(*msg_size,msg.sliced(len_byte_cnt));
          }
 
          return {};
@@ -169,18 +173,13 @@ constexpr void Tcp_socket::set_handshake_done(const bool handshake_status) noexc
          handshake_done_ = handshake_status;
 }
 
-[[nodiscard]]
-inline QUrl Tcp_socket::peer_url() const noexcept {
-         return peer_url_;
-}
-
 inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
-         connect(&disconnect_timer_,&QTimer::timeout,this,[this]{
-                  state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
-         });
+	disconnect_timer_.callOnTimeout(this,[this]{
+		state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
+	});
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {

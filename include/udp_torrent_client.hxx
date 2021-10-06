@@ -28,16 +28,16 @@ public:
          };
 
          struct Swarm_metadata {
-                  std::uint32_t seed_count = 0;
-                  std::uint32_t completed_count = 0;
-                  std::uint32_t leecher_count = 0;
+                  std::uint32_t seed_cnt = 0;
+                  std::uint32_t completed_cnt = 0;
+                  std::uint32_t leecher_cnt = 0;
          };
 
          struct Announce_response {
                   std::vector<QUrl> peer_urls;
                   std::uint32_t interval_time = 0;
-                  std::uint32_t leecher_count = 0;
-                  std::uint32_t seed_count = 0;
+                  std::uint32_t leecher_cnt = 0;
+                  std::uint32_t seed_cnt = 0;
          };
 
          using connect_optional = std::optional<std::uint64_t>;

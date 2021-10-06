@@ -227,12 +227,12 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
                   return util::extract_integer<std::uint32_t>(response,interval_offset);
          }();
 
-         const auto leecher_count = [&response]{
+         const auto leecher_cnt = [&response]{
                   constexpr auto leechers_offset = 12;
                   return util::extract_integer<std::uint32_t>(response,leechers_offset);
          }();
 
-         const auto seed_count = [&response]{
+         const auto seed_cnt = [&response]{
                   constexpr auto seeders_offset = 16;
                   return util::extract_integer<std::uint32_t>(response,seeders_offset);
          }();
@@ -258,7 +258,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
                   return peer_urls;
          }();
 
-         return Announce_response{std::move(peer_urls),interval_time,leecher_count,seed_count};
+         return Announce_response{std::move(peer_urls),interval_time,leecher_cnt,seed_cnt};
 }
 
 [[nodiscard]]
@@ -268,22 +268,22 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
                   return {};
          }
 
-         const auto seed_count = [&response]{
-                  constexpr auto seed_count_offset = 8;
-                  return util::extract_integer<std::uint32_t>(response,seed_count_offset);
+         const auto seed_cnt = [&response]{
+                  constexpr auto seed_cnt_offset = 8;
+                  return util::extract_integer<std::uint32_t>(response,seed_cnt_offset);
          }();
 
-         const auto completed_count = [&response]{
-                  constexpr auto download_count_offset = 12;
-                  return util::extract_integer<std::uint32_t>(response,download_count_offset);
+         const auto completed_cnt = [&response]{
+                  constexpr auto download_cnt_offset = 12;
+                  return util::extract_integer<std::uint32_t>(response,download_cnt_offset);
          }();
 
-         const auto leecher_count = [&response]{
-                  constexpr auto leecher_count_offset = 16;
-                  return util::extract_integer<std::uint32_t>(response,leecher_count_offset);
+         const auto leecher_cnt = [&response]{
+                  constexpr auto leecher_cnt_offset = 16;
+                  return util::extract_integer<std::uint32_t>(response,leecher_cnt_offset);
          }();
 
-         return Swarm_metadata{seed_count,completed_count,leecher_count};
+         return Swarm_metadata{seed_cnt,completed_cnt,leecher_cnt};
 }
 
 [[nodiscard]]

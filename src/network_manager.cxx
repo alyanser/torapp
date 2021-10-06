@@ -9,7 +9,7 @@
 #include <QFile>
 
 void Network_manager::download(util::Download_resources resources,const QUrl url) noexcept {
-	++download_count_;
+	++download_cnt_;
 
 	const auto [path,file_handle,tracker] = [&resources]{
 		auto & [download_path,file_handles,download_tracker] = resources;
@@ -72,7 +72,7 @@ void Network_manager::download(util::Download_resources resources,const bencode:
 	// const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
 	if(protocol == "udp"){
-		++download_count_;
+		++download_cnt_;
 
 		auto * udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
 
