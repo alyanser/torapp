@@ -3,10 +3,13 @@
 
 [[nodiscard]]
 bool Peer_wire_client::verify_hash(const std::size_t piece_idx,const QByteArray & received_packet) const noexcept {
-         constexpr auto sha1_hash_length = 20;
-         assert(piece_idx < total_piece_cnt_ && piece_idx * sha1_hash_length < metadata_.pieces.size());
+         constexpr auto sha1_hash_byte_cnt = 20;
 
-         QByteArray piece_hash(metadata_.pieces.substr(piece_idx * sha1_hash_length,sha1_hash_length).data(),sha1_hash_length);
+         assert(piece_idx < total_piece_cnt_ && piece_idx * sha1_hash_byte_cnt < metadata_.pieces.size());
+         assert(metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
+
+         QByteArray piece_hash(metadata_.pieces.substr(piece_idx * sha1_hash_byte_cnt,sha1_hash_byte_cnt).data(),sha1_hash_byte_cnt);
+         assert(piece_hash.size() % sha1_hash_byte_cnt == 20);
          
          return piece_hash == QCryptographicHash::hash(received_packet,QCryptographicHash::Sha1);
 }
@@ -183,7 +186,7 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
          }();
 
          assert(handshake_msg.size() == 40);
-         handshake_msg += reserved_bytes + info_sha1_hash_ + id_;
+         handshake_msg += reserved_byte + info_sha1_hash_ + id_;
          assert(handshake_msg.size() == 136);
 
          return handshake_msg;
@@ -258,8 +261,8 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
          {
                   const auto peer_reserved_bytes = [&response = response]{
                            constexpr auto reserved_bytes_offset = 20;
-                           constexpr auto reserved_bytes_cnt = 8;
-                           return response.sliced(reserved_bytes_offset,reserved_bytes_cnt);
+                           constexpr auto reserved_byte_cnt = 8;
+                           return response.sliced(reserved_bytes_offset,reserved_byte_cnt);
                   }();
 
                   const auto peer_reserved_bits = util::conversion::convert_to_bits(peer_reserved_bytes);

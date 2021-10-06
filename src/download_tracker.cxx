@@ -126,24 +126,24 @@ void Download_tracker::setup_network_status_layout() noexcept {
          terminate_buttons_holder_.addWidget(&finish_button_);
 }
 
-void Download_tracker::download_progress_update(const std::int64_t bytes_received,const std::int64_t total_bytes) noexcept {
-         assert(bytes_received >= 0);
+void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
+         assert(received_byte_cnt >= 0);
          assert(!download_progress_bar_.minimum());
 
-         if(constexpr auto unknown_bytes = -1;total_bytes == unknown_bytes){
+         if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
                   // sets the bar in pending state
                   download_progress_bar_.setMaximum(0);
                   download_progress_bar_.setValue(0);
          }else{
-                  download_progress_bar_.setMaximum(static_cast<std::int32_t>(total_bytes));
-                  download_progress_bar_.setValue(static_cast<std::int32_t>(bytes_received));
+                  download_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
+                  download_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
          }
 
-         download_quantity_label_.setText(util::conversion::stringify_bytes(bytes_received,total_bytes));
+         download_quantity_label_.setText(util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt));
 
          const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
          assert(seconds_elapsed > 0);
-         const auto speed = bytes_received / seconds_elapsed;
+         const auto speed = received_byte_cnt / seconds_elapsed;
 
          constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);

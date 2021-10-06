@@ -138,8 +138,8 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
          }
 
          if(const auto msg = peek(len_byte_cnt + *msg_size);msg.size() == *msg_size + len_byte_cnt){
-		[[maybe_unused]] const auto skipped_bytes = skip(len_byte_cnt + *msg_size);
-		assert(skipped_bytes == *msg_size + len_byte_cnt);
+		[[maybe_unused]] const auto skipped_byte_cnt = skip(len_byte_cnt + *msg_size);
+		assert(skipped_byte_cnt == *msg_size + len_byte_cnt);
                   return std::make_pair(*msg_size,msg.sliced(len_byte_cnt));
          }
 

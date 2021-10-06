@@ -38,13 +38,13 @@ public:
          void switch_to_finished_state() noexcept;
 signals:
          void retry_download(const QString & file_path,const QUrl & url) const;
-         void retry_download(const QString & file_path,const bencode::Metadata & metadata) const;
+         void retry_download(const QString & file_path,const bencode::Metadata & torrent_metadata) const;
          void delete_file_permanently() const;
          void move_file_to_trash() const;
          void request_satisfied() const;
 public slots:
-         void download_progress_update(std::int64_t bytes_received,std::int64_t total_bytes) noexcept;
-         void upload_progress_update(std::int64_t bytes_sent,std::int64_t total_bytes) noexcept;
+         void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt) noexcept;
+         void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;
 private:
          explicit Download_tracker(const QString & path,QWidget * parent = nullptr);
          
@@ -131,6 +131,6 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
          switch_to_finished_state();
 }
 
-inline void Download_tracker::upload_progress_update(const std::int64_t bytes_sent,const std::int64_t total_bytes) noexcept {
-         upload_quantity_label_.setText(util::conversion::stringify_bytes(bytes_sent,total_bytes));
+inline void Download_tracker::upload_progress_update(const std::int64_t send_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
+         upload_quantity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
 }

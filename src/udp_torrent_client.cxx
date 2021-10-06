@@ -241,13 +241,13 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
                   std::vector<QUrl> peer_urls;
 
                   constexpr auto peers_ip_offset = 20;
-                  constexpr auto peer_url_bytes = 6;
+                  constexpr auto peer_url_byte_cnt = 6;
 
-                  for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_bytes){
-                           constexpr auto ip_bytes = 4;
+                  for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_byte_cnt){
+                           constexpr auto ip_byte_cnt = 4;
                            
                            const auto peer_ip = util::extract_integer<std::uint32_t>(response,idx);
-                           const auto peer_port = util::extract_integer<std::uint16_t>(response,idx + ip_bytes);
+                           const auto peer_port = util::extract_integer<std::uint16_t>(response,idx + ip_byte_cnt);
 
                            auto & url = peer_urls.emplace_back();
                            

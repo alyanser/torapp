@@ -18,44 +18,44 @@ enum class Conversion_Format {
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
-constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type bytes,const Conversion_Format format) noexcept {
-         constexpr auto bytes_in_kb = 1024;
-         constexpr auto bytes_in_mb = bytes_in_kb * 1024;
-         constexpr auto bytes_in_gb = bytes_in_mb * 1024;
+constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Conversion_Format format) noexcept {
+         constexpr auto kb_byte_cnt = 1024;
+         constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
+         constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
 
-         if(bytes >= bytes_in_gb){
-                  return {bytes / bytes_in_gb,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
+         if(byte_cnt >= gb_byte_cnt){
+                  return {byte_cnt / gb_byte_cnt,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
          }
 
-         if(bytes >= bytes_in_mb){
-                  return {bytes / bytes_in_mb,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
+         if(byte_cnt >= mb_byte_cnt){
+                  return {byte_cnt / mb_byte_cnt,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
          }
 
-         if(bytes >= bytes_in_kb){
-                  return {bytes / bytes_in_kb,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
+         if(byte_cnt >= kb_byte_cnt){
+                  return {byte_cnt / kb_byte_cnt,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
          }
 
-         return {bytes,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};
+         return {byte_cnt,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};
 }
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
-QString stringify_bytes(const byte_type bytes_received,const byte_type total_bytes) noexcept {
-         double converted_total_bytes = 0;
+QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_byte_cnt) noexcept {
+         double converted_total_byte_cnt = 0;
          std::string_view total_bytes_postfix("inf");
 
          constexpr auto format = Conversion_Format::Memory;
 
-         if(constexpr auto unknown_bound = -1;total_bytes != unknown_bound){
-                  std::tie(converted_total_bytes,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_bytes),format);
+         if(constexpr auto unknown_bound = -1;total_byte_cnt != unknown_bound){
+                  std::tie(converted_total_byte_cnt,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt),format);
          }
 
-         const auto [converted_received_bytes,received_bytes_postfix] = stringify_bytes(static_cast<double>(bytes_received),format);
+         const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),format);
 
          QString converted_str("%1 %2 / %3 %4");
 
-         converted_str = converted_str.arg(converted_received_bytes).arg(received_bytes_postfix.data());
-         converted_str = converted_str.arg(converted_total_bytes).arg(total_bytes_postfix.data());
+         converted_str = converted_str.arg(converted_received_byte_cnt).arg(received_bytes_postfix.data());
+         converted_str = converted_str.arg(converted_total_byte_cnt).arg(total_bytes_postfix.data());
 
          return converted_str;
 }
@@ -110,15 +110,15 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
 [[nodiscard]]
 result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
-         constexpr auto bytes = static_cast<std::ptrdiff_t>(sizeof(result_type));
+         constexpr auto byte_cnt = static_cast<std::ptrdiff_t>(sizeof(result_type));
 
-         if(offset + bytes > raw_data.size()){
+         if(offset + byte_cnt > raw_data.size()){
                   throw std::out_of_range("extraction out of bounds");
          }
 
          bool conversion_success = true;
          result_type result = 0;
-         const auto hex_fmt = raw_data.sliced(offset,bytes).toHex();
+         const auto hex_fmt = raw_data.sliced(offset,byte_cnt).toHex();
          constexpr auto hex_base = 16;
 
          if constexpr (std::is_same_v<result_type,std::uint32_t>){

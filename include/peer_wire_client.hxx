@@ -86,7 +86,7 @@ private:
          constexpr static std::string_view have_all_msg {"000000010e"};
          constexpr static std::string_view have_none_msg {"000000010f"};
          constexpr static auto max_block_size = 1 << 14;
-	inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
+	inline static const auto reserved_byte = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
          QSet<QUrl> active_peers_;
          QSet<std::uint32_t> remaining_pieces_;
