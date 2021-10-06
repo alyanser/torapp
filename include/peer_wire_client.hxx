@@ -50,19 +50,19 @@ private:
          struct Piece_metadata {
                   std::uint32_t piece_size = 0;
                   std::uint32_t block_size = 0;
-                  std::uint32_t total_blocks = 0;
+                  std::uint32_t total_block_cnt = 0;
          };
 
          static QByteArray craft_have_message(std::uint32_t piece_idx) noexcept;
-         static QByteArray craft_piece_message(std::uint32_t piece_idx,std::uint32_t block_idx,const QByteArray & content) noexcept;
+         static QByteArray craft_piece_message(std::uint32_t piece_idx,std::uint32_t offset,const QByteArray & payload) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
-         QByteArray craft_request_message(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
-         QByteArray craft_cancel_message(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
+         QByteArray craft_request_message(std::uint32_t piece_idx,std::uint32_t offset) const noexcept;
+         QByteArray craft_cancel_message(std::uint32_t piece_idx,std::uint32_t offset) const noexcept;
          static QByteArray craft_allowed_fast_message(std::uint32_t piece_idx) noexcept;
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
-         bool verify_hash(std::size_t piece_idx,const QByteArray & received_packet) const noexcept;
+         bool verify_piece_hash(std::size_t piece_idx,const QByteArray & received_piece) const noexcept;
 
          void on_unchoke_message_received(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::uint32_t peer_have_piece_idx) noexcept;
@@ -73,7 +73,7 @@ private:
          void extract_peer_response(const QByteArray & peer_response) const noexcept;
          QByteArray craft_handshake_message() const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
-         Piece_metadata get_piece_info(std::uint32_t piece_idx,std::uint32_t block_idx) const noexcept;
+         Piece_metadata get_piece_info(std::uint32_t piece_idx,std::uint32_t offset) const noexcept;
          void send_block_requests(Tcp_socket * socket,std::uint32_t piece_idx) noexcept;
          std::uint32_t get_current_target_piece() const noexcept;
          static bool valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
@@ -86,11 +86,11 @@ private:
          constexpr static std::string_view have_all_msg {"000000010e"};
          constexpr static std::string_view have_none_msg {"000000010f"};
          constexpr static auto max_block_size = 1 << 14;
-	inline static const auto reserved_byte = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
+         inline static const auto reserved_byte = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
          QSet<QUrl> active_peers_;
          QSet<std::uint32_t> remaining_pieces_;
-
+         
          bencode::Metadata metadata_;
          std::vector<QFile *> file_handles_;
          QByteArray id_;
@@ -105,7 +105,7 @@ private:
          QBitArray bitfield_;
          std::vector<Piece> pieces_;
          std::uint64_t active_connection_cnt_ = 0;
-	std::uint64_t downloaded_piece_cnt_ = 0;
+         std::uint64_t downloaded_piece_cnt_ = 0;
 };
 
 inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
@@ -127,12 +127,13 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector
          remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(total_piece_cnt_));
 
          for(std::uint32_t piece_idx = 0;piece_idx < total_piece_cnt_;++piece_idx){
-		remaining_pieces_.insert(piece_idx);
+                  remaining_pieces_.insert(piece_idx);
          }
 }
 
 [[nodiscard]]
 inline std::uint32_t Peer_wire_client::get_current_target_piece() const noexcept {
+         // todo: actually randomize the order
          assert(!remaining_pieces_.empty());
          return *remaining_pieces_.constBegin();
 }
