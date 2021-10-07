@@ -70,25 +70,27 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
          auto [file_error,file_handles] = file_manager_.open_file_handles(path,std::forward<request_type>(download_request));
 
          switch(file_error){
-                  case File_manager::Error::File_Lock : {
+                  case File_manager::File_Error::File_Lock : {
                            [[fallthrough]];
                   }
 
-                  case File_manager::Error::Already_Exists : {
+                  case File_manager::File_Error::Already_Exists : {
+                           assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
                            break;
                   }
 
-                  case File_manager::Error::Permissions : {
+                  case File_manager::File_Error::Permissions : {
+                           assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Write);
                            break;
                   }
 
-                  case File_manager::Error::Null : {
-                           assert(!file_handles.empty());
+                  case File_manager::File_Error::Null : {
+                           assert(file_handles);
                            assert(tracker->error() == Download_tracker::Error::Null);
 
-                           network_manager_.download({path,std::move(file_handles),tracker},std::forward<request_type>(download_request));
+                           network_manager_.download({path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
                   };
 

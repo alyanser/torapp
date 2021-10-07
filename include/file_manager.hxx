@@ -12,14 +12,15 @@
 class File_manager : public QObject {
          Q_OBJECT
 public:
-         enum class Error {
+         enum class File_Error {
                   Null,
                   Already_Exists,
                   File_Lock,
-                  Permissions
+                  Permissions,
+                  Not_Enough_Space
          };
 
-         using handle_return_type = std::pair<Error,std::vector<QFile *>>;
+         using handle_return_type = std::pair<File_Error,std::optional<std::vector<QFile *>>>;
 
          handle_return_type open_file_handles(const QString & path,const bencode::Metadata & torrent_metadata) noexcept;
          handle_return_type open_file_handles(const QString & path,QUrl url) noexcept;
@@ -30,12 +31,21 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          QDir dir(path);
 
          if(!dir.mkpath(dir.path())){
-                  return {Error::Permissions,{nullptr}};
+                  return {File_Error::Permissions,{}};
          }
 
          std::vector<QFile *> file_handles;
 
-         for(const auto & [file_path,size] : torrent_metadata.file_info){
+         auto remove_file_handles = [&file_handles,&dir]{
+
+                  for(auto * const invalid_file_handle : file_handles){
+                           invalid_file_handle->deleteLater();
+                  }
+
+                  dir.removeRecursively();
+         };
+
+         for(const auto & [file_path,file_size] : torrent_metadata.file_info){
                   const auto last_slash_idx = file_path.find_last_of('/');
 
                   if(last_slash_idx == std::string::npos){
@@ -49,28 +59,30 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                            file_handles.push_back(new QFile(dir.path() + '/' + new_dir_path.data() + '/' + file_name.data(),this));
                   }
 
-                  if(auto * file_handle = file_handles.back();!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
-                           
-                           for(auto * const invalid_file_handle : file_handles){
-                                    invalid_file_handle->deleteLater();
-                           }
+                  assert(!file_handles.empty());
+                  auto * const file_handle = file_handles.back();
 
-                           dir.removeRecursively();
+                  if(!file_handle->open(QFile::ReadWrite | QFile::Truncate)){
+                           remove_file_handles();
+                           return {File_Error::Permissions,{}};
+                  }
 
-                           return {Error::Permissions,{}};
+                  if(!file_handle->resize(static_cast<std::ptrdiff_t>(file_size))){
+                           remove_file_handles();
+                           return {File_Error::Not_Enough_Space,{}};
                   }
          }
 
-         return {Error::Null,file_handles};
+         return {File_Error::Null,file_handles};
 }
 
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & path,const QUrl /* url */) noexcept {
-         auto * file_handle = new QFile(path,this);
+         auto * const file_handle = new QFile(path,this);
 
          if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
                   file_handle->deleteLater();
-                  return {Error::Permissions,{nullptr}};
+                  return {File_Error::Permissions,{}};
          }
 
-         return {Error::Null,{file_handle}};
+         return {File_Error::Null,std::vector{file_handle}};
 }

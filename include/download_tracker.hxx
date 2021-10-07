@@ -25,6 +25,7 @@ public:
                   File_Write,
                   Unknown_Network,
                   File_Lock,
+                  Not_Enough_Space,
                   Custom
          };
 

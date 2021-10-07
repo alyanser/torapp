@@ -203,29 +203,35 @@ void Download_tracker::switch_to_finished_state() noexcept {
 }
 
 void Download_tracker::update_error_line() noexcept {
-         constexpr std::string_view null_error_info("Download completed successfully. Click on Open button to view");
-         constexpr std::string_view file_write_error_info("Given file could not be opened for writing.");
-         constexpr std::string_view unknown_network_error_info("Unknown network error. Try restarting the download");
-         constexpr std::string_view file_lock_error_info("Same file is held by another process. Stop that process and retry");
+         constexpr std::string_view null_desc("Download completed successfully. Click on Open button to view");
+         constexpr std::string_view file_write_desc("Given file could not be opened for writing.");
+         constexpr std::string_view unknown_network_desc("Unknown network error. Try restarting the download");
+         constexpr std::string_view file_lock_desc("Same file is held by another process. Stop that process and retry");
+         constexpr std::string_view not_enough_space_desc("Not enough space to begin download. Free some memory and try again");
 
          switch(error_){
                   case Error::Null : {
-                           error_line_.setText(null_error_info.data()); 
+                           error_line_.setText(null_desc.data()); 
                            break;
                   }
 
                   case Error::File_Write : {
-                           error_line_.setText(file_write_error_info.data()); 
+                           error_line_.setText(file_write_desc.data()); 
                            break;
                   }
 
                   case Error::Unknown_Network : {
-                           error_line_.setText(unknown_network_error_info.data()); 
+                           error_line_.setText(unknown_network_desc.data()); 
                            break;
                   }
                   
                   case Error::File_Lock : { 
-                           error_line_.setText(file_lock_error_info.data()); 
+                           error_line_.setText(file_lock_desc.data()); 
+                           break;
+                  }
+
+                  case Error::Not_Enough_Space : {
+                           error_line_.setText(not_enough_space_desc.data());
                            break;
                   }
 

@@ -155,6 +155,7 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
+         assert(state() == QAbstractSocket::SocketState::ConnectedState);
          assert(!packet.isEmpty());
          write(QByteArray::fromHex(packet));
 }

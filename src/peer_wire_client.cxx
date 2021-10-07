@@ -1,14 +1,15 @@
 #include "peer_wire_client.hxx"
 #include "tcp_socket.hxx"
+#include <QFile>
 
 [[nodiscard]]
-bool Peer_wire_client::verify_piece_hash(const std::size_t piece_idx,const QByteArray & received_piece) const noexcept {
+bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece,const std::uint32_t piece_idx) const noexcept {
          constexpr auto sha1_hash_byte_cnt = 20;
 
-         assert(piece_idx < total_piece_cnt_ && piece_idx * sha1_hash_byte_cnt < metadata_.pieces.size());
-         assert(metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
+         assert(piece_idx < total_piece_cnt_ && piece_idx * sha1_hash_byte_cnt < torrent_metadata_.pieces.size());
+         assert(torrent_metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
 
-         const QByteArray piece_hash(metadata_.pieces.substr(piece_idx * sha1_hash_byte_cnt,sha1_hash_byte_cnt).data(),sha1_hash_byte_cnt);
+         const QByteArray piece_hash(torrent_metadata_.pieces.substr(piece_idx * sha1_hash_byte_cnt,sha1_hash_byte_cnt).data(),sha1_hash_byte_cnt);
 
          return piece_hash == QCryptographicHash::hash(received_piece,QCryptographicHash::Sha1);
 }
@@ -37,27 +38,28 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcep
 
                   auto * const socket = new Tcp_socket(peer_url,this);
 
-                  connect(socket,&Tcp_socket::connected,this,[&handshake_msg_ = handshake_msg_,socket]{
+                  connect(socket,&Tcp_socket::connected,this,[this,socket,peer_url]{
                            assert(!socket->handshake_done());
                            socket->send_packet(handshake_msg_);
-                  });
 
-                  connect(socket,&Tcp_socket::readyRead,this,[this,socket]{
-                           on_socket_ready_read(socket);
-                  });
+                           connect(socket,&Tcp_socket::readyRead,this,[this,socket]{
+                                    on_socket_ready_read(socket);
+                           });
 
-                  connect(this,&Peer_wire_client::piece_downloaded,socket,[socket](const std::uint32_t piece_idx){
-                           qInfo() << "Sending have packet after verifying the piece";
-                           socket->send_packet(craft_have_message(piece_idx));
-                  });
+                           connect(this,&Peer_wire_client::piece_downloaded,socket,[socket](const std::uint32_t piece_idx){
+                                    qInfo() << "Sending have packet for" << piece_idx;
+                                    socket->send_packet(craft_have_message(piece_idx));
+                           });      
 
-                  connect(socket,&Tcp_socket::disconnected,this,[this,socket,peer_url]{
-                           [[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
-                           assert(remove_success);
+                           connect(socket,&Tcp_socket::disconnected,this,[this,socket,peer_url]{
+                                    [[maybe_unused]] const auto remove_success = active_peers_.remove(peer_url);
+                                    assert(remove_success);
 
-                           if(socket->handshake_done()){
-                                    --active_connection_cnt_;
-                           }
+                                    if(socket->handshake_done()){
+                                             assert(active_connection_cnt_);
+                                             --active_connection_cnt_;
+                                    }
+                           });
                   });
          }
 }
@@ -114,7 +116,6 @@ QByteArray Peer_wire_client::craft_request_message(const std::uint32_t piece_idx
 
          request_msg += convert_to_hex(static_cast<std::uint8_t>(Message_Id::Request));
          request_msg += convert_to_hex(static_cast<quint32_be>(piece_idx));
-         //! do the check
          request_msg += convert_to_hex(static_cast<quint32_be>(offset));
          request_msg += convert_to_hex(static_cast<quint32_be>(get_piece_info(piece_idx,offset).block_size));
 
@@ -151,6 +152,7 @@ QByteArray Peer_wire_client::craft_allowed_fast_message(const std::uint32_t piec
 
          allowed_fast_msg += convert_to_hex(static_cast<std::uint8_t>(Message_Id::Allowed_Fast));
          allowed_fast_msg += convert_to_hex(static_cast<quint32_be>(piece_idx));
+
          assert(allowed_fast_msg.size() == 18);
          return allowed_fast_msg;
 }
@@ -174,34 +176,33 @@ QByteArray Peer_wire_client::craft_have_message(const std::uint32_t piece_idx) n
 [[nodiscard]]
 QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 
-         QByteArray handshake_msg = []{
+         auto handshake_msg = []{
                   constexpr std::uint8_t pstrlen = 19;
                   constexpr std::string_view protocol("BitTorrent protocol");
                   static_assert(protocol.size() == pstrlen);
                   return util::conversion::convert_to_hex(pstrlen) + QByteArray(protocol.data(),protocol.size()).toHex();
          }();
 
-         assert(handshake_msg.size() == 40);
-         handshake_msg += reserved_byte + info_sha1_hash_ + id_;
-         assert(handshake_msg.size() == 136);
+         handshake_msg += reserved_bytes + info_sha1_hash_ + id_;
 
+         assert(handshake_msg.size() == 136);
          return handshake_msg;
 }
 
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t piece_idx,const std::uint32_t offset,const QByteArray & payload) noexcept {
+QByteArray Peer_wire_client::craft_piece_message(const QByteArray & piece_data,const std::uint32_t piece_idx,const std::uint32_t offset) noexcept {
          using util::conversion::convert_to_hex;
 
-         auto piece_msg = [payload_size = payload.size()]{
-                  const quint32_be msg_size(9 + static_cast<std::uint32_t>(payload_size));
+         auto piece_msg = [piece_size = piece_data.size()]{
+                  const quint32_be msg_size(9 + static_cast<std::uint32_t>(piece_size));
                   return convert_to_hex(msg_size);
          }();
          
          piece_msg += convert_to_hex(static_cast<std::uint8_t>(Message_Id::Piece));
          piece_msg += convert_to_hex(static_cast<quint32_be>(piece_idx));
          piece_msg += convert_to_hex(static_cast<quint32_be>(offset));
-         assert(piece_msg.size() == 18);
-         piece_msg += payload.toHex();
+         assert(piece_msg.size() == 26);
+         piece_msg += piece_data.toHex();
          
          return piece_msg;
 }
@@ -209,7 +210,7 @@ QByteArray Peer_wire_client::craft_piece_message(const std::uint32_t piece_idx,c
 [[nodiscard]]
 QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) noexcept {
 
-         QByteArray bitfield_msg = [&bitfield]{
+         auto bitfield_msg = [&bitfield]{
                   assert(bitfield.size() % 8 == 0);
                   const quint32_be bitfield_msg_size(1 + static_cast<std::uint32_t>(bitfield.size()) / 8);
                   return util::conversion::convert_to_hex(bitfield_msg_size);
@@ -312,6 +313,10 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
 
                            socket->send_packet(craft_request_message(piece_idx,block_idx * max_block_size));
 
+                           // todo: maybe consider sending cancel packet once received from other peer
+
+                           // ! something is wrong here
+
                            connect(socket,&Tcp_socket::got_choked,this,[&requested_blocks = requested_blocks,socket,block_idx]{
                                     assert(requested_blocks[block_idx]);
 
@@ -341,8 +346,77 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
          }
 }
 
+void Peer_wire_client::write_to_disk(const QByteArray & piece_data,const std::uint32_t piece_idx) noexcept {
+         assert(file_handles_.size() == torrent_metadata_.file_info.size());
+         assert(static_cast<std::size_t>(piece_data.size()) == torrent_metadata_.piece_length);
+
+         auto file_handle_idx = [&torrent_metadata_ = torrent_metadata_,&file_handles_ = file_handles_,piece_idx]() -> std::optional<std::size_t> {
+                  std::uint64_t file_size_sum = 0;
+
+                  for(std::size_t file_idx = 0;file_idx < file_handles_.size();++file_idx){
+                           file_size_sum += torrent_metadata_.file_info[file_idx].second;
+                           assert(torrent_metadata_.piece_length);
+
+                           if(file_size_sum / torrent_metadata_.piece_length >= piece_idx){
+                                    return file_idx;
+                           }
+                  }
+
+                  return {};
+         }();
+
+         if(file_handle_idx){
+
+                  const auto first_file_bytes = [&torrent_metadata_ = torrent_metadata_,file_handle_idx]{
+                           const auto first_file_size = torrent_metadata_.file_info[*file_handle_idx].second;
+                           const auto piece_length = torrent_metadata_.piece_length;
+                           return first_file_size % piece_length ? first_file_size % piece_length : piece_length;
+                  }();
+
+                  for(const auto & [file_name,file_size] : torrent_metadata_.file_info){
+                           qInfo() << file_name.data() << file_size;
+                  }
+
+                  qInfo() << *file_handle_idx << first_file_bytes << piece_idx << torrent_metadata_.piece_length;
+                  
+                  for(std::ptrdiff_t total_bytes_written = 0;total_bytes_written < piece_data.size();++*file_handle_idx){
+
+                           if(file_handle_idx == file_handles_.size()){
+                                    // todo: figure react
+                                    __builtin_unreachable();
+                           }
+
+                           const auto file_size = torrent_metadata_.file_info[*file_handle_idx].second;
+                           qInfo() << torrent_metadata_.file_info[*file_handle_idx].first.data() << file_size;
+                           
+                           // todo: avoid sliced
+                           const auto remaining_bytes = piece_data.size() - total_bytes_written;
+                           assert(remaining_bytes > 0);
+
+                           const auto bytes_to_write = std::min(remaining_bytes,static_cast<qsizetype>(total_bytes_written ? file_size : first_file_bytes));
+                           assert(bytes_to_write);
+                           // ! invalid write. can't just write anywhere - offsets required
+                           const auto bytes_written = file_handles_[*file_handle_idx]->write(piece_data.sliced(total_bytes_written,bytes_to_write));
+                           assert(bytes_written);
+
+                           if(bytes_written == -1){
+                                    break;
+                           }
+
+                           total_bytes_written += bytes_written;
+
+                           assert(total_bytes_written <= piece_data.size());
+                  }
+
+                  exit(0);
+         }else{
+                  qInfo() << "fix your maths";
+                  // todo: figure react
+         }
+}
+
 [[nodiscard]]
-bool Peer_wire_client::valid_response(Tcp_socket * const socket,const QByteArray & response,const Message_Id received_msg_id) noexcept {
+bool Peer_wire_client::is_valid_response(Tcp_socket * const socket,const QByteArray & response,const Message_Id received_msg_id) noexcept {
          constexpr auto max_msg_id = 17;
 
          if(static_cast<std::uint32_t>(received_msg_id) > max_msg_id){
@@ -475,8 +549,49 @@ void Peer_wire_client::on_bitfield_received(Tcp_socket * const socket,const QByt
          }
 }
 
+void Peer_wire_client::on_piece_downloaded(Piece & piece,const std::uint32_t piece_idx) noexcept {
+
+         auto release_piece_memory = [&piece,piece_idx]{
+                  qInfo() << "releasing piece memory" << piece_idx;
+
+                  auto & [received_blocks,requested_blocks,piece_data,received_block_cnt] = piece;
+
+                  assert(piece_data.isEmpty());
+                  assert(received_blocks.empty());
+                  assert(requested_blocks.empty());
+
+                  piece_data.clear();
+                  requested_blocks.clear();
+                  received_blocks.clear();
+
+                  piece_data.shrink_to_fit();
+                  requested_blocks.shrink_to_fit();
+                  received_blocks.shrink_to_fit();
+                  
+                  received_block_cnt = 0;
+         };
+
+         if(verify_piece_hash(piece.data,piece_idx)){
+                  qInfo() << "Successfully downloaded a piece";
+
+                  assert(remaining_pieces_.contains(piece_idx));
+                  remaining_pieces_.remove(piece_idx);
+
+                  bitfield_[piece_idx] = true;
+                  emit piece_downloaded(piece_idx);
+
+                  QTimer::singleShot(0,this,[this,&piece_data = piece.data,release_piece_memory,piece_idx]{
+                           write_to_disk(piece_data,piece_idx);
+                           constexpr std::chrono::minutes memory_release_timeout(1);
+                           QTimer::singleShot(memory_release_timeout,this,release_piece_memory);
+                  });
+         }else{
+                  qInfo() << "hash verification failed";
+                  release_piece_memory();
+         }
+}
+
 void Peer_wire_client::on_piece_received(Tcp_socket * const socket,const QByteArray & response) noexcept {
-         qInfo() << "Got the piece";
 
          const auto received_piece_idx = [&response]{
                   constexpr auto msg_begin_offset = 1;
@@ -507,13 +622,13 @@ void Peer_wire_client::on_piece_received(Tcp_socket * const socket,const QByteAr
                   return;
          }
 
-         assert(pieces_.size() > received_piece_idx);
-         auto & [requested_blocks,received_blocks,piece,received_block_cnt] = pieces_[received_piece_idx];
+         assert(received_piece_idx < pieces_.size());
+         auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[received_piece_idx];
 
          // todo: consider when the peer sends unrequested packet
 
-         if(piece.isEmpty()){
-                  piece.resize(static_cast<std::ptrdiff_t>(piece_size));
+         if(piece_data.isEmpty()){
+                  piece_data.resize(static_cast<std::ptrdiff_t>(piece_size));
          }
 
          if(received_blocks.empty()){
@@ -536,28 +651,13 @@ void Peer_wire_client::on_piece_received(Tcp_socket * const socket,const QByteAr
          
          for(qsizetype idx = 0;idx < newly_received_block.size();++idx){
                   // ! bug with std::ptrdiff_t! figure
-                  assert(received_offset + idx < piece.size());
-                  piece[received_offset + idx] = newly_received_block[idx];
+                  assert(received_offset + idx < piece_data.size());
+                  piece_data[received_offset + idx] = newly_received_block[idx];
          }
 
          if(received_block_cnt == total_block_cnt){
-
-                  if(verify_piece_hash(received_piece_idx,piece)){
-                           qInfo() << "Successfully downloaded a piece";
-
-                           bitfield_[received_piece_idx] = true;
-                           assert(remaining_pieces_.contains(received_piece_idx));
-                           remaining_pieces_.remove(received_piece_idx);
-
-                           emit piece_downloaded(received_piece_idx);
-                  }else{
-                           __builtin_unreachable();
-                           qInfo() << "hash verification failed";
-                           piece.clear();
-                           received_blocks.clear();
-                           requested_blocks.clear();
-                           received_block_cnt = 0;
-                  }
+                  assert(received_piece_idx <= pieces_.size());
+                  on_piece_downloaded(pieces_[received_piece_idx],received_piece_idx);
          }else{
                   send_block_requests(socket,received_piece_idx);
          }
@@ -576,6 +676,7 @@ void Peer_wire_client::on_allowed_fast_received(Tcp_socket * const socket,const 
                   qInfo() << "Peer doesn't have the fast packet";
          }
 }
+
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
          assert(socket->handshake_done());
@@ -616,13 +717,13 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   return std::make_tuple(piece_index,piece_offset,piece_size);
          };
 
-         if(!valid_response(socket,response,received_msg_id)){
+         if(!is_valid_response(socket,response,received_msg_id)){
                   qInfo() << "Invalid peer response" << response;
                   socket->disconnectFromHost();
                   return;
          }
 
-         qInfo() << received_msg_id;
+         qInfo() << received_msg_id << active_connection_cnt_;
          constexpr auto msg_offset = 1;
 
          switch(received_msg_id){
@@ -659,13 +760,13 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   }
 
                   case Message_Id::Request : {
-                           const auto [requested_piece_idx,requested_block_idx,requested_block_byhte_cnt] = extract_piece_metadata();
+                           const auto [requested_piece_idx,requested_offset,requested_byte_cnt] = extract_piece_metadata();
 
                            if(requested_piece_idx > total_piece_cnt_){
                                     qInfo() << "Invalid request from peer";
                            }else if(bitfield_[requested_piece_idx]){
-                                    // const auto block = pieces_[requested_piece_idx].piece.sliced(requested_block_idx)
-                                    // socket->send_packet(craft_piece_message(requested_piece_idx,requested_block_idx,pieces_))
+                                    const auto piece_data = pieces_[requested_piece_idx].data.sliced(requested_offset,requested_byte_cnt);
+                                    socket->send_packet(craft_piece_message(piece_data,requested_piece_idx,requested_offset));
                            }else{
                                     qInfo() << "Don't have the packet which peer requested";
                            }
