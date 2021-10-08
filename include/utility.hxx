@@ -147,9 +147,9 @@ result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t off
 }
 
 struct Download_resources {
-	QString file_path;
-	std::vector<QFile *> file_handles;
-	Download_tracker * tracker;
+         QString file_path;
+         std::vector<QFile *> file_handles;
+         Download_tracker * tracker;
 };
 
 } // namespace util

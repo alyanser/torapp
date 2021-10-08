@@ -70,7 +70,7 @@ private:
          ///
          inline static std::mt19937 random_generator {std::random_device{}()};
          inline static std::uniform_int_distribution<std::uint32_t> random_id_range;
-         inline const static auto id = QByteArray("-TA0001-ABC134ALIlli").toHex();
+         inline const static auto id = QByteArray("-TA0001-ABC134ZXClli").toHex();
 
          bencode::Metadata metadata_;
          QByteArray info_sha1_hash_;
@@ -81,7 +81,7 @@ private:
 
          std::uint64_t downloaded_ = 0;
          std::uint64_t uploaded_ = 0;
-         Download_Event event_ {};
+         Download_Event event_ {Download_Event::None};
 };
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)

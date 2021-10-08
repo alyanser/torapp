@@ -33,7 +33,9 @@ void Udp_socket::configure_default_connections() noexcept {
                                              break;
                                     }
 
-                                    default : __builtin_unreachable();
+                                    default : {
+                                             __builtin_unreachable();
+                                    }
                            }
 
                            connection_timer_.start(get_timeout());

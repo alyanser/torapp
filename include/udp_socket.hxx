@@ -48,7 +48,7 @@ private:
          std::uint32_t txn_id_ = 0;
          std::uint8_t timeout_factor_ = 0;
          bool connection_id_valid_ = true;
-         QByteArray connect_request_; // ? consider the order
+         QByteArray connect_request_;
 };
 
 inline Udp_socket::Udp_socket(const QUrl & url,QByteArray connect_request,QObject * const parent) 

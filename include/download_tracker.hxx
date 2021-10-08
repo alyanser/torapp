@@ -14,7 +14,7 @@
 #include <QTime>
 
 namespace bencode {
-	struct Metadata;
+         struct Metadata;
 }
 
 class Download_tracker : public QWidget {
@@ -47,7 +47,7 @@ public slots:
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt) noexcept;
          void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;
 private:
-         explicit Download_tracker(const QString & path,QWidget * parent = nullptr);
+         explicit Download_tracker(const QString & download_path,QWidget * parent = nullptr);
          
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;

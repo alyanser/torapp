@@ -59,7 +59,8 @@ inline void Main_window::setup_menu_bar() noexcept {
 
 template<typename request_type>
 void Main_window::initiate_download(const QString & path,request_type && download_request) noexcept {
-         auto * tracker = new Download_tracker(path,std::forward<request_type>(download_request),&central_widget_);
+         auto * const tracker = new Download_tracker(path,std::forward<request_type>(download_request),&central_widget_);
+         
          central_layout_.addWidget(tracker);
          
          {
@@ -94,6 +95,8 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
                            break;
                   };
 
-                  default : __builtin_unreachable();
+                  default : {
+                           __builtin_unreachable();
+                  }
          }
 }

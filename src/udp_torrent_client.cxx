@@ -12,13 +12,13 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   peer_client_.do_handshake(response.peer_urls);
          });
 
-	connect(tracker,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
+         connect(tracker,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {
          const auto & tracker_urls = metadata_.announce_url_list;
 
-	assert(!tracker_urls.empty());
+         assert(!tracker_urls.empty());
 
          for(const auto & tracker_url : tracker_urls){
                   auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
@@ -29,6 +29,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                                     while(socket->bytesAvailable()){
                                              on_socket_ready_read(socket);
                                     }
+                                    
                            }catch(const std::exception & exception){
                                     qDebug() << exception.what();
                                     socket->disconnectFromHost();
@@ -46,10 +47,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
                   return convert_to_hex(protocol_constant);
          }();
 
-         connect_request += []{
-                  constexpr quint32_be connect_action(static_cast<std::uint32_t>(Action_Code::Connect));
-                  return convert_to_hex(connect_action);
-         }();
+         connect_request += convert_to_hex(static_cast<quint32_be>(static_cast<std::uint32_t>(Action_Code::Connect)));
 
          connect_request += []{
                   const quint32_be txn_id(random_id_range(random_generator));
@@ -62,7 +60,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 [[nodiscard]]
 QByteArray Udp_torrent_client::craft_announce_request(const std::uint64_t tracker_connection_id) const noexcept {
          using util::conversion::convert_to_hex;
-	
+         
          QByteArray announce_request = convert_to_hex(static_cast<quint64_be>(tracker_connection_id));
          announce_request += convert_to_hex(static_cast<quint32_be>(static_cast<std::uint32_t>(Action_Code::Announce)));
 

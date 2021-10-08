@@ -3,14 +3,6 @@
 #include "utility.hxx"
 
 #include <QNetworkAccessManager>
-#include <QSet>
-
-class Download_tracker;
-class QFile;
-
-namespace util {
-	struct Download_resources;
-}
 
 namespace bencode {
 	struct Metadata;
@@ -22,13 +14,12 @@ public:
          void download(util::Download_resources resources,QUrl url) noexcept;
          void download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept;
 
-          constexpr std::uint32_t download_cnt() const noexcept;
+         constexpr std::uint32_t download_count() const noexcept;
 private:
          std::uint32_t download_cnt_ = 0;
-         bool terminating_ = false;
 };
 
 [[nodiscard]]
-constexpr std::uint32_t Network_manager::download_cnt() const noexcept {
+constexpr std::uint32_t Network_manager::download_count() const noexcept {
          return download_cnt_;
 }

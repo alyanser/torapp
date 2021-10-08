@@ -35,26 +35,26 @@ void Main_window::add_top_actions() noexcept {
 
          connect(exit_action,&QAction::triggered,this,&Main_window::close);
 
-	connect(torrent_action,&QAction::triggered,this,[this]{
-		constexpr std::string_view caption("Choose a torrent file");
-		constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
-		
-		const auto file_path = QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
+         connect(torrent_action,&QAction::triggered,this,[this]{
+                  constexpr std::string_view caption("Choose a torrent file");
+                  constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
+                  
+                  const auto file_path = QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
 
-		if(file_path.isEmpty()){
-			return;
-		}
-		
-		Torrent_metadata_dialog dialog(file_path,this);
-		connect(&dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
-		dialog.exec();
-	});
+                  if(file_path.isEmpty()){
+                           return;
+                  }
+                  
+                  Torrent_metadata_dialog dialog(file_path,this);
+                  connect(&dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
+                  dialog.exec();
+         });
 
-	connect(url_action,&QAction::triggered,this,[this]{
-		Url_input_dialog dialog(this);
-		connect(&dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
-		dialog.exec();
-	});
+         connect(url_action,&QAction::triggered,this,[this]{
+                  Url_input_dialog dialog(this);
+                  connect(&dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
+                  dialog.exec();
+         });
 }
 
 void Main_window::setup_sort_menu() noexcept {
@@ -65,6 +65,7 @@ void Main_window::setup_sort_menu() noexcept {
          [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
 
          const auto sort_actions = sort_action_group_.actions();
+         assert(!sort_actions.empty());
 
          for(auto * const sort_action : sort_actions){
                   sort_action->setCheckable(true);

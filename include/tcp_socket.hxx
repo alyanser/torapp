@@ -113,12 +113,13 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
 
 [[nodiscard]]
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
+         // todo use the transaction
          assert(handshake_done_);
 
-	constexpr auto len_byte_cnt = 4;
-	
+         constexpr auto len_byte_cnt = 4;
+         
          const auto msg_size = [this]() -> std::optional<std::uint32_t> {
-		const auto size_buffer = peek(len_byte_cnt);
+                  const auto size_buffer = peek(len_byte_cnt);
 
                   if(size_buffer.size() < len_byte_cnt){
                            return {};
@@ -130,16 +131,16 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 
          if(!msg_size){
                   qInfo() << "couldn't have 4 bytes even";
-		return {};
-	}
+                  return {};
+         }
 
          if(!*msg_size){ // keep alive packet
                   return {};
          }
 
          if(const auto msg = peek(len_byte_cnt + *msg_size);msg.size() == *msg_size + len_byte_cnt){
-		[[maybe_unused]] const auto skipped_byte_cnt = skip(len_byte_cnt + *msg_size);
-		assert(skipped_byte_cnt == *msg_size + len_byte_cnt);
+                  [[maybe_unused]] const auto skipped_byte_cnt = skip(len_byte_cnt + *msg_size);
+                  assert(skipped_byte_cnt == *msg_size + len_byte_cnt);
                   return std::make_pair(*msg_size,msg.sliced(len_byte_cnt));
          }
 
@@ -178,9 +179,10 @@ inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
-	disconnect_timer_.callOnTimeout(this,[this]{
-		state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
-	});
+         disconnect_timer_.callOnTimeout(this,[this]{
+                  qInfo() << "DIsconnecting from peer";
+                  state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
+         });
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {

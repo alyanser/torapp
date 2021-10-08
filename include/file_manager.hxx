@@ -4,8 +4,6 @@
 #include "bencode_parser.hxx"
 
 #include <QMessageBox>
-#include <QFileInfo>
-#include <QObject>
 #include <QFile>
 #include <QDir>
 

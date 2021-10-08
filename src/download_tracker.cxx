@@ -6,7 +6,7 @@
 #include <QMessageBox>
 #include <QDir>
 
-Download_tracker::Download_tracker(const QString & path,QWidget * const parent) 
+Download_tracker::Download_tracker(const QString & download_path,QWidget * const parent) 
          : QWidget(parent)
 {
          setup_layout();
@@ -21,19 +21,19 @@ Download_tracker::Download_tracker(const QString & path,QWidget * const parent)
          delete_button_.setEnabled(false);
 
          {
-                  connect(&open_directory_button_,&QPushButton::clicked,this,[this,path]{
-                           assert(path.lastIndexOf('/') != -1);
+                  connect(&open_directory_button_,&QPushButton::clicked,this,[this,download_path]{
+                           assert(download_path.lastIndexOf('/') != -1);
                            //! doesn't show the error
-                           if(!QDesktopServices::openUrl(path.sliced(0,path.lastIndexOf('/') + 1))){
+                           if(!QDesktopServices::openUrl(download_path.sliced(0,download_path.lastIndexOf('/') + 1))){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
                   });
 
-                  connect(&open_button_,&QPushButton::clicked,this,[this,path]{
+                  connect(&open_button_,&QPushButton::clicked,this,[this,download_path]{
 
-                           if(!QDesktopServices::openUrl(path)){
+                           if(!QDesktopServices::openUrl(download_path)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
                                     QMessageBox::critical(this,message_title.data(),message_body.data());
@@ -175,17 +175,17 @@ void Download_tracker::configure_default_connections() noexcept {
                   constexpr std::string_view question_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   
-                  const auto response = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+                  const auto response_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
-                  if(response == QMessageBox::StandardButton::Yes){
+                  if(response_button == QMessageBox::StandardButton::Yes){
                            emit request_satisfied();
                   }
          });
 
-	time_elapsed_timer_.callOnTimeout(this,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
+         time_elapsed_timer_.callOnTimeout(this,[&time_elapsed_ = time_elapsed_,&time_elapsed_label_ = time_elapsed_label_]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
                   time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
-	});
+         });
 }
 
 void Download_tracker::switch_to_finished_state() noexcept {
@@ -235,7 +235,12 @@ void Download_tracker::update_error_line() noexcept {
                            break;
                   }
 
-                  case Error::Custom : [[fallthrough]];
-                  default : __builtin_unreachable();
+                  case Error::Custom : {
+                           [[fallthrough]];
+                  }
+
+                  default : {
+                           __builtin_unreachable();
+                  }
          }
 }
