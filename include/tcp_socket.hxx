@@ -114,37 +114,46 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
 
 [[nodiscard]]
 inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
-         // todo use the transaction
-         assert(handshake_done_);
 
-         constexpr auto len_byte_cnt = 4;
+         if(constexpr auto minimum_response_size = 4;bytesAvailable() < minimum_response_size){
+                  return {};
+         }
+
+         reset_disconnect_timer();
+
+         assert(handshake_done_);
+         startTransaction();
          
          const auto msg_size = [this]() -> std::optional<std::uint32_t> {
-                  const auto size_buffer = peek(len_byte_cnt);
+                  constexpr auto len_byte_cnt = 4;
+                  const auto size_buffer = read(len_byte_cnt);
 
                   if(size_buffer.size() < len_byte_cnt){
                            return {};
                   }
 
                   constexpr auto size_offset = 0;
+
                   return util::extract_integer<std::uint32_t>(size_buffer,size_offset);
          }();
 
          if(!msg_size){
                   qInfo() << "couldn't have 4 bytes even";
+                  rollbackTransaction();
                   return {};
          }
 
          if(!*msg_size){ // keep alive packet
+                  commitTransaction();
                   return {};
          }
 
-         if(const auto msg = peek(len_byte_cnt + *msg_size);msg.size() == *msg_size + len_byte_cnt){
-                  [[maybe_unused]] const auto skipped_byte_cnt = skip(len_byte_cnt + *msg_size);
-                  assert(skipped_byte_cnt == *msg_size + len_byte_cnt);
-                  return std::make_pair(*msg_size,msg.sliced(len_byte_cnt));
+         if(auto msg = read(*msg_size);msg.size() == *msg_size){
+                  commitTransaction();
+                  return std::make_pair(*msg_size,std::move(msg));
          }
 
+         rollbackTransaction();
          return {};
 }
 

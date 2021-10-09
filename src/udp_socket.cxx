@@ -9,11 +9,11 @@ void Udp_socket::configure_default_connections() noexcept {
                   send_initial_request(connect_request_,State::Connect);
          });
          
-         interval_timer_.callOnTimeout([this]{
+         interval_timer_.callOnTimeout(this,[this]{
                   send_request(announce_request_);
          });
 
-         connection_timer_.callOnTimeout([this]{
+         connection_timer_.callOnTimeout(this,[this]{
                   constexpr auto protocol_max_factor_limit = 8;
 
                   if(++timeout_factor_ <= protocol_max_factor_limit){

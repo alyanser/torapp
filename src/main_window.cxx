@@ -74,3 +74,6 @@ void Main_window::setup_sort_menu() noexcept {
          sort_by_name_action->setChecked(true);
          sort_menu_.addActions(sort_actions);
 }
+
+void foo(){
+}

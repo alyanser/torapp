@@ -59,9 +59,12 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   
                   if(dir_path.isEmpty()){
                            reject();
+
                            constexpr std::string_view error_title("Invalid path");
                            constexpr std::string_view error_body("Path cannot be empty");
+
                            QMessageBox::critical(this,error_title.data(),error_body.data());
+                           
                            return;
                   }
 
@@ -72,8 +75,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                            const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
                            if(response_button == QMessageBox::No){
-                                    reject();
-                                    return;
+                                    return reject();
                            }
                   }
 

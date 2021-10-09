@@ -112,8 +112,7 @@ void Url_input_dialog::on_input_received() noexcept {
                   const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
                   if(response_button == QMessageBox::No){
-                           reject();
-                           return;
+                           return reject();
                   }
          }
 
