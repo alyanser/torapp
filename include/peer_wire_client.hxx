@@ -8,9 +8,9 @@
 #include <QObject>
 #include <QTimer>
 #include <QSet>
-#include <random>
 #include <QDebug>
 #include <QFile>
+#include <random>
 
 class Tcp_socket;
 
@@ -72,14 +72,14 @@ private:
          void on_bitfield_received(Tcp_socket * socket,const QByteArray & response,std::uint32_t payload_size) noexcept;
          void on_piece_received(Tcp_socket * socket,const QByteArray & response) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::uint32_t allowed_piece_idx) noexcept;
-         void on_piece_downloaded(Piece & piece,std::uint32_t piece_idx) noexcept;
+         void on_piece_downloaded(Piece & piece,std::uint32_t downloaded_piece_idx) noexcept;
 
          void extract_peer_response(const QByteArray & peer_response) const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::uint32_t piece_idx,std::uint32_t offset) const noexcept;
          void send_block_requests(Tcp_socket * socket,std::uint32_t piece_idx) noexcept;
          std::uint32_t get_current_target_piece() const noexcept;
-         void write_to_disk(const QByteArray & piece_data,std::uint32_t piece_idx) noexcept;
+         void write_to_disk(const QByteArray & piece_data,std::uint32_t received_piece_idx) noexcept;
          std::optional<std::pair<std::size_t,std::size_t>> get_file_handle_info(std::uint32_t piece_idx) const noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
          ///

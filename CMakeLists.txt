@@ -39,12 +39,13 @@ set(MOC_INCLUDES
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
-include_directories(
-         "include"
+target_include_directories(${PROJECT_NAME} PRIVATE
          SYSTEM "ext"
+         "include"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Network
          Qt6::Widgets

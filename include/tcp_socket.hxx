@@ -180,8 +180,8 @@ inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
          disconnect_timer_.callOnTimeout(this,[this]{
-                  qInfo() << "DIsconnecting from peer";
-                  state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
+                  qInfo() << "Aborting from peer due to connection timeout";
+                  state() == SocketState::ConnectedState ? abort() : deleteLater();
          });
 }
 
