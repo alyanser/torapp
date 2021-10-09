@@ -52,10 +52,10 @@ void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          write(raw_packet);
 
          constexpr auto txn_id_offset = 12;
+         [[maybe_unused]] bool conversion_success = true;
 
-         bool conversion_success = true;
          const auto sent_txn_id = util::extract_integer<std::uint32_t>(raw_packet,txn_id_offset);
-         assert(conversion_success);
 
+         assert(conversion_success);
          txn_id_ = sent_txn_id;
 }

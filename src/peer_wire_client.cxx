@@ -49,6 +49,7 @@ void Peer_wire_client::do_handshake(const std::vector<QUrl> & peer_urls) noexcep
                            });
 
                            connect(this,&Peer_wire_client::piece_downloaded,socket,[socket](const std::uint32_t piece_idx){
+                                    qInfo() << "Sending have packet for" << piece_idx;
                                     socket->send_packet(craft_have_message(piece_idx));
                            });      
 
@@ -93,16 +94,16 @@ void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) noexcept 
                                     }
                            }else{
                                     qInfo() << "peer's hash doesn't match";
-                                    socket->disconnectFromHost();
+                                    socket->abort();
                            }
                   }else{
                            qInfo() << "Invalid handshake";
-                           socket->disconnectFromHost();
+                           socket->abort();
                   }
 
          }catch(const std::exception & exception){
                   qDebug() << exception.what();
-                  socket->disconnectFromHost();
+                  socket->abort();
          }
 }
 
@@ -316,13 +317,10 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
 
                            socket->send_packet(craft_request_message(piece_idx,block_idx * max_block_size));
 
-                           // todo: maybe consider sending cancel packet once received from other peer
-                           // ! something is wrong here
-
                            connect(socket,&Tcp_socket::got_choked,this,[&requested_blocks = requested_blocks,socket,block_idx]{
-                                    assert(requested_blocks[block_idx]);
 
                                     if(!socket->fast_ext_enabled() && !requested_blocks.empty()){
+                                             assert(requested_blocks[block_idx]);
                                              --requested_blocks[block_idx];
                                     }
                            });
@@ -512,15 +510,15 @@ void Peer_wire_client::on_have_message_received(Tcp_socket * const socket,const 
 
          if(peer_have_piece_idx >= piece_cnt_){
                   qInfo() << "peer sent invalid have index";
-                  socket->disconnectFromHost();
+                  socket->abort();
                   return;
          }
 
-         if(socket->peer_bitfield().isEmpty()){ // not receiving bitfield impllies peer doesn't have any piece
+         if(socket->peer_bitfield().isEmpty()){
 
-                  if(socket->fast_ext_enabled()){ // if fast extension was enabled then peer has to send 'Have-None' message first
+                  if(socket->fast_ext_enabled()){
                            qInfo() << "Peer didn't send any bitfield related message with fast ext";
-                           socket->disconnectFromHost();
+                           socket->abort();
                            return;
                   }
 
@@ -541,6 +539,8 @@ void Peer_wire_client::on_have_message_received(Tcp_socket * const socket,const 
                            socket->add_pending_piece(peer_have_piece_idx);
                   }else if(peer_have_piece_idx == get_current_target_piece()){
                            send_block_requests(socket,get_current_target_piece());
+                  }else if(socket->fast_ext_enabled()){
+                           emit socket->fast_have_msg_received(peer_have_piece_idx);
                   }
          }
 }
@@ -558,7 +558,7 @@ void Peer_wire_client::on_bitfield_received(Tcp_socket * const socket,const QByt
 
                            if(static_cast<std::uint64_t>(bit_idx) >= piece_cnt_){ // spare bits set
                                     qInfo() << "Spare bit was set";
-                                    socket->disconnectFromHost();
+                                    socket->abort();
                                     return;
                            }
                            
@@ -689,13 +689,20 @@ void Peer_wire_client::on_allowed_fast_received(Tcp_socket * const socket,const 
 
          if(allowed_piece_idx >= piece_cnt_){
                   qInfo() << "invalid allowed fast index";
-                  socket->disconnectFromHost();
+                  socket->abort();
          }else if(socket->peer_bitfield()[allowed_piece_idx]){
                   qInfo() << "Sending fast request for" << allowed_piece_idx;
                   send_block_requests(socket,allowed_piece_idx);
          }else{
-                  // todo: request when the peer has the piece later
                   qInfo() << "Peer doesn't have the fast packet";
+
+                  connect(socket,&Tcp_socket::fast_have_msg_received,this,[this,socket,allowed_piece_idx](const std::uint32_t peer_have_piece_idx){
+
+                           if(peer_have_piece_idx == allowed_piece_idx){
+                                    qInfo() << "Sending late fast piece request" << peer_have_piece_idx;
+                                    send_block_requests(socket,peer_have_piece_idx);
+                           }
+                  });
          }
 }
 
@@ -741,11 +748,11 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
          if(!is_valid_response(socket,response,received_msg_id)){
                   qInfo() << "Invalid peer response" << response;
-                  socket->disconnectFromHost();
+                  socket->abort();
                   return;
          }
 
-         qInfo() << received_msg_id << active_connection_cnt_;
+         qInfo() << received_msg_id << active_connection_cnt_ << response.size();
 
          switch(received_msg_id){
                   case Message_Id::Choke : {
@@ -761,6 +768,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
                   case Message_Id::Interested : {
                            socket->set_peer_interested(true);
+                           // todo: unchoke if the condtions are met
                            socket->send_packet(unchoke_msg.data());
                            break;
                   }

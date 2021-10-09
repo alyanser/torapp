@@ -26,9 +26,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                   connect(socket,&Udp_socket::readyRead,this,[this,socket]{
 
                            try {
-                                    while(socket->bytesAvailable()){
-                                             on_socket_ready_read(socket);
-                                    }
+                                    on_socket_ready_read(socket);
                                     
                            }catch(const std::exception & exception){
                                     qDebug() << exception.what();
@@ -193,6 +191,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                            }
 
                            default : {
+                                    qInfo() << "Invalid tracker response";
                                     socket->disconnectFromHost();
                                     break;
                            }

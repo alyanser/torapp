@@ -132,7 +132,6 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector
          remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(piece_cnt_));
 
          for(std::uint32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
-                  // todo: consider alternative
                   remaining_pieces_.insert(piece_idx);
          }
 }

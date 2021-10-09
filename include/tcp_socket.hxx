@@ -43,6 +43,7 @@ public:
 signals:
          void got_choked() const;
          void request_rejected() const;
+         void fast_have_msg_received(std::uint32_t peer_have_piece_idx) const;
 private:
          void configure_default_connections() noexcept;
          ///
@@ -180,14 +181,13 @@ inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
          disconnect_timer_.callOnTimeout(this,[this]{
-                  qInfo() << "Aborting from peer due to connection timeout";
-                  state() == SocketState::ConnectedState ? abort() : deleteLater();
+                  qInfo() << "disconnecting from peer due to connection timeout";
+                  state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
          });
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
-         constexpr std::chrono::minutes standard_disconnect_timeout(2);
-         disconnect_timer_.start(standard_disconnect_timeout);
+         disconnect_timer_.start(std::chrono::minutes(5));
 }
 
 inline void Tcp_socket::add_pending_piece(const std::uint32_t pending_piece_idx) noexcept {
