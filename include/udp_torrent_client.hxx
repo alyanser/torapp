@@ -102,6 +102,6 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
 }
 
 inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {
-         const auto raw_info_size = static_cast<std::ptrdiff_t>(metadata.raw_info_dict.size());
+         const auto raw_info_size = static_cast<qsizetype>(metadata.raw_info_dict.size());
          return QCryptographicHash::hash(QByteArray(metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1).toHex();
 }

@@ -63,7 +63,7 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
 //todo figure SFINAE for 'q.int_.e' types
 template<typename numeric_type>
 [[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num,const std::ptrdiff_t raw_size = sizeof(numeric_type)) noexcept {
+QByteArray convert_to_hex(const numeric_type num,const qsizetype raw_size = sizeof(numeric_type)) noexcept {
          constexpr auto hex_base = 16;
          const auto hex_size = raw_size * 2;
 
@@ -82,9 +82,9 @@ inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
          constexpr auto bits_in_byte = 8;
          QBitArray bits(bytes.size() * bits_in_byte,false);
 
-         for(std::ptrdiff_t byte_idx = 0;byte_idx < bytes.size();++byte_idx){
+         for(qsizetype byte_idx = 0;byte_idx < bytes.size();++byte_idx){
 
-                  for(std::ptrdiff_t bit_idx = 0;bit_idx < bits_in_byte;++bit_idx){
+                  for(qsizetype bit_idx = 0;bit_idx < bits_in_byte;++bit_idx){
                            bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << (bits_in_byte - 1 - bit_idx));
                   }
          }
@@ -98,8 +98,8 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
          assert(bits.size() % bits_in_byte == 0);
          QByteArray bytes(bits.size() / bits_in_byte,'\x00');
 
-         for(std::ptrdiff_t bit_idx = 0;bit_idx < bits.size();++bit_idx){
-                  bytes[static_cast<qsizetype>(bit_idx / bits_in_byte)] |= bits[bit_idx] << bit_idx % bits_in_byte;
+         for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
+                  bytes[bit_idx / bits_in_byte] |= bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte);
          }
 
          return bytes.toHex();
@@ -109,8 +109,8 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
 
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
 [[nodiscard]]
-result_type extract_integer(const QByteArray & raw_data,const std::ptrdiff_t offset){
-         constexpr auto byte_cnt = static_cast<std::ptrdiff_t>(sizeof(result_type));
+result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
+         constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
          if(offset + byte_cnt > raw_data.size()){
                   throw std::out_of_range("extraction out of bounds");

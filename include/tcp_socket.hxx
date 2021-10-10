@@ -138,7 +138,7 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
          }();
 
          if(!msg_size){
-                  qInfo() << "couldn't have 4 bytes even";
+                  qDebug() << "couldn't have 4 bytes even";
                   rollbackTransaction();
                   return {};
          }
@@ -166,9 +166,13 @@ inline void Tcp_socket::set_peer_id(QByteArray peer_id) noexcept {
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet){
-         assert(state() == QAbstractSocket::SocketState::ConnectedState);
-         assert(!packet.isEmpty());
-         write(QByteArray::fromHex(packet));
+
+         if(state() == SocketState::ConnectedState){
+                  assert(!packet.isEmpty());
+                  write(QByteArray::fromHex(packet));
+         }else{
+                  qDebug() << "Tried to send packet in disconnected state";
+         }
 }
 
 [[nodiscard]]
@@ -190,7 +194,7 @@ inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
          disconnect_timer_.callOnTimeout(this,[this]{
-                  qInfo() << "disconnecting from peer due to connection timeout";
+                  qDebug() << "disconnecting from peer due to connection timeout";
                   state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
          });
 }

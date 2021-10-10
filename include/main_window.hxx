@@ -90,7 +90,6 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
                            assert(tracker->error() == Download_tracker::Error::Null);
-
                            network_manager_.download({path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
                   };

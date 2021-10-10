@@ -8,8 +8,6 @@
 #include <QObject>
 #include <QTimer>
 #include <QSet>
-#include <QDebug>
-#include <QFile>
 #include <random>
 
 class Tcp_socket;
@@ -78,11 +76,11 @@ private:
          bool verify_piece_hash(const QByteArray & received_piece,std::uint32_t piece_idx) const noexcept;
 
          void extract_peer_response(const QByteArray & peer_response) const noexcept;
-         void communicate_with_peer(QPointer<Tcp_socket> socket);
+         void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::uint32_t piece_idx,std::uint32_t offset) const noexcept;
          void send_block_requests(Tcp_socket * socket,std::uint32_t piece_idx) noexcept;
          std::uint32_t get_current_target_piece() const noexcept;
-         bool write_to_disk(const QByteArray & piece_data,std::uint32_t received_piece_idx) noexcept;
+         bool write_to_disk(const QByteArray & received_piece,std::uint32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::uint32_t requested_piece_idx) noexcept;
          std::optional<std::pair<std::size_t,std::size_t>> get_file_handle_info(std::uint32_t piece_idx) const noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
@@ -92,8 +90,8 @@ private:
          constexpr static std::string_view unchoke_msg {"0000000101"};
          constexpr static std::string_view interested_msg {"0000000102"};
          constexpr static std::string_view uninterested_msg {"0000000103"};
-         constexpr static std::string_view have_all_msg {"000000010e"};
-         constexpr static std::string_view have_none_msg {"000000010f"};
+         constexpr static std::string_view have_all_msg {"000000010E"};
+         constexpr static std::string_view have_none_msg {"000000010F"};
          constexpr static auto max_block_size = 1 << 14;
          inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
@@ -109,7 +107,7 @@ private:
          std::size_t torrent_size_ = 0;
          std::size_t piece_size_ = 0;
          std::uint32_t piece_cnt_ = 0;
-         std::uint32_t spare_bitfield_bits_ = 0;
+         std::uint32_t spare_bit_cnt_ = 0;
          std::uint32_t average_block_cnt_ = 0;
          QBitArray bitfield_;
          std::vector<Piece> pieces_;
@@ -126,14 +124,14 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,std::vector
          , torrent_size_(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)
          , piece_size_(torrent_metadata_.piece_length)
          , piece_cnt_(static_cast<std::uint32_t>(std::ceil(static_cast<double>(torrent_size_) / static_cast<double>(piece_size_))))
-         , spare_bitfield_bits_(piece_cnt_ % 8 ? 8 - piece_cnt_ % 8 : 0)
+         , spare_bit_cnt_(piece_cnt_ % 8 ? 8 - piece_cnt_ % 8 : 0)
          , average_block_cnt_(static_cast<std::uint32_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size)))
-         , bitfield_(static_cast<std::ptrdiff_t>(piece_cnt_ + spare_bitfield_bits_))
+         , bitfield_(static_cast<qsizetype>(piece_cnt_ + spare_bit_cnt_))
          , pieces_(piece_cnt_)
 {
          assert(!file_handles_.empty());
 
-         remaining_pieces_.reserve(static_cast<std::ptrdiff_t>(piece_cnt_));
+         remaining_pieces_.reserve(static_cast<qsizetype>(piece_cnt_));
 
          for(std::uint32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
                   remaining_pieces_.insert(piece_idx);

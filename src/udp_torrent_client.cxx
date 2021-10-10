@@ -110,7 +110,7 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
                   return convert_to_hex(txn_id);
          }();
 
-         scrape_request += QByteArray(metadata.pieces.data(),static_cast<std::ptrdiff_t>(metadata.pieces.size()));
+         scrape_request += QByteArray(metadata.pieces.data(),static_cast<qsizetype>(metadata.pieces.size()));
          
          return scrape_request;
 }
@@ -191,7 +191,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                            }
 
                            default : {
-                                    qInfo() << "Invalid tracker response";
+                                    qDebug() << "Invalid tracker response";
                                     socket->disconnectFromHost();
                                     break;
                            }
@@ -240,7 +240,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
                   constexpr auto peers_ip_offset = 20;
                   constexpr auto peer_url_byte_cnt = 6;
 
-                  for(std::ptrdiff_t idx = peers_ip_offset;idx < response.size();idx += peer_url_byte_cnt){
+                  for(qsizetype idx = peers_ip_offset;idx < response.size();idx += peer_url_byte_cnt){
                            constexpr auto ip_byte_cnt = 4;
                            
                            const auto peer_ip = util::extract_integer<std::uint32_t>(response,idx);

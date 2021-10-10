@@ -65,11 +65,13 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                            return {File_Error::Permissions,{}};
                   }
 
-                  if(!file_handle->resize(static_cast<std::ptrdiff_t>(file_size))){
+                  if(!file_handle->resize(static_cast<qsizetype>(file_size))){
                            remove_file_handles();
                            return {File_Error::Not_Enough_Space,{}};
                   }
          }
+
+         assert(!file_handles.empty());
 
          return {File_Error::Null,file_handles};
 }
