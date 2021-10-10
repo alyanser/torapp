@@ -9,6 +9,6 @@ int main(int argc,char ** argv){
          QApplication::setApplicationName("Torapp");
          
          Main_window window;
-         
+
          return QApplication::exec();
 }

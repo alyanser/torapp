@@ -36,8 +36,10 @@ private:
          void write_settings() noexcept;
          void add_dl_metadata_to_settings(const QString & file_path,const bencode::Metadata & torrent_metadata) noexcept;
          void add_dl_metadata_to_settings(const QString & file_path,QUrl url) noexcept;
+         void restore_url_downloads() noexcept;
+         void restore_torrent_downloads() noexcept;
          ///
-         constexpr static std::string_view setting_header {"main_window"};
+         constexpr static std::string_view settings_base_group {"main_window"};
 
          QWidget central_widget_;
          QVBoxLayout central_layout_ {&central_widget_};
@@ -80,16 +82,14 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
          
          central_layout_.addWidget(tracker);
          
-         {
-                  const auto download_signal = qOverload<const QString &,request_type>(&Download_tracker::retry_download);
-                  connect(tracker,download_signal,this,&Main_window::initiate_download<request_type>);
-         }
+         connect(tracker,qOverload<const QString &,request_type>(&Download_tracker::retry_download),this,&Main_window::initiate_download<request_type>);
 
          auto [file_error,file_handles] = file_manager_.open_file_handles(path,download_request);
 
          switch(file_error){
                   
                   case File_manager::File_Error::File_Lock : {
+                           // todo: valid desc later
                            [[fallthrough]];
                   }
 
@@ -107,9 +107,9 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
 
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
-                           qDebug() << "Adding metadata settings";
-                           add_dl_metadata_to_settings(path,download_request);
                            assert(tracker->error() == Download_tracker::Error::Null);
+
+                           add_dl_metadata_to_settings(path,download_request);
                            network_manager_.download({path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
                   };

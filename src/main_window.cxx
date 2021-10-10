@@ -20,31 +20,8 @@ Main_window::Main_window(){
 }
 
 void Main_window::read_settings() noexcept {
-         settings_.beginGroup(setting_header.data());
+         settings_.beginGroup(settings_base_group.data());
 
-         {
-                  settings_.beginGroup("url_downloads");
-
-                  const auto download_groups = settings_.childGroups();
-
-                  for(const auto & download_group : download_groups){
-                           settings_.beginGroup(download_group);
-
-                           auto file_path = settings_.value("file_path").value<QString>();
-                           const auto url = settings_.value("url").value<QUrl>();
-
-                           QTimer::singleShot(0,this,[this,file_path = std::move(file_path),url]{
-                                    initiate_download(file_path,url);
-                           });
-
-                           settings_.endGroup();
-                  }
-
-                  settings_.endGroup();
-         }
-
-         assert(settings_.group() == setting_header.data());
-         // todo torrent stuff
 
          if(settings_.contains("size")){
                   resize(settings_.value("size").toSize());
@@ -83,12 +60,14 @@ void Main_window::add_top_actions() noexcept {
                            return;
                   }
                   
+                  // ! cnosider allocating on heap1 potential double free in some cases
                   Torrent_metadata_dialog torrent_dialog(file_path,this);
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
                   torrent_dialog.exec();
          });
 
          connect(url_action,&QAction::triggered,this,[this]{
+                  // ! cnosider allocating on heap1 potential double free in some cases
                   Url_input_dialog url_dialog(this);
                   connect(&url_dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
                   url_dialog.exec();
@@ -116,7 +95,7 @@ void Main_window::setup_sort_menu() noexcept {
 }
 
 void Main_window::add_dl_metadata_to_settings(const QString & file_path,const bencode::Metadata & torrent_metadata) noexcept {
-         assert(settings_.group() == setting_header.data());
+         assert(settings_.group() == settings_base_group.data());
          assert(!file_path.isEmpty());
 
          settings_.beginGroup("torrent_downloads");
@@ -139,13 +118,13 @@ void Main_window::add_dl_metadata_to_settings(const QString & file_path,const be
          settings_.setValue("single_file",QVariant::fromValue(torrent_metadata.single_file));
 
          settings_.endGroup();
-         settings_.endGroup();
+         settings_.endGroup(); 
 }
 
 void Main_window::add_dl_metadata_to_settings(const QString & file_path,const QUrl url) noexcept {
          assert(!file_path.isEmpty());
          assert(file_path.back() != '/');
-         assert(settings_.group() == setting_header.data());
+         assert(settings_.group() == settings_base_group.data());
 
          settings_.beginGroup("url_downloads");
          settings_.beginGroup(QFileInfo(file_path).fileName());
@@ -155,4 +134,47 @@ void Main_window::add_dl_metadata_to_settings(const QString & file_path,const QU
 
          settings_.endGroup();
          settings_.endGroup();
+}
+
+void Main_window::restore_torrent_downloads() noexcept {
+         assert(settings_.group() == settings_base_group.data());
+         settings_.beginGroup("torrent_downlaods");
+
+         assert(settings_.childKeys().empty());
+         const auto torrent_dl_groups = settings_.childGroups();
+
+         for( [[maybe_unused]] const auto & torrent_dl_group : torrent_dl_groups){
+                  // todo: impl
+         }
+
+         settings_.endGroup();
+         assert(settings_.group() == settings_base_group.data());
+}
+
+void Main_window::restore_url_downloads() noexcept {
+         assert(settings_.group() == settings_base_group.data());
+         settings_.beginGroup("url_downloads");
+
+         assert(settings_.childKeys().empty());
+         const auto url_dl_groups = settings_.childGroups();
+
+         for(const auto & url_dl_group : url_dl_groups){
+                  assert(!url_dl_group.isEmpty());
+
+                  settings_.beginGroup(url_dl_group);
+
+                  const auto url = settings_.value("url").value<QUrl>();
+                  assert(!url.isEmpty());
+                  auto file_path = settings_.value("file_path").value<QString>();
+                  assert(!file_path.isEmpty());
+
+                  QTimer::singleShot(0,this,[this,file_path = std::move(file_path),url]{
+                           initiate_download(file_path,url);
+                  });
+
+                  settings_.endGroup();
+         }
+
+         settings_.endGroup();
+         assert(settings_.group() == settings_base_group.data());
 }
