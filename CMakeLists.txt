@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(torapp)
 
-set(CMAKE_CXX_COMPILER "clang++-13")
+set(CMAKE_CXX_COMPILER "g++-11")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
@@ -51,26 +51,26 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Widgets
 )
 
-target_precompile_headers(${PROJECT_NAME} PRIVATE
-         [["bencode_parser.hxx"]]
-         [["QApplication"]]
-         [["QMainWindow"]]
-         [["QWidget"]]
-         [["QNetworkAccessManager"]]
-         [["QDebug"]]
-         [["QString"]]
-         [["QObject"]]
-         [["QGridLayout"]]
-         [["QAbstractSocket"]]
-         [["QUdpSocket"]]
-         [["QTimer"]]
-         [["QTime"]]
-         [["QByteArray"]]
-         [["QBitArray"]]
-         [["QTcpSocket"]]
-         [["QUdpSocket"]]
-         [["QAbstractSocket"]]
-         [["QPointer"]]
-         [["QFile"]]
-         [["QSettings"]]
-)
+# target_precompile_headers(${PROJECT_NAME} PRIVATE
+#          [["bencode_parser.hxx"]]
+#          [["QApplication"]]
+#          [["QMainWindow"]]
+#          [["QWidget"]]
+#          [["QNetworkAccessManager"]]
+#          [["QDebug"]]
+#          [["QString"]]
+#          [["QObject"]]
+#          [["QGridLayout"]]
+#          [["QAbstractSocket"]]
+#          [["QUdpSocket"]]
+#          [["QTimer"]]
+#          [["QTime"]]
+#          [["QByteArray"]]
+#          [["QBitArray"]]
+#          [["QTcpSocket"]]
+#          [["QUdpSocket"]]
+#          [["QAbstractSocket"]]
+#          [["QPointer"]]
+#          [["QFile"]]
+#          [["QSettings"]]
+# )

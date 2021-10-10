@@ -17,7 +17,9 @@ void Udp_socket::configure_default_connections() noexcept {
                   constexpr auto protocol_max_factor_limit = 8;
 
                   if(++timeout_factor_ <= protocol_max_factor_limit){
+
                            switch(state_){
+
                                     case State::Connect : {
                                              send_request(connect_request_);
                                              break;
@@ -54,7 +56,7 @@ void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          constexpr auto txn_id_offset = 12;
          [[maybe_unused]] bool conversion_success = true;
 
-         const auto sent_txn_id = util::extract_integer<std::uint32_t>(raw_packet,txn_id_offset);
+         const auto sent_txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
 
          assert(conversion_success);
          txn_id_ = sent_txn_id;

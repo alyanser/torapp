@@ -4,8 +4,8 @@
 
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFile>
-#include <string_view>
 
 Main_window::Main_window(){
          setWindowTitle("Torapp");
@@ -16,14 +16,11 @@ Main_window::Main_window(){
          setup_menu_bar();
          setup_sort_menu();
          add_top_actions();
-
-         settings_.beginGroup(setting_header.data());
-         
          read_settings();
 }
 
 void Main_window::read_settings() noexcept {
-         assert(settings_.group() == setting_header.data());
+         settings_.beginGroup(setting_header.data());
 
          {
                   settings_.beginGroup("url_downloads");
@@ -151,11 +148,7 @@ void Main_window::add_dl_metadata_to_settings(const QString & file_path,const QU
          assert(settings_.group() == setting_header.data());
 
          settings_.beginGroup("url_downloads");
-
-         settings_.beginGroup([&file_path]{
-                  const auto last_slash = file_path.lastIndexOf('/');
-                  return last_slash == -1 ? file_path : file_path.sliced(last_slash + 1);
-         }());
+         settings_.beginGroup(QFileInfo(file_path).fileName());
 
          settings_.setValue("file_path",file_path);
          settings_.setValue("url",url);

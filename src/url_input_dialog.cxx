@@ -4,7 +4,9 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-Url_input_dialog::Url_input_dialog(QWidget * const parent) : QDialog(parent){
+Url_input_dialog::Url_input_dialog(QWidget * const parent) 
+         : QDialog(parent)
+{
          setFixedSize(QSize(600,200));
          setWindowTitle("Custom Url");
          
@@ -59,30 +61,28 @@ void Url_input_dialog::on_input_received() noexcept {
          if(url.isEmpty()){
                   constexpr std::string_view error_title("Empty URL");
                   constexpr std::string_view error_body("URL field cannot be empty");
-                  reject();
+
                   QMessageBox::critical(this,error_title.data(),error_body.data());
-                  return;
+                  return reject();
          }
          
          if(!url.isValid()){
-                  const QString error_body("URL is invalid. Reason: %1");
+                  static const QString error_body("URL is invalid. Reason: %1");
                   auto error_reason = url.errorString();
 
                   if(error_reason.isEmpty()){
                            error_reason = "Unknown";
                   }
 
-                  reject();
                   QMessageBox::critical(this,"Invalid URL",error_body.arg(error_reason));
-                  return;
+                  return reject();
          }
 
          auto path = path_line_.text().simplified();
 
          if(path.isEmpty()){
-                  reject();
                   QMessageBox::critical(this,"Invalid Path","Path field cannot be empty");
-                  return;
+                  return reject();
          }
 
          if(path.back() != '/'){
@@ -98,8 +98,8 @@ void Url_input_dialog::on_input_received() noexcept {
                            constexpr std::string_view error_title("Invalid file name");
                            constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
 
-                           reject();
-                           return void(QMessageBox::critical(this,error_title.data(),error_body.data()));
+                           QMessageBox::critical(this,error_title.data(),error_body.data());
+                           return reject();
                   }
 
                   package_name = std::move(package_name_replacement);
@@ -117,6 +117,8 @@ void Url_input_dialog::on_input_received() noexcept {
          }
 
          assert(!path.isEmpty() && !package_name.isEmpty());
+         assert(path.back() == '/');
+
          accept();
          emit new_request_received(path + package_name,url);
 }

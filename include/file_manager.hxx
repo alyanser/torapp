@@ -18,7 +18,7 @@ public:
                   Not_Enough_Space
          };
 
-         using handle_return_type = std::pair<File_Error,std::optional<std::vector<QFile *>>>;
+         using handle_return_type = std::pair<File_Error,std::optional<QList<QFile *>>>;
 
          handle_return_type open_file_handles(const QString & path,const bencode::Metadata & torrent_metadata) noexcept;
          handle_return_type open_file_handles(const QString & path,QUrl url) noexcept;
@@ -32,7 +32,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   return {File_Error::Permissions,{}};
          }
 
-         std::vector<QFile *> file_handles;
+         QList<QFile *> file_handles;
 
          auto remove_file_handles = [&file_handles,&dir]{
 
@@ -44,6 +44,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          };
 
          for(const auto & [file_path,file_size] : torrent_metadata.file_info){
+                  // todo: use qfileinfo
                   const auto last_slash_idx = file_path.find_last_of('/');
 
                   if(last_slash_idx == std::string::npos){
@@ -84,5 +85,5 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   return {File_Error::Permissions,{}};
          }
 
-         return {File_Error::Null,std::vector{file_handle}};
+         return {File_Error::Null,QList{file_handle}};
 }

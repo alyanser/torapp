@@ -29,12 +29,12 @@ public:
                   Custom
          };
 
-         Download_tracker(const QString & download_path,QUrl url,QWidget * parent = nullptr);
-         Download_tracker(const QString & download_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
+         Download_tracker(const QString & dl_path,QUrl url,QWidget * parent = nullptr);
+         Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
          constexpr Error error() const noexcept;
-         constexpr void set_downloaded_bytes_offset(std::uint64_t downloaded_bytes_offset) noexcept;
-         std::uint32_t get_elapsed_seconds() const noexcept;
+         constexpr void set_downloaded_bytes_offset(std::int64_t dl_bytes_offset) noexcept;
+         std::int32_t get_elapsed_seconds() const noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void switch_to_finished_state() noexcept;
@@ -48,7 +48,7 @@ public slots:
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt) noexcept;
          void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;
 private:
-         explicit Download_tracker(const QString & download_path,QWidget * parent = nullptr);
+         explicit Download_tracker(const QString & dl_path,QWidget * parent = nullptr);
          
          void configure_default_connections() noexcept;
          void setup_layout() noexcept;
@@ -66,21 +66,21 @@ private:
          QLabel package_name_buddy_ {"Name:"};
          QLabel package_name_label_;
 
-         QHBoxLayout download_path_layout_;
-         QLabel download_path_buddy_ {"Path:"};
-         QLabel download_path_label_;
+         QHBoxLayout dl_path_layout_;
+         QLabel dl_path_buddy_ {"Path:"};
+         QLabel dl_path_label;
 
          QStackedWidget state_holder_;
          QLineEdit error_line_;
-         QProgressBar download_progress_bar_;
+         QProgressBar dl_progress_bar_;
 
-         QHBoxLayout download_quantity_layout_;
-         QLabel download_quantity_buddy_ {"Downloaded:"};
-         QLabel download_quantity_label_ {"0 byte (s) / 0 byte (s)"};
+         QHBoxLayout dl_quanitity_layout_;
+         QLabel dl_quantity_buddy_ {"Downloaded:"};
+         QLabel dl_quantity_label_ {"0 byte (s) / 0 byte (s)"};
 
-         QHBoxLayout upload_quantity_layout_;
-         QLabel upload_quantity_buddy_ {"Uploaded:"};
-         QLabel upload_quantity_label_ {"0 byte (s) / 0 byte (s)"};
+         QHBoxLayout ul_quantity_layout_;
+         QLabel ul_quantity_buddy_ {"Uploaded:"};
+         QLabel ul_quanitity_label_ {"0 byte (s) / 0 byte (s)"};
 
          QStackedWidget terminate_buttons_holder_;
          QPushButton finish_button_ {"Finish"};
@@ -96,14 +96,14 @@ private:
          QLabel time_elapsed_buddy_ {"Time elapsed:"};
          QLabel time_elapsed_label_ {time_elapsed_.toString() + " hh::mm::ss"};
 
-         QHBoxLayout download_speed_layout_;
-         QLabel download_speed_buddy_ {"Download Speed:"};
-         QLabel download_speed_label_ {"0 bytes/sec"};
+         QHBoxLayout dl_speed_layout_;
+         QLabel dl_speed_buddy_ {"Download Speed:"};
+         QLabel dl_speed_label_ {"0 bytes/sec"};
 
          QPushButton delete_button_ {"Delete"};
-         QPushButton open_directory_button_ {"Open directory"};
+         QPushButton open_dir_button_ {"Open directory"};
 
-         std::uint64_t downloaded_bytes_offset_ = 0;
+         std::int64_t dl_bytes_offset_ = 0;
 };
 
 inline void Download_tracker::setup_layout() noexcept {
@@ -117,13 +117,15 @@ constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 
-constexpr void Download_tracker::set_downloaded_bytes_offset(std::uint64_t downloaded_bytes_offset) noexcept {
-         downloaded_bytes_offset_ = downloaded_bytes_offset;
+constexpr void Download_tracker::set_downloaded_bytes_offset(const std::int64_t dl_bytes_offset) noexcept {
+         dl_bytes_offset_ = dl_bytes_offset;
 }
 
 [[nodiscard]]
-inline std::uint32_t Download_tracker::get_elapsed_seconds() const noexcept {
-         return static_cast<std::uint32_t>(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600);
+inline std::int32_t Download_tracker::get_elapsed_seconds() const noexcept {
+         constexpr auto secs_in_min = 60;
+         constexpr auto secs_in_hr = secs_in_min * 60;
+         return time_elapsed_.second() + time_elapsed_.minute() * secs_in_min + time_elapsed_.hour() * secs_in_hr;
 }
 
 inline void Download_tracker::set_error_and_finish(const Error error) noexcept {
@@ -140,5 +142,5 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
 }
 
 inline void Download_tracker::upload_progress_update(const std::int64_t send_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         upload_quantity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
+         ul_quanitity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
 }

@@ -2,7 +2,7 @@
 
 #include <QBigEndianStorageType>
 #include <QBitArray>
-#include <vector>
+#include <QList>
 
 class Download_tracker;
 class QFile;
@@ -19,9 +19,9 @@ enum class Conversion_Format {
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Conversion_Format format) noexcept {
-         constexpr auto kb_byte_cnt = 1024;
-         constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
-         constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
+         constexpr byte_type kb_byte_cnt = 1024;
+         constexpr byte_type mb_byte_cnt = kb_byte_cnt * 1024;
+         constexpr byte_type gb_byte_cnt = mb_byte_cnt * 1024;
 
          if(byte_cnt >= gb_byte_cnt){
                   return {byte_cnt / gb_byte_cnt,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
@@ -41,8 +41,8 @@ constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byt
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_byte_cnt) noexcept {
-         double converted_total_byte_cnt = 0;
          std::string_view total_bytes_postfix("inf");
+         double converted_total_byte_cnt = 0;
 
          constexpr auto format = Conversion_Format::Memory;
 
@@ -63,7 +63,7 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
 //todo figure SFINAE for 'q.int_.e' types
 template<typename numeric_type>
 [[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num,const qsizetype raw_size = sizeof(numeric_type)) noexcept {
+QByteArray convert_to_hex(const numeric_type num,const qsizetype raw_size = static_cast<qsizetype>(sizeof(numeric_type))) noexcept {
          constexpr auto hex_base = 16;
          const auto hex_size = raw_size * 2;
 
@@ -99,7 +99,7 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
          QByteArray bytes(bits.size() / bits_in_byte,'\x00');
 
          for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
-                  bytes[bit_idx / bits_in_byte] |= bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte);
+                  bytes[bit_idx / bits_in_byte] |= static_cast<char>(bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte));
          }
 
          return bytes.toHex();
@@ -148,7 +148,7 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
 
 struct Download_resources {
          QString file_path;
-         std::vector<QFile *> file_handles;
+         QList<QFile *> file_handles;
          Download_tracker * tracker;
 };
 

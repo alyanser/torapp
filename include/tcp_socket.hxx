@@ -37,21 +37,21 @@ public:
          void set_peer_bitfield(QBitArray peer_bitfield) noexcept;
          QBitArray & peer_bitfield() noexcept;
 
-         QSet<std::uint32_t> & pending_pieces() noexcept;
-         std::optional<std::pair<std::uint32_t,QByteArray>> receive_packet();
+         QSet<std::int32_t> & pending_pieces() noexcept;
+         std::optional<std::pair<std::int32_t,QByteArray>> receive_packet();
 
          void send_packet(const QByteArray & packet);
          void reset_disconnect_timer() noexcept;
-         void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;
+         void add_pending_piece(std::int32_t pending_piece_idx) noexcept;
 signals:
          void got_choked() const;
          void request_rejected() const;
-         void fast_have_msg_received(std::uint32_t peer_have_piece_idx) const;
+         void fast_have_msg_received(std::int32_t peer_have_piece_idx) const;
 private:
          void configure_default_connections() noexcept;
          ///
          QBitArray peer_bitfield_;
-         QSet<std::uint32_t> pending_pieces_;
+         QSet<std::int32_t> pending_pieces_;
          QByteArray peer_id_;
          QTimer disconnect_timer_;
          QUrl peer_url_;
@@ -116,7 +116,7 @@ constexpr void Tcp_socket::set_fast_ext_enabled(const bool fast_ext_enabled) noe
 }
 
 [[nodiscard]]
-inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_packet(){
+inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet(){
 
          if(constexpr auto minimum_response_size = 4;bytesAvailable() < minimum_response_size){
                   return {};
@@ -127,7 +127,7 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
          assert(handshake_done_);
          startTransaction();
          
-         const auto msg_size = [this]() -> std::optional<std::uint32_t> {
+         const auto msg_size = [this]() -> std::optional<std::int32_t> {
                   constexpr auto len_byte_cnt = 4;
                   const auto size_buffer = read(len_byte_cnt);
 
@@ -137,7 +137,7 @@ inline std::optional<std::pair<std::uint32_t,QByteArray>> Tcp_socket::receive_pa
 
                   constexpr auto size_offset = 0;
 
-                  return util::extract_integer<std::uint32_t>(size_buffer,size_offset);
+                  return util::extract_integer<std::int32_t>(size_buffer,size_offset);
          }();
 
          if(!msg_size){
@@ -206,7 +206,7 @@ inline void Tcp_socket::reset_disconnect_timer() noexcept {
          disconnect_timer_.start(std::chrono::minutes(5));
 }
 
-inline void Tcp_socket::add_pending_piece(const std::uint32_t pending_piece_idx) noexcept {
+inline void Tcp_socket::add_pending_piece(const std::int32_t pending_piece_idx) noexcept {
          pending_pieces_.insert(pending_piece_idx);
 }
 
@@ -220,6 +220,6 @@ inline void Tcp_socket::set_peer_bitfield(QBitArray peer_bitfield) noexcept {
 }
 
 [[nodiscard]]
-inline QSet<std::uint32_t> & Tcp_socket::pending_pieces() noexcept {
+inline QSet<std::int32_t> & Tcp_socket::pending_pieces() noexcept {
          return pending_pieces_;
 }

@@ -6,7 +6,7 @@
 #include <QMessageBox>
 #include <QDir>
 
-Download_tracker::Download_tracker(const QString & download_path,QWidget * const parent) 
+Download_tracker::Download_tracker(const QString & dl_path,QWidget * const parent) 
          : QWidget(parent)
 {
          setup_layout();
@@ -21,19 +21,19 @@ Download_tracker::Download_tracker(const QString & download_path,QWidget * const
          delete_button_.setEnabled(false);
 
          {
-                  connect(&open_directory_button_,&QPushButton::clicked,this,[this,download_path]{
-                           assert(download_path.lastIndexOf('/') != -1);
+                  connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
+                           assert(dl_path.lastIndexOf('/') != -1);
                            //! doesn't show the error
-                           if(!QDesktopServices::openUrl(download_path.sliced(0,download_path.lastIndexOf('/') + 1))){
+                           if(!QDesktopServices::openUrl(dl_path.sliced(0,dl_path.lastIndexOf('/') + 1))){
                                     constexpr std::string_view error_title("Directory open error");
                                     constexpr std::string_view error_body("Directory could not be opened");
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                            }
                   });
 
-                  connect(&open_button_,&QPushButton::clicked,this,[this,download_path]{
+                  connect(&open_button_,&QPushButton::clicked,this,[this,dl_path]{
 
-                           if(!QDesktopServices::openUrl(download_path)){
+                           if(!QDesktopServices::openUrl(dl_path)){
                                     constexpr std::string_view message_title("Could not open file");
                                     constexpr std::string_view message_body("Downloaded file could not be opened");
                                     QMessageBox::critical(this,message_title.data(),message_body.data());
@@ -49,7 +49,7 @@ Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget *
          assert(!path.isEmpty());
          
          package_name_label_.setText(url.fileName());
-         download_path_label_.setText(path);
+         dl_path_label.setText(path);
 
          connect(&retry_button_,&QPushButton::clicked,this,[this,path,url]{
                   emit retry_download(path,url);
@@ -69,29 +69,29 @@ Download_tracker::Download_tracker(const QString & path,bencode::Metadata torren
 }
 
 void Download_tracker::setup_state_widget() noexcept {
-         state_holder_.addWidget(&download_progress_bar_);
+         state_holder_.addWidget(&dl_progress_bar_);
          state_holder_.addWidget(&error_line_);
          
-         download_progress_bar_.setMinimum(0);
-         download_progress_bar_.setValue(0);
+         dl_progress_bar_.setMinimum(0);
+         dl_progress_bar_.setValue(0);
 
          error_line_.setAlignment(Qt::AlignCenter);
-         assert(state_holder_.currentWidget() == &download_progress_bar_);
+         assert(state_holder_.currentWidget() == &dl_progress_bar_);
 }
 
 void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
-         file_stat_layout_.addLayout(&download_path_layout_);
+         file_stat_layout_.addLayout(&dl_path_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
 
          package_name_layout_.addWidget(&package_name_buddy_);
          package_name_layout_.addWidget(&package_name_label_);
          package_name_buddy_.setBuddy(&package_name_label_);
 
-         download_path_layout_.addWidget(&download_path_buddy_);
-         download_path_layout_.addWidget(&download_path_label_);
-         download_path_layout_.addWidget(&open_directory_button_);
-         download_path_buddy_.setBuddy(&download_path_label_);
+         dl_path_layout_.addWidget(&dl_path_buddy_);
+         dl_path_layout_.addWidget(&dl_path_label);
+         dl_path_layout_.addWidget(&open_dir_button_);
+         dl_path_buddy_.setBuddy(&dl_path_label);
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
@@ -99,25 +99,25 @@ void Download_tracker::setup_file_status_layout() noexcept {
 }
 
 void Download_tracker::setup_network_status_layout() noexcept {
-         network_stat_layout_.addLayout(&download_speed_layout_);
-         network_stat_layout_.addLayout(&download_quantity_layout_);
-         network_stat_layout_.addLayout(&upload_quantity_layout_);
+         network_stat_layout_.addLayout(&dl_speed_layout_);
+         network_stat_layout_.addLayout(&dl_quanitity_layout_);
+         network_stat_layout_.addLayout(&ul_quantity_layout_);
 
          network_stat_layout_.addWidget(&delete_button_);
          network_stat_layout_.addWidget(&initiate_buttons_holder_);
          network_stat_layout_.addWidget(&terminate_buttons_holder_);
 
-         download_speed_layout_.addWidget(&download_speed_buddy_);
-         download_speed_layout_.addWidget(&download_speed_label_);
-         download_speed_buddy_.setBuddy(&download_speed_label_);
+         dl_speed_layout_.addWidget(&dl_speed_buddy_);
+         dl_speed_layout_.addWidget(&dl_speed_label_);
+         dl_speed_buddy_.setBuddy(&dl_speed_label_);
 
-         download_quantity_buddy_.setBuddy(&download_quantity_label_);
-         download_quantity_layout_.addWidget(&download_quantity_buddy_);
-         download_quantity_layout_.addWidget(&download_quantity_label_);
+         dl_quantity_buddy_.setBuddy(&dl_quantity_label_);
+         dl_quanitity_layout_.addWidget(&dl_quantity_buddy_);
+         dl_quanitity_layout_.addWidget(&dl_quantity_label_);
 
-         upload_quantity_buddy_.setBuddy(&upload_quantity_label_);
-         upload_quantity_layout_.addWidget(&upload_quantity_buddy_);
-         upload_quantity_layout_.addWidget(&upload_quantity_label_);
+         ul_quantity_buddy_.setBuddy(&ul_quanitity_label_);
+         ul_quantity_layout_.addWidget(&ul_quantity_buddy_);
+         ul_quantity_layout_.addWidget(&ul_quanitity_label_);
 
          initiate_buttons_holder_.addWidget(&open_button_);
          initiate_buttons_holder_.addWidget(&retry_button_);
@@ -127,20 +127,21 @@ void Download_tracker::setup_network_status_layout() noexcept {
 }
 
 void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         received_byte_cnt += static_cast<std::int64_t>(downloaded_bytes_offset_);
+         received_byte_cnt += dl_bytes_offset_;
          assert(received_byte_cnt >= 0);
-         assert(!download_progress_bar_.minimum());
+         assert(!dl_progress_bar_.minimum());
 
          if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
                   // sets the bar in pending state
-                  download_progress_bar_.setMaximum(0);
-                  download_progress_bar_.setValue(0);
+                  dl_progress_bar_.setMaximum(0);
+                  dl_progress_bar_.setValue(0);
          }else{
-                  download_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
-                  download_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
+                  // ! consider the overflow
+                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
+                  dl_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
          }
 
-         download_quantity_label_.setText(util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt));
+         dl_quantity_label_.setText(util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt));
 
          const auto seconds_elapsed = time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
          assert(seconds_elapsed > 0);
@@ -149,7 +150,7 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
          constexpr auto conversion_format = util::conversion::Conversion_Format::Speed;
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),conversion_format);
 
-         download_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
+         dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
 
 void Download_tracker::configure_default_connections() noexcept {
@@ -211,6 +212,7 @@ void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view not_enough_space_desc("Not enough space to begin download. Free some memory and try again");
 
          switch(error_){
+                  
                   case Error::Null : {
                            error_line_.setText(null_desc.data()); 
                            break;

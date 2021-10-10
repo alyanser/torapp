@@ -17,7 +17,7 @@ public :
 
          Udp_socket(const QUrl & url,QByteArray connect_request,QObject * parent);
 
-         constexpr std::uint32_t txn_id() const noexcept;
+         constexpr std::int32_t txn_id() const noexcept;
          constexpr void set_interval_time(std::chrono::seconds interval_time) noexcept;
          constexpr std::chrono::seconds interval_time() const noexcept;
 
@@ -32,7 +32,7 @@ public :
          void start_interval_timer(std::chrono::seconds interval_timeout) noexcept;
          void send_initial_request(const QByteArray & request,State new_state) noexcept;
 private:
-         constexpr void set_txn_id(std::uint32_t txn_id) noexcept;
+         constexpr void set_txn_id(std::int32_t txn_id) noexcept;
          constexpr std::chrono::seconds get_timeout() const noexcept;
          void configure_default_connections() noexcept;
          void send_request(const QByteArray & request) noexcept;
@@ -45,8 +45,8 @@ private:
          QTimer interval_timer_;
          std::chrono::seconds interval_time_ {};
          State state_ = State::Connect;
-         std::uint32_t txn_id_ = 0;
-         std::uint8_t timeout_factor_ = 0;
+         std::int32_t txn_id_ = 0;
+         std::int8_t timeout_factor_ = 0; //! 
          bool connection_id_valid_ = true;
          QByteArray connect_request_;
 };
@@ -74,12 +74,12 @@ inline void Udp_socket::reset_time_specs() noexcept {
          }
 }
 
-constexpr void Udp_socket::set_txn_id(std::uint32_t txn_id) noexcept {
+constexpr void Udp_socket::set_txn_id(std::int32_t txn_id) noexcept {
          txn_id_ = txn_id;
 }
 
 [[nodiscard]]
-constexpr std::uint32_t Udp_socket::txn_id() const noexcept {
+constexpr std::int32_t Udp_socket::txn_id() const noexcept {
          return txn_id_;
 }
 

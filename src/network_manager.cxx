@@ -15,17 +15,15 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          const auto [path,file_handle,tracker] = [&resources]{
                   auto & [download_path,file_handles,download_tracker] = resources;
                   assert(file_handles.size() == 1);
-                  return std::make_tuple(std::move(download_path),QPointer(file_handles.front()),download_tracker);
+                  return std::make_tuple(std::move(download_path),file_handles.front(),download_tracker);
          }();
 
-         tracker->set_downloaded_bytes_offset(static_cast<std::uint64_t>(file_handle->size()));
+         tracker->set_downloaded_bytes_offset(file_handle->size());
          tracker->download_progress_update(0,-1);
 
          const QPointer network_reply = [this,url,file_handle = file_handle]{
-                  qInfo() << file_handle->size() << "already downloaded";
                   QNetworkRequest network_request(url);
                   network_request.setRawHeader("Range","bytes=" + QByteArray::number(file_handle->size()) + '-');
-
                   return get(network_request);
          }();
 
@@ -34,18 +32,30 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   if(network_reply->error() == QNetworkReply::NoError){
                            tracker->switch_to_finished_state();
                   }else{
-                           tracker->set_error_and_finish(network_reply->errorString());
                            file_handle->remove();
+                           tracker->set_error_and_finish(network_reply->errorString());
                   }
 
-                  assert(network_reply);
-                  assert(file_handle);
-                  
                   network_reply->deleteLater();
                   file_handle->deleteLater();
          });
 
-         connect(tracker,&Download_tracker::request_satisfied,this,[file_handle = file_handle,network_reply]{
+         connect(network_reply,&QNetworkReply::readyRead,file_handle,[tracker = tracker,network_reply,file_handle = file_handle]{
+
+                  if(file_handle->exists() && network_reply->error() == QNetworkReply::NoError){
+                           assert(!file_handle->fileName().isEmpty());
+                           file_handle->write(network_reply->readAll());
+                  }else{
+                           file_handle->remove();
+                           tracker->set_error_and_finish(network_reply->errorString());
+                  }
+         });
+
+         connect(network_reply,&QNetworkReply::errorOccurred,tracker,[tracker = tracker,network_reply]{
+                  tracker->set_error_and_finish(network_reply->errorString());
+         });
+
+         connect(tracker,&Download_tracker::request_satisfied,this,[file_handle = QPointer(file_handle),network_reply = QPointer(network_reply)]{
 
                   if(file_handle){
                            file_handle->deleteLater();
@@ -55,26 +65,14 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                            network_reply->deleteLater();
                   }
          });
-
-         connect(network_reply,&QNetworkReply::readyRead,file_handle,[tracker = tracker,network_reply,file_handle = file_handle]{
-
-                  if(network_reply->error() == QNetworkReply::NoError){
-                           file_handle->write(network_reply->readAll());
-                  }else{
-                           tracker->set_error_and_finish(network_reply->errorString());
-                  }
-         });
-
-         connect(network_reply,&QNetworkReply::errorOccurred,tracker,[tracker = tracker,network_reply]{
-                  tracker->set_error_and_finish(network_reply->errorString());
-         });
          
          connect(tracker,&Download_tracker::delete_file_permanently,file_handle,qOverload<>(&QFile::remove));
          connect(tracker,&Download_tracker::move_file_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
 
-         connect(network_reply,&QNetworkReply::redirected,&QNetworkReply::redirectAllowed);
          connect(network_reply,&QNetworkReply::downloadProgress,tracker,&Download_tracker::download_progress_update);
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::upload_progress_update);
+
+         connect(network_reply,&QNetworkReply::redirected,&QNetworkReply::redirectAllowed);
 }
 
 void Network_manager::download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept {
