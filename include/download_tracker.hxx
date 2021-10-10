@@ -33,6 +33,7 @@ public:
          Download_tracker(const QString & download_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
          constexpr Error error() const noexcept;
+         constexpr void set_downloaded_bytes_offset(std::uint64_t downloaded_bytes_offset) noexcept;
          std::uint32_t get_elapsed_seconds() const noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
@@ -90,7 +91,7 @@ private:
          QPushButton retry_button_ {"Retry"};
 
          QHBoxLayout time_elapsed_layout_;
-         QTime time_elapsed_ {0,0,1}; // 1 to prevent division by zero
+         QTime time_elapsed_ {0,0,1}; // 1 to prevent zero division
          QTimer time_elapsed_timer_;
          QLabel time_elapsed_buddy_ {"Time elapsed:"};
          QLabel time_elapsed_label_ {time_elapsed_.toString() + " hh::mm::ss"};
@@ -101,6 +102,8 @@ private:
 
          QPushButton delete_button_ {"Delete"};
          QPushButton open_directory_button_ {"Open directory"};
+
+         std::uint64_t downloaded_bytes_offset_ = 0;
 };
 
 inline void Download_tracker::setup_layout() noexcept {
@@ -112,6 +115,10 @@ inline void Download_tracker::setup_layout() noexcept {
 [[nodiscard]]
 constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
+}
+
+constexpr void Download_tracker::set_downloaded_bytes_offset(std::uint64_t downloaded_bytes_offset) noexcept {
+         downloaded_bytes_offset_ = downloaded_bytes_offset;
 }
 
 [[nodiscard]]

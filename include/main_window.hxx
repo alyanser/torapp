@@ -9,6 +9,7 @@
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QMainWindow>
+#include <QSettings>
 #include <QToolBar>
 #include <QMenuBar>
 #include <QMenu>
@@ -21,7 +22,7 @@ public:
          Main_window(Main_window && rhs) = delete;
          Main_window & operator = (const Main_window & rhs) = delete;
          Main_window & operator = (Main_window && rhs) = delete;
-         ~Main_window() override = default;
+         ~Main_window() override;
 
          template<typename request_type>
          void initiate_download(const QString & path,request_type && download_request) noexcept;
@@ -31,7 +32,13 @@ private:
          void setup_menu_bar() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
+         void read_settings() noexcept;
+         void write_settings() noexcept;
+         void add_dl_metadata_to_settings(const QString & file_path,const bencode::Metadata & torrent_metadata) noexcept;
+         void add_dl_metadata_to_settings(const QString & file_path,QUrl url) noexcept;
          ///
+         constexpr static std::string_view setting_header {"main_window"};
+
          QWidget central_widget_;
          QVBoxLayout central_layout_ {&central_widget_};
          QToolBar tool_bar_;
@@ -40,6 +47,7 @@ private:
          QActionGroup sort_action_group_ {this};
          Network_manager network_manager_;
          File_manager file_manager_;
+         QSettings settings_;
 };
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -51,15 +59,24 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          response_button == QMessageBox::Yes ? event->accept() : event->ignore();
 }
 
+inline Main_window::~Main_window(){
+         write_settings();
+}
+
 inline void Main_window::setup_menu_bar() noexcept {
-         auto * const menu_bar = menuBar();
-         menu_bar->addMenu(&file_menu_);
-         menu_bar->addMenu(&sort_menu_);
+         assert(menuBar());
+         menuBar()->addMenu(&file_menu_);
+         menuBar()->addMenu(&sort_menu_);
+}
+
+inline void Main_window::write_settings() noexcept {
+         settings_.setValue("size",size());
+         settings_.setValue("pos",pos());
 }
 
 template<typename request_type>
 void Main_window::initiate_download(const QString & path,request_type && download_request) noexcept {
-         auto * const tracker = new Download_tracker(path,std::forward<request_type>(download_request),&central_widget_);
+         auto * const tracker = new Download_tracker(path,download_request,&central_widget_);
          
          central_layout_.addWidget(tracker);
          
@@ -68,9 +85,10 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
                   connect(tracker,download_signal,this,&Main_window::initiate_download<request_type>);
          }
 
-         auto [file_error,file_handles] = file_manager_.open_file_handles(path,std::forward<request_type>(download_request));
+         auto [file_error,file_handles] = file_manager_.open_file_handles(path,download_request);
 
          switch(file_error){
+                  
                   case File_manager::File_Error::File_Lock : {
                            [[fallthrough]];
                   }
@@ -89,6 +107,8 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
 
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
+                           qDebug() << "Adding metadata settings";
+                           add_dl_metadata_to_settings(path,download_request);
                            assert(tracker->error() == Download_tracker::Error::Null);
                            network_manager_.download({path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;

@@ -11,10 +11,51 @@ Main_window::Main_window(){
          setWindowTitle("Torapp");
          setCentralWidget(&central_widget_);
          addToolBar(&tool_bar_);
+         setMinimumSize(QSize(640,480));
 
          setup_menu_bar();
          setup_sort_menu();
          add_top_actions();
+
+         settings_.beginGroup(setting_header.data());
+         
+         read_settings();
+}
+
+void Main_window::read_settings() noexcept {
+         assert(settings_.group() == setting_header.data());
+
+         {
+                  settings_.beginGroup("url_downloads");
+
+                  const auto download_groups = settings_.childGroups();
+
+                  for(const auto & download_group : download_groups){
+                           settings_.beginGroup(download_group);
+
+                           auto file_path = settings_.value("file_path").value<QString>();
+                           const auto url = settings_.value("url").value<QUrl>();
+
+                           QTimer::singleShot(0,this,[this,file_path = std::move(file_path),url]{
+                                    initiate_download(file_path,url);
+                           });
+
+                           settings_.endGroup();
+                  }
+
+                  settings_.endGroup();
+         }
+
+         assert(settings_.group() == setting_header.data());
+         // todo torrent stuff
+
+         if(settings_.contains("size")){
+                  resize(settings_.value("size").toSize());
+                  move(settings_.value("pos",QPoint(0,0)).toPoint());
+                  show();
+         }else{
+                  showMaximized();
+         }
 }
 
 void Main_window::add_top_actions() noexcept {
@@ -45,15 +86,15 @@ void Main_window::add_top_actions() noexcept {
                            return;
                   }
                   
-                  Torrent_metadata_dialog dialog(file_path,this);
-                  connect(&dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
-                  dialog.exec();
+                  Torrent_metadata_dialog torrent_dialog(file_path,this);
+                  connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
+                  torrent_dialog.exec();
          });
 
          connect(url_action,&QAction::triggered,this,[this]{
-                  Url_input_dialog dialog(this);
-                  connect(&dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
-                  dialog.exec();
+                  Url_input_dialog url_dialog(this);
+                  connect(&url_dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
+                  url_dialog.exec();
          });
 }
 
@@ -67,6 +108,8 @@ void Main_window::setup_sort_menu() noexcept {
          const auto sort_actions = sort_action_group_.actions();
          assert(!sort_actions.empty());
 
+         // todo: keep the active setting
+
          for(auto * const sort_action : sort_actions){
                   sort_action->setCheckable(true);
          }
@@ -75,5 +118,48 @@ void Main_window::setup_sort_menu() noexcept {
          sort_menu_.addActions(sort_actions);
 }
 
-void foo(){
+void Main_window::add_dl_metadata_to_settings(const QString & file_path,const bencode::Metadata & torrent_metadata) noexcept {
+         assert(settings_.group() == setting_header.data());
+         assert(!file_path.isEmpty());
+
+         settings_.beginGroup("torrent_downloads");
+         settings_.beginGroup(file_path);
+
+         settings_.setValue("name",QVariant::fromValue(torrent_metadata.name));
+         settings_.setValue("announce_url",QVariant::fromValue(torrent_metadata.announce_url));
+         settings_.setValue("created_by",QVariant::fromValue(torrent_metadata.created_by));
+         settings_.setValue("creation_date",QVariant::fromValue(torrent_metadata.creation_date));
+         settings_.setValue("comment",QVariant::fromValue(torrent_metadata.comment));
+         settings_.setValue("encoding",QVariant::fromValue(torrent_metadata.encoding));
+         settings_.setValue("pieces",QVariant::fromValue(torrent_metadata.pieces));
+         settings_.setValue("md5sum",QVariant::fromValue(torrent_metadata.md5sum));
+         settings_.setValue("raw_info_dict",QVariant::fromValue(torrent_metadata.raw_info_dict));
+         settings_.setValue("file_info",QVariant::fromValue(torrent_metadata.file_info));
+         settings_.setValue("announce_url_list",QVariant::fromValue(torrent_metadata.announce_url_list));
+         settings_.setValue("piece_length",QVariant::fromValue(torrent_metadata.piece_length));
+         settings_.setValue("single_file_size",QVariant::fromValue(torrent_metadata.single_file));
+         settings_.setValue("multiple_files_size",QVariant::fromValue(torrent_metadata.multiple_files_size));
+         settings_.setValue("single_file",QVariant::fromValue(torrent_metadata.single_file));
+
+         settings_.endGroup();
+         settings_.endGroup();
+}
+
+void Main_window::add_dl_metadata_to_settings(const QString & file_path,const QUrl url) noexcept {
+         assert(!file_path.isEmpty());
+         assert(file_path.back() != '/');
+         assert(settings_.group() == setting_header.data());
+
+         settings_.beginGroup("url_downloads");
+
+         settings_.beginGroup([&file_path]{
+                  const auto last_slash = file_path.lastIndexOf('/');
+                  return last_slash == -1 ? file_path : file_path.sliced(last_slash + 1);
+         }());
+
+         settings_.setValue("file_path",file_path);
+         settings_.setValue("url",url);
+
+         settings_.endGroup();
+         settings_.endGroup();
 }

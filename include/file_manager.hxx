@@ -60,7 +60,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   assert(!file_handles.empty());
                   auto * const file_handle = file_handles.back();
 
-                  if(!file_handle->open(QFile::ReadWrite | QFile::Truncate)){
+                  if(!file_handle->open(QFile::ReadWrite)){
                            remove_file_handles();
                            return {File_Error::Permissions,{}};
                   }
@@ -79,7 +79,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & path,const QUrl /* url */) noexcept {
          auto * const file_handle = new QFile(path,this);
 
-         if(!file_handle->open(QFile::WriteOnly | QFile::Truncate)){
+         if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                   file_handle->deleteLater();
                   return {File_Error::Permissions,{}};
          }

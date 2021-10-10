@@ -118,5 +118,5 @@ void Url_input_dialog::on_input_received() noexcept {
 
          assert(!path.isEmpty() && !package_name.isEmpty());
          accept();
-         emit new_request_received(path + '/' + package_name,url);
+         emit new_request_received(path + package_name,url);
 }

@@ -4,7 +4,11 @@
 
 int main(int argc,char ** argv){
          QApplication app(argc,argv);
+
+         QApplication::setOrganizationName("Tast");
+         QApplication::setApplicationName("Torapp");
+         
          Main_window window;
-         window.showMaximized();
+         
          return QApplication::exec();
 }

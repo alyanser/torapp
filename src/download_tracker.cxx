@@ -126,7 +126,8 @@ void Download_tracker::setup_network_status_layout() noexcept {
          terminate_buttons_holder_.addWidget(&finish_button_);
 }
 
-void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
+void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
+         received_byte_cnt += static_cast<std::int64_t>(downloaded_bytes_offset_);
          assert(received_byte_cnt >= 0);
          assert(!download_progress_bar_.minimum());
 
@@ -206,7 +207,7 @@ void Download_tracker::update_error_line() noexcept {
          constexpr std::string_view null_desc("Download completed successfully. Click on Open button to view");
          constexpr std::string_view file_write_desc("Given file could not be opened for writing.");
          constexpr std::string_view unknown_network_desc("Unknown network error. Try restarting the download");
-         constexpr std::string_view file_lock_desc("Same file is held by another process. Stop that process and retry");
+         constexpr std::string_view file_lock_desc("Given path already exists. Cannot overwrite. Delete that and try again");
          constexpr std::string_view not_enough_space_desc("Not enough space to begin download. Free some memory and try again");
 
          switch(error_){

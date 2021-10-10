@@ -15,20 +15,21 @@ public:
          constexpr bool handshake_done() const noexcept;
          constexpr void set_handshake_done(bool handshake_status) noexcept;
 
-         constexpr void set_am_choking(bool am_choking) noexcept;
-         constexpr void set_peer_choked(bool peer_choked) noexcept;
          constexpr bool am_choking() const noexcept;
-         constexpr bool peer_choked() const noexcept;
+         constexpr void set_am_choking(bool am_choking) noexcept;
 
-         constexpr void set_am_interested(bool am_interested) noexcept;
-         constexpr void set_peer_interested(bool peer_interested) noexcept;
+         constexpr bool peer_choked() const noexcept;
+         constexpr void set_peer_choked(bool peer_choked) noexcept;
+
          constexpr bool am_interested() const noexcept;
+         constexpr void set_am_interested(bool am_interested) noexcept;
+
          constexpr bool peer_interested() const noexcept;
+         constexpr void set_peer_interested(bool peer_interested) noexcept;
 
          constexpr bool fast_ext_enabled() const noexcept;
          constexpr void set_fast_ext_enabled(bool fast_ext_enabled) noexcept;
 
-         std::optional<std::pair<std::uint32_t,QByteArray>> receive_packet();
 
          const QByteArray & peer_id() const noexcept;
          void set_peer_id(QByteArray peer_id) noexcept;
@@ -37,6 +38,8 @@ public:
          QBitArray & peer_bitfield() noexcept;
 
          QSet<std::uint32_t> & pending_pieces() noexcept;
+         std::optional<std::pair<std::uint32_t,QByteArray>> receive_packet();
+
          void send_packet(const QByteArray & packet);
          void reset_disconnect_timer() noexcept;
          void add_pending_piece(std::uint32_t pending_piece_idx) noexcept;

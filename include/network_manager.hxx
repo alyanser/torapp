@@ -3,6 +3,7 @@
 #include "utility.hxx"
 
 #include <QNetworkAccessManager>
+#include <QSettings>
 
 namespace bencode {
 	struct Metadata;

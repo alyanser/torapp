@@ -7,6 +7,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QFile>
+#include <QPair>
 
 void Network_manager::download(util::Download_resources resources,const QUrl url) noexcept {
          ++download_cnt_;
@@ -17,7 +18,16 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   return std::make_tuple(std::move(download_path),QPointer(file_handles.front()),download_tracker);
          }();
 
-         const QPointer network_reply = get(QNetworkRequest(url));
+         tracker->set_downloaded_bytes_offset(static_cast<std::uint64_t>(file_handle->size()));
+         tracker->download_progress_update(0,-1);
+
+         const QPointer network_reply = [this,url,file_handle = file_handle]{
+                  qInfo() << file_handle->size() << "already downloaded";
+                  QNetworkRequest network_request(url);
+                  network_request.setRawHeader("Range","bytes=" + QByteArray::number(file_handle->size()) + '-');
+
+                  return get(network_request);
+         }();
 
          connect(network_reply,&QNetworkReply::finished,tracker,[tracker = tracker,file_handle = file_handle,network_reply]{
 
@@ -68,8 +78,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
 }
 
 void Network_manager::download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept {
-         const auto protocol = static_cast<QUrl>(torrent_metadata.announce_url.data()).scheme();
-         // const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
+         const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
 
          if(protocol == "udp"){
                   ++download_cnt_;
