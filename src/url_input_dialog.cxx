@@ -7,7 +7,7 @@
 Url_input_dialog::Url_input_dialog(QWidget * const parent) 
          : QDialog(parent)
 {
-         setFixedSize(QSize(600,200));
+         setFixedSize({600,200});
          setWindowTitle("Custom Url");
          
          setup_layout();
@@ -78,15 +78,11 @@ void Url_input_dialog::on_input_received() noexcept {
                   return reject();
          }
 
-         auto path = path_line_.text().simplified();
+         const auto dir_path = path_line_.text().simplified();
 
-         if(path.isEmpty()){
+         if(dir_path.isEmpty()){
                   QMessageBox::critical(this,"Invalid Path","Path field cannot be empty");
                   return reject();
-         }
-
-         if(path.back() != '/'){
-                  path += '/';
          }
 
          auto package_name = package_name_line_.text().simplified();
@@ -105,7 +101,7 @@ void Url_input_dialog::on_input_received() noexcept {
                   package_name = std::move(package_name_replacement);
          }
 
-         if(QFileInfo::exists(path + package_name)){
+         if(QFileInfo::exists(dir_path + package_name)){
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
 
@@ -116,9 +112,8 @@ void Url_input_dialog::on_input_received() noexcept {
                   }
          }
 
-         assert(!path.isEmpty() && !package_name.isEmpty());
-         assert(path.back() == '/');
+         assert(!dir_path.isEmpty() && !package_name.isEmpty());
 
          accept();
-         emit new_request_received(path + package_name,url);
+         emit new_request_received(dir_path,url);
 }

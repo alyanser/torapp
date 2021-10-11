@@ -18,15 +18,17 @@ public:
                   Not_Enough_Space
          };
 
+         Q_ENUM(File_Error);
+
          using handle_return_type = std::pair<File_Error,std::optional<QList<QFile *>>>;
 
          handle_return_type open_file_handles(const QString & path,const bencode::Metadata & torrent_metadata) noexcept;
          handle_return_type open_file_handles(const QString & path,QUrl url) noexcept;
 };
 
-inline File_manager::handle_return_type File_manager::open_file_handles(const QString & path,const bencode::Metadata & torrent_metadata) noexcept {
-         assert(!path.isEmpty());
-         QDir dir(path);
+inline File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
+         assert(!dir_path.isEmpty());
+         QDir dir(dir_path);
 
          if(!dir.mkpath(dir.path())){
                   return {File_Error::Permissions,{}};
@@ -61,7 +63,7 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   assert(!file_handles.empty());
                   auto * const file_handle = file_handles.back();
 
-                  if(!file_handle->open(QFile::ReadWrite)){
+                  if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                            remove_file_handles();
                            return {File_Error::Permissions,{}};
                   }
@@ -77,8 +79,12 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          return {File_Error::Null,file_handles};
 }
 
-inline File_manager::handle_return_type File_manager::open_file_handles(const QString & path,const QUrl /* url */) noexcept {
-         auto * const file_handle = new QFile(path,this);
+inline File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const QUrl url) noexcept {
+         assert(!dir_path.isEmpty());
+         assert(!url.isEmpty());
+         assert(dir_path.back() != '/');
+
+         auto * const file_handle = new QFile(dir_path + '/' + url.fileName(),this);
 
          if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                   file_handle->deleteLater();

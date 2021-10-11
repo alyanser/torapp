@@ -12,6 +12,7 @@
 #include <QSettings>
 #include <QToolBar>
 #include <QMenuBar>
+#include <QDebug>
 #include <QMenu>
 
 class Main_window : public QMainWindow {
@@ -34,19 +35,19 @@ private:
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          void write_settings() noexcept;
-         void add_dl_metadata_to_settings(const QString & file_path,const bencode::Metadata & torrent_metadata) noexcept;
+         void add_dl_metadata_to_settings(const QString & file_path,const QByteArray & torrent_file_content) noexcept;
          void add_dl_metadata_to_settings(const QString & file_path,QUrl url) noexcept;
          void restore_url_downloads() noexcept;
          void restore_torrent_downloads() noexcept;
          ///
-         constexpr static std::string_view settings_base_group {"main_window"};
+         constexpr static std::string_view settings_base_group{"main_window"};
 
          QWidget central_widget_;
-         QVBoxLayout central_layout_ {&central_widget_};
+         QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;
-         QMenu file_menu_ {"File",menuBar()};
-         QMenu sort_menu_ {"Sort",menuBar()};
-         QActionGroup sort_action_group_ {this};
+         QMenu file_menu_{"File",menuBar()};
+         QMenu sort_menu_{"Sort",menuBar()};
+         QActionGroup sort_action_group_{this};
          Network_manager network_manager_;
          File_manager file_manager_;
          QSettings settings_;
@@ -77,14 +78,13 @@ inline void Main_window::write_settings() noexcept {
 }
 
 template<typename request_type>
-void Main_window::initiate_download(const QString & path,request_type && download_request) noexcept {
-         auto * const tracker = new Download_tracker(path,download_request,&central_widget_);
-         
+void Main_window::initiate_download(const QString & dir_path,request_type && download_request) noexcept {
+         auto * const tracker = new Download_tracker(dir_path,download_request,&central_widget_);
          central_layout_.addWidget(tracker);
          
          connect(tracker,qOverload<const QString &,request_type>(&Download_tracker::retry_download),this,&Main_window::initiate_download<request_type>);
 
-         auto [file_error,file_handles] = file_manager_.open_file_handles(path,download_request);
+         auto [file_error,file_handles] = file_manager_.open_file_handles(dir_path,download_request);
 
          switch(file_error){
                   
@@ -107,10 +107,10 @@ void Main_window::initiate_download(const QString & path,request_type && downloa
 
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
+                           assert(!file_handles->isEmpty());
                            assert(tracker->error() == Download_tracker::Error::Null);
-
-                           add_dl_metadata_to_settings(path,download_request);
-                           network_manager_.download({path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
+                           
+                           network_manager_.download({dir_path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
                   };
 

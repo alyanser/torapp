@@ -1,4 +1,5 @@
 #include "torrent_metadata_dialog.hxx"
+#include <QDebug>
 
 void Torrent_metadata_dialog::setup_layout() noexcept {
          central_layout_.addLayout(&central_form_layout_,0,0);
@@ -48,24 +49,39 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & metadata) 
 }
 
 void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path) noexcept {
-         auto torrent_metadata = bencode::extract_metadata(bencode::parse_file(torrent_file_path.toStdString()));
-         setup_display(torrent_metadata);
+
+         auto torrent_metadata = [&torrent_file_path]() -> std::optional<bencode::Metadata> {
+
+                  try{
+                           return bencode::extract_metadata(bencode::parse_file(torrent_file_path.toStdString()));
+
+                  }catch(const std::exception & exception){
+                           qDebug() << exception.what();
+                           return {};
+                  }
+         }();
+
+         if(!torrent_metadata){
+                  // todo: report to tracker
+                  qDebug() << "Could not parse the given file";
+                  return;
+         }
+
+         setup_display(*torrent_metadata);
 
          //! sanitize this
-         path_line_.setText(torrent_file_path.sliced(0,torrent_file_path.lastIndexOf('/') + 1) + torrent_metadata.name.data());
+         path_line_.setText(torrent_file_path.sliced(0,torrent_file_path.lastIndexOf('/') + 1) + torrent_metadata->name.data());
 
          connect(&begin_download_button_,&QPushButton::clicked,this,[this,torrent_metadata = std::move(torrent_metadata)]{
                   const auto dir_path = path_line_.text();
                   
                   if(dir_path.isEmpty()){
-                           reject();
-
                            constexpr std::string_view error_title("Invalid path");
                            constexpr std::string_view error_body("Path cannot be empty");
 
                            QMessageBox::critical(this,error_title.data(),error_body.data());
-                           
-                           return;
+
+                           return reject();
                   }
 
                   if(QFileInfo::exists(dir_path)){
@@ -80,6 +96,6 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   accept();
-                  emit new_request_received(dir_path,torrent_metadata);
+                  emit new_request_received(QFileInfo(dir_path).absolutePath(),*torrent_metadata);
          });
 }

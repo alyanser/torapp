@@ -99,7 +99,7 @@ inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
          QByteArray bytes(bits.size() / bits_in_byte,'\x00');
 
          for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
-                  bytes[bit_idx / bits_in_byte] |= static_cast<char>(bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte));
+                  bytes[bit_idx / bits_in_byte] |= static_cast<char>(bits[bit_idx]) << (bits_in_byte - 1 - bit_idx % bits_in_byte);
          }
 
          return bytes.toHex();
