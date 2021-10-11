@@ -77,7 +77,6 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
 
          if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                   file_handle->deleteLater();
-                  qInfo() << "here giving the error";
                   return {File_Error::Permissions,{}};
          }
 

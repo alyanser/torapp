@@ -41,9 +41,6 @@ void Main_window::setup_sort_menu() noexcept {
 void Main_window::read_settings() noexcept {
          settings_.beginGroup(settings_base_group.data());
 
-         restore_url_downloads();
-         restore_torrent_downloads();
-
          if(settings_.contains("size")){
                   resize(settings_.value("size").toSize());
                   move(settings_.value("pos",QPoint(0,0)).toPoint());
@@ -51,6 +48,11 @@ void Main_window::read_settings() noexcept {
          }else{
                   showMaximized();
          }
+         
+         QTimer::singleShot(0,this,[this]{
+                  restore_url_downloads();
+                  restore_torrent_downloads();
+         });
 }
 
 void Main_window::add_top_actions() noexcept {

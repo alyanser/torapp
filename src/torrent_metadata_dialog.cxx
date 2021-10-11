@@ -41,9 +41,7 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & metadata) 
                   const auto file_size_byte_cnt = file_size_kbs * 1024;
                   const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_byte_cnt,conversion_format);
 
-                  auto * const file_label = new QLabel(this);
-
-                  file_label->setText(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data());
+                  auto * const file_label = new QLabel(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data(),this);
                   file_layout_.addWidget(file_label);
          }
 }
@@ -90,6 +88,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   if(QFileInfo::exists(dir_path)){
+                           qInfo() << dir_path;
                            constexpr std::string_view query_title("Already exists");
                            constexpr std::string_view query_body("Directory already exists. Do you wish to replace it?");
 
@@ -101,7 +100,6 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   accept();
-                  qInfo() << dir_path << "being fucking emitted";
                   emit new_request_received(dir_path,*torrent_metadata);
          });
 }

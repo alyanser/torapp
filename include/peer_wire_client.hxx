@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QSet>
 #include <random>
+#include <QDebug>
 
 class Tcp_socket;
 
@@ -77,7 +78,7 @@ private:
 
          void extract_peer_response(const QByteArray & peer_response) const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
-         Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset) const noexcept;
+         Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset = 0) const noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          std::int32_t get_current_target_piece() const noexcept;
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
@@ -131,16 +132,19 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QLi
          , pieces_(piece_cnt_)
 {
          assert(!file_handles_.empty());
-         update_bitfield();
 
-         remaining_pieces_.reserve(piece_cnt_);
+         QTimer::singleShot(0,this,[this]{
+                  update_bitfield();
 
-         for(std::int32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
+                  remaining_pieces_.reserve(piece_cnt_);
 
-                  if(!bitfield_[piece_idx]){
-                           remaining_pieces_.insert(piece_idx);
+                  for(std::int32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
+
+                           if(!bitfield_[piece_idx]){
+                                    remaining_pieces_.insert(piece_idx);
+                           }
                   }
-         }
+         });
 }
 
 inline std::int32_t Peer_wire_client::get_current_target_piece() const noexcept {

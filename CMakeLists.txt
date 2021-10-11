@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(CXX_FLAGS "-pedantic -Wall -Wextra -Wshadow -Wconversion -Wcast-align -Wfloat-equal")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined -fno-omit-frame-pointer ${CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DQT_NO_DEBUG_OUTPUT -DNDEBUG ${CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DQT_NO_DEBUG_OUTPUT -march=native -DNDEBUG ${CXX_FLAGS}")
 
 set(CMAKE_AUTOMOC on)
 
