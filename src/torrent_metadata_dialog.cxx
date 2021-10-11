@@ -69,11 +69,16 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 
          setup_display(*torrent_metadata);
 
-         //! sanitize this
-         path_line_.setText(torrent_file_path.sliced(0,torrent_file_path.lastIndexOf('/') + 1) + torrent_metadata->name.data());
-
          connect(&begin_download_button_,&QPushButton::clicked,this,[this,torrent_metadata = std::move(torrent_metadata)]{
-                  const auto dir_path = path_line_.text();
+
+                  const auto dir_path = [path_line_text = path_line_.text(),&torrent_metadata]() mutable {
+
+                           if(!path_line_text.isEmpty() && path_line_text.back() != '/'){
+                                    path_line_text.push_back('/');
+                           }
+
+                           return path_line_text + torrent_metadata->name.data();
+                  }();
                   
                   if(dir_path.isEmpty()){
                            constexpr std::string_view error_title("Invalid path");
@@ -96,6 +101,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   accept();
-                  emit new_request_received(QFileInfo(dir_path).absolutePath(),*torrent_metadata);
+                  qInfo() << dir_path << "being fucking emitted";
+                  emit new_request_received(dir_path,*torrent_metadata);
          });
 }

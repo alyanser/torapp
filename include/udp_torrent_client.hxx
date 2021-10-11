@@ -75,7 +75,7 @@ private:
          bencode::Metadata metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
-	Download_tracker * tracker = nullptr;
+         Download_tracker * tracker_ = nullptr;
          std::int64_t total_ = 0;
          std::int64_t left_ = 0;
          std::int64_t downloaded_ = 0;
@@ -88,16 +88,16 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          , metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(metadata_))
          , peer_client_(torrent_metadata,std::move(resources.file_handles),id,info_sha1_hash_)
-	, tracker(resources.tracker)
-	, total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+         , tracker_(resources.tracker)
+         , total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
          , left_(total_)
 {
          configure_default_connections();
 
-	if(metadata_.announce_url_list.empty()){
-		assert(!metadata_.announce_url.empty());
-		metadata_.announce_url_list.push_back(metadata_.announce_url);
-	}
+         if(metadata_.announce_url_list.empty()){
+                  assert(!metadata_.announce_url.empty());
+                  metadata_.announce_url_list.push_back(metadata_.announce_url);
+         }
 }
 
 inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {

@@ -12,7 +12,7 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   peer_client_.do_handshake(response.peer_urls);
          });
 
-         connect(tracker,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
+         connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {

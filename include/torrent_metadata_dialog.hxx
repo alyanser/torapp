@@ -49,11 +49,15 @@ private:
          QHBoxLayout path_layout_;
 };
 
-inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) : QDialog(parent){
+inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) 
+         : QDialog(parent)
+{
          setWindowTitle("Add New Torrent");
          setup_layout();
          extract_metadata(torrent_file_path);
          configure_default_connections();
+
+         path_line_.setText(QFileInfo(torrent_file_path).absolutePath());
 }
 
 inline void Torrent_metadata_dialog::configure_default_connections() noexcept {

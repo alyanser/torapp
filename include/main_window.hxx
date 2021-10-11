@@ -35,8 +35,9 @@ private:
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          void write_settings() noexcept;
-         void add_dl_metadata_to_settings(const QString & file_path,const QByteArray & torrent_file_content) noexcept;
-         void add_dl_metadata_to_settings(const QString & file_path,QUrl url) noexcept;
+         void add_dl_to_settings(const QString & dir_path,const QByteArray & torrent_file_content) noexcept;
+         void add_dl_to_settings(const QString & file_path,QUrl url) noexcept;
+         void remove_dl_from_settings(const QString & parent_group_heading,const QString & file_path) noexcept;
          void restore_url_downloads() noexcept;
          void restore_torrent_downloads() noexcept;
          ///
@@ -78,13 +79,22 @@ inline void Main_window::write_settings() noexcept {
 }
 
 template<typename request_type>
-void Main_window::initiate_download(const QString & dir_path,request_type && download_request) noexcept {
-         auto * const tracker = new Download_tracker(dir_path,download_request,&central_widget_);
+void Main_window::initiate_download(const QString & file_path,request_type && download_request) noexcept {
+         auto * const tracker = new Download_tracker(file_path,download_request,&central_widget_);
          central_layout_.addWidget(tracker);
-         
+
          connect(tracker,qOverload<const QString &,request_type>(&Download_tracker::retry_download),this,&Main_window::initiate_download<request_type>);
 
-         auto [file_error,file_handles] = file_manager_.open_file_handles(dir_path,download_request);
+         auto [file_error,file_handles] = file_manager_.open_file_handles(file_path,download_request);
+
+         connect(tracker,&Download_tracker::download_dropped,this,[this,file_path]{
+
+                  if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<request_type>>,QUrl>){
+                           remove_dl_from_settings("url_downloads",file_path);
+                  }else{
+                           remove_dl_from_settings("torrent_downloads",file_path);
+                  }
+         });
 
          switch(file_error){
                   
@@ -109,10 +119,9 @@ void Main_window::initiate_download(const QString & dir_path,request_type && dow
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
                            assert(tracker->error() == Download_tracker::Error::Null);
-                           
-                           network_manager_.download({dir_path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
+                           network_manager_.download({file_path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
-                  };
+                  }
 
                   default : {
                            __builtin_unreachable();

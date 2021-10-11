@@ -78,11 +78,15 @@ void Url_input_dialog::on_input_received() noexcept {
                   return reject();
          }
 
-         const auto dir_path = path_line_.text().simplified();
+         auto dir_path = path_line_.text().simplified();
 
          if(dir_path.isEmpty()){
                   QMessageBox::critical(this,"Invalid Path","Path field cannot be empty");
                   return reject();
+         }
+
+         if(dir_path.back() != '/'){
+                  dir_path += '/';
          }
 
          auto package_name = package_name_line_.text().simplified();
@@ -112,8 +116,12 @@ void Url_input_dialog::on_input_received() noexcept {
                   }
          }
 
-         assert(!dir_path.isEmpty() && !package_name.isEmpty());
+         assert(!dir_path.isEmpty());
+         assert(!package_name.isEmpty());
+         assert(dir_path.back() == '/');
 
          accept();
-         emit new_request_received(dir_path,url);
+
+         // todo: add more options if temp already exists
+         emit new_request_received(dir_path + (url.fileName().isEmpty() ? "temp" : url.fileName()),url);
 }

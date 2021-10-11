@@ -69,7 +69,6 @@ Download_tracker::Download_tracker(const QString & path,bencode::Metadata torren
 }
 
 void Download_tracker::setup_state_widget() noexcept {
-         state_holder_.addWidget(&dl_progress_bar_);
          state_holder_.addWidget(&error_line_);
          
          dl_progress_bar_.setMinimum(0);
@@ -93,6 +92,7 @@ void Download_tracker::setup_file_status_layout() noexcept {
          dl_path_layout_.addWidget(&open_dir_button_);
          dl_path_buddy_.setBuddy(&dl_path_label);
 
+         state_holder_.addWidget(&dl_progress_bar_);
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
@@ -154,8 +154,9 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
 }
 
 void Download_tracker::configure_default_connections() noexcept {
-         connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::download_dropped);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
+         connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
 
          connect(&delete_button_,&QPushButton::clicked,this,[this]{
                   QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::Button::NoButton);
@@ -166,6 +167,8 @@ void Download_tracker::configure_default_connections() noexcept {
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
+                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::download_dropped);
+                  connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::download_dropped);
                   connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::request_satisfied);
                   connect(this,&Download_tracker::move_file_to_trash,&Download_tracker::request_satisfied);
 
@@ -180,6 +183,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   const auto response_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
                   if(response_button == QMessageBox::StandardButton::Yes){
+                           emit download_dropped();
                            emit request_satisfied();
                   }
          });

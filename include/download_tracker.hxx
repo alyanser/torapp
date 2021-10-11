@@ -44,6 +44,7 @@ signals:
          void delete_file_permanently() const;
          void move_file_to_trash() const;
          void request_satisfied() const;
+         void download_dropped() const;
 public slots:
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt) noexcept;
          void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;

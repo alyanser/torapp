@@ -27,7 +27,9 @@ public:
 };
 
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
+         assert(!torrent_metadata.file_info.empty());
          assert(!dir_path.isEmpty());
+
          QDir dir(dir_path);
 
          if(!dir.mkpath(dir.path())){
@@ -46,22 +48,11 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          };
 
          for(const auto & [file_path,file_size] : torrent_metadata.file_info){
-                  // todo: use qfileinfo
-                  const auto last_slash_idx = file_path.find_last_of('/');
+                  QFileInfo file_info(file_path.data());
 
-                  if(last_slash_idx == std::string::npos){
-                           file_handles.push_back(new QFile(dir.path() + '/' + file_path.data(),this));
-                  }else{
-                           const auto new_dir_path = file_path.substr(0,last_slash_idx);
-                           const auto file_name = file_path.substr(last_slash_idx + 1);
-                           assert(!file_name.empty());
+                  dir.mkpath(file_info.absolutePath());
 
-                           dir.mkpath(new_dir_path.data());
-                           file_handles.push_back(new QFile(dir.path() + '/' + new_dir_path.data() + '/' + file_name.data(),this));
-                  }
-
-                  assert(!file_handles.empty());
-                  auto * const file_handle = file_handles.back();
+                  auto * const file_handle = file_handles.emplace_back(new QFile(dir.path() + '/' + file_info.fileName(),this));
 
                   if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                            remove_file_handles();
@@ -79,15 +70,16 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          return {File_Error::Null,file_handles};
 }
 
-inline File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const QUrl url) noexcept {
-         assert(!dir_path.isEmpty());
+inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl url) noexcept {
+         assert(!file_path.isEmpty());
          assert(!url.isEmpty());
-         assert(dir_path.back() != '/');
+         qInfo() << file_path << "in file manager";
 
-         auto * const file_handle = new QFile(dir_path + '/' + url.fileName(),this);
+         auto * const file_handle = new QFile(file_path,this);
 
          if(!file_handle->open(QFile::ReadWrite | QFile::Append)){
                   file_handle->deleteLater();
+                  qInfo() << "here giving the error";
                   return {File_Error::Permissions,{}};
          }
 

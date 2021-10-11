@@ -238,9 +238,11 @@ inline std::string convert_to_string(const Metadata & metadata,const std::string
  * @brief Extracts metadata from the parsed contents. Considers only standard-complaint keys and values.
  * 
  * @param parsed_content : Parsed bencoded file contents returned by bencode::parse_file or bencode::parse_content.
+ * @param file_content : No need to provide if bencode::parse_file was called and that same bencoded file exists. Otherwise,
+ * can be provided to extract Metadata.raw_info_dict
  */
 [[nodiscard]] 
-inline Metadata extract_metadata(const dictionary & parsed_content) noexcept {
+inline Metadata extract_metadata(const dictionary & parsed_content,const std::string & file_content = "") noexcept {
          Metadata metadata;
          
          for(const auto & [dict_key,value] : parsed_content){
@@ -261,9 +263,12 @@ inline Metadata extract_metadata(const dictionary & parsed_content) noexcept {
                            impl::extract_info_dictionary(std::any_cast<dictionary>(value),metadata);
                   }else if(dict_key == "info_range"){
                            const auto [info_begin_idx,info_end_idx] = std::any_cast<std::pair<std::size_t,std::size_t>>(value);
-                           const auto content = impl::read_file(std::any_cast<std::string>(parsed_content.at("file_path")));
-                           assert(content.size() > info_end_idx);
-                           metadata.raw_info_dict = content.substr(info_begin_idx,info_end_idx - info_begin_idx + 1);
+                           const auto content = file_content.empty() ? impl::read_file(std::any_cast<std::string>(parsed_content.at("file_path"))) : file_content;
+
+                           if(!content.empty()){
+                                    assert(content.size() > info_end_idx);
+                                    metadata.raw_info_dict = content.substr(info_begin_idx,info_end_idx - info_begin_idx + 1);
+                           }
                   }
          }
 
