@@ -83,6 +83,7 @@ private:
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_file_handle_info(std::int32_t piece_idx) const noexcept;
+         void update_bitfield() noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
          ///
          constexpr static std::string_view keep_alive_msg {"00000000"};
@@ -112,11 +113,11 @@ private:
          QBitArray bitfield_;
          QList<Piece> pieces_;
          std::int32_t active_connection_cnt_ = 0;
-         std::int32_t downloaded_piece_cnt_ = 0; // todo figure
+         std::int32_t downloaded_piece_cnt_ = 0;
 };
 
-inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QList<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
-         : torrent_metadata_(std::move(metadata))
+inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QList<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
+         : torrent_metadata_(std::move(torrent_metadata))
          , file_handles_(std::move(file_handles))
          , id_(std::move(peer_id))
          , info_sha1_hash_(std::move(info_sha1_hash))
@@ -130,11 +131,15 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata metadata,QList<QFile
          , pieces_(piece_cnt_)
 {
          assert(!file_handles_.empty());
+         update_bitfield();
 
-         remaining_pieces_.reserve(static_cast<qsizetype>(piece_cnt_));
+         remaining_pieces_.reserve(piece_cnt_);
 
          for(std::int32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
-                  remaining_pieces_.insert(piece_idx);
+
+                  if(!bitfield_[piece_idx]){
+                           remaining_pieces_.insert(piece_idx);
+                  }
          }
 }
 

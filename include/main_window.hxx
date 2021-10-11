@@ -56,7 +56,7 @@ private:
 
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
-         constexpr std::string_view warning_body("Are you sure you want to quit? All of your downloads will be terminated.");
+         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
 
          const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
 

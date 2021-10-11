@@ -8,13 +8,65 @@
 bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece,const std::int32_t piece_idx) const noexcept {
          constexpr auto sha1_hash_byte_cnt = 20;
 
-         assert(piece_idx < piece_cnt_ && piece_idx * sha1_hash_byte_cnt < static_cast<qsizetype>(torrent_metadata_.pieces.size()));
          assert(torrent_metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
+         assert(piece_idx < piece_cnt_);
+         assert(piece_idx * sha1_hash_byte_cnt < static_cast<qsizetype>(torrent_metadata_.pieces.size()));
 
          const auto beginning_hash_idx = piece_idx * sha1_hash_byte_cnt;
          const QByteArray piece_hash(torrent_metadata_.pieces.substr(static_cast<std::size_t>(beginning_hash_idx),sha1_hash_byte_cnt).data(),sha1_hash_byte_cnt);
 
          return piece_hash == QCryptographicHash::hash(received_piece,QCryptographicHash::Sha1);
+}
+
+void Peer_wire_client::update_bitfield() noexcept {
+         QByteArray cur_piece;
+         QByteArray piece_buffer;
+
+         cur_piece.reserve(piece_size_);
+
+         for(std::int32_t piece_idx = 0,file_handle_idx = 0,file_offset = 0;piece_idx < piece_cnt_;){
+                  assert(file_handle_idx < file_handles_.size());
+
+                  auto * const file_handle = file_handles_[file_handle_idx];
+
+                  assert(file_offset < file_handle->size());
+                  assert(piece_size_ > cur_piece.size());
+                  const auto bytes_to_read = std::min<qsizetype>(file_handle->size() - file_offset,piece_size_ - cur_piece.size());
+
+                  piece_buffer.resize(bytes_to_read);
+
+                  const auto bytes_read = file_handle->read(piece_buffer.data(),piece_buffer.size());
+
+                  if(constexpr auto failure = -1;bytes_read != failure){
+                           file_offset += bytes_read;
+                           cur_piece += piece_buffer;
+
+                           assert(file_offset <= file_handle->size());
+
+                           if(file_offset == file_handle->size()){
+                                    ++file_handle_idx;
+                           }
+                  }else{
+                           qDebug() << "File handle has gone roguer";
+                           // todo: figure react
+                           return;
+                  }
+
+                  assert(!cur_piece.isEmpty());
+
+                  if(cur_piece.size() % piece_size_ == 0){
+
+                           if(verify_piece_hash(cur_piece,piece_idx)){
+                                    bitfield_[piece_idx] = true;
+                                    ++downloaded_piece_cnt_;
+                                    assert(downloaded_piece_cnt_ < piece_cnt_);
+                           }
+
+                           ++piece_idx;
+
+                           cur_piece.clear();
+                  }
+         }
 }
 
 [[nodiscard]]

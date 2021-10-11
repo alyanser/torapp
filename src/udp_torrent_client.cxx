@@ -11,12 +11,12 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   assert(!response.peer_urls.empty());
                   peer_client_.do_handshake(response.peer_urls);
          });
-
+         
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {
-         const auto & tracker_urls = metadata_.announce_url_list;
+         const auto & tracker_urls = torrent_metadata_.announce_url_list;
 
          assert(!tracker_urls.empty());
 
@@ -128,7 +128,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
                   if(const auto connection_id = extract_connect_response(tracker_response,socket->txn_id())){
                            socket->set_announce_request(craft_announce_request(*connection_id));
-                           socket->set_scrape_request(craft_scrape_request(metadata_,*connection_id));
+                           socket->set_scrape_request(craft_scrape_request(torrent_metadata_,*connection_id));
                            socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
                   }
          };
@@ -213,7 +213,7 @@ std::optional<std::int64_t> Udp_torrent_client::extract_connect_response(const Q
 }
 
 [[nodiscard]]
-Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::int32_t sent_txn_id){
+std::optional<Udp_torrent_client::Announce_response> Udp_torrent_client::extract_announce_response(const QByteArray & response,const std::int32_t sent_txn_id){
 
          if(!verify_txn_id(response,sent_txn_id)){
                   return {};
@@ -259,7 +259,7 @@ Udp_torrent_client::announce_optional Udp_torrent_client::extract_announce_respo
 }
 
 [[nodiscard]]
-Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::int32_t sent_txn_id){
+std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_scrape_response(const QByteArray & response,const std::int32_t sent_txn_id){
          
          if(!verify_txn_id(response,sent_txn_id)){
                   return {};
@@ -284,7 +284,7 @@ Udp_torrent_client::scrape_optional Udp_torrent_client::extract_scrape_response(
 }
 
 [[nodiscard]]
-Udp_torrent_client::error_optional Udp_torrent_client::extract_tracker_error(const QByteArray & response,const std::int32_t sent_txn_id){
+std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & response,const std::int32_t sent_txn_id){
 
          if(!verify_txn_id(response,sent_txn_id)){
                   return {};

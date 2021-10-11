@@ -70,10 +70,8 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          return {File_Error::Null,file_handles};
 }
 
-inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl url) noexcept {
+inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
          assert(!file_path.isEmpty());
-         assert(!url.isEmpty());
-         qInfo() << file_path << "in file manager";
 
          auto * const file_handle = new QFile(file_path,this);
 

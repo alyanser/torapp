@@ -40,11 +40,6 @@ public:
                   std::int32_t seed_cnt = 0;
          };
 
-         using connect_optional = std::optional<std::int64_t>;
-         using scrape_optional = std::optional<Swarm_metadata>;
-         using announce_optional = std::optional<Announce_response>;
-         using error_optional = std::optional<QByteArray>;
-         
          Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * parent = nullptr);
 
          void send_connect_request() noexcept;
@@ -57,10 +52,10 @@ private:
          static QByteArray craft_scrape_request(const bencode::Metadata & metadata,std::int64_t tracker_connection_id) noexcept;
          QByteArray craft_announce_request(std::int64_t tracker_connection_id) const noexcept;
 
-         static connect_optional extract_connect_response(const QByteArray & response,std::int32_t sent_txn_id);
-         static announce_optional extract_announce_response(const QByteArray & response,std::int32_t sent_txn_id);
-         static scrape_optional extract_scrape_response(const QByteArray & response,std::int32_t sent_txn_id);
-         static error_optional extract_tracker_error(const QByteArray & response,std::int32_t sent_txn_id);
+         static std::optional<std::int64_t> extract_connect_response(const QByteArray & response,std::int32_t sent_txn_id);
+         static std::optional<Announce_response> extract_announce_response(const QByteArray & response,std::int32_t sent_txn_id);
+         static std::optional<Swarm_metadata> extract_scrape_response(const QByteArray & response,std::int32_t sent_txn_id);
+         static std::optional<QByteArray> extract_tracker_error(const QByteArray & response,std::int32_t sent_txn_id);
 
          static bool verify_txn_id(const QByteArray & response,std::int32_t sent_txn_id);
          static QByteArray calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept;
@@ -72,7 +67,7 @@ private:
          inline static std::uniform_int_distribution<std::int32_t> random_id_range;
          inline const static auto id = QByteArray("-TA0001-ABC134ZXClli").toHex();
 
-         bencode::Metadata metadata_;
+         bencode::Metadata torrent_metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
          Download_tracker * tracker_ = nullptr;
@@ -80,27 +75,28 @@ private:
          std::int64_t left_ = 0;
          std::int64_t downloaded_ = 0;
          std::int64_t uploaded_ = 0;
-         Download_Event event_ {Download_Event::None};
+         Download_Event event_{Download_Event::None};
 };
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
          : QObject(parent)
-         , metadata_(std::move(torrent_metadata))
-         , info_sha1_hash_(calculate_info_sha1_hash(metadata_))
-         , peer_client_(torrent_metadata,std::move(resources.file_handles),id,info_sha1_hash_)
+         , torrent_metadata_(std::move(torrent_metadata))
+         , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
+         , peer_client_(torrent_metadata_,std::move(resources.file_handles),id,info_sha1_hash_)
          , tracker_(resources.tracker)
-         , total_(metadata_.single_file ? metadata_.single_file_size : metadata_.multiple_files_size)
+         , total_(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)
          , left_(total_)
 {
          configure_default_connections();
 
-         if(metadata_.announce_url_list.empty()){
-                  assert(!metadata_.announce_url.empty());
-                  metadata_.announce_url_list.push_back(metadata_.announce_url);
+         if(torrent_metadata_.announce_url_list.empty()){
+                  assert(!torrent_metadata_.announce_url.empty());
+                  torrent_metadata_.announce_url_list.push_back(torrent_metadata_.announce_url);
          }
 }
 
-inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & metadata) noexcept {
-         const auto raw_info_size = static_cast<qsizetype>(metadata.raw_info_dict.size());
-         return QCryptographicHash::hash(QByteArray(metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1).toHex();
+[[nodiscard]]
+inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & torrent_metadata) noexcept {
+         const auto raw_info_size = static_cast<qsizetype>(torrent_metadata.raw_info_dict.size());
+         return QCryptographicHash::hash(QByteArray(torrent_metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1).toHex();
 }

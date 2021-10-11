@@ -175,12 +175,13 @@ void Main_window::restore_torrent_downloads() noexcept {
                   auto torrent_file_content = qvariant_cast<QByteArray>(settings_.value("torrent_file_content"));
                   assert(!torrent_file_content.isEmpty());
 
-                  QTimer::singleShot(0,this,[this,file_path = std::move(file_path),torrent_file_content = std::move(torrent_file_content)]{
+                  QTimer::singleShot(0,this,[this,file_path = std::move(file_path),file_content = std::move(torrent_file_content)]{
 
-                           const auto torrent_metadata = [&file_path,&torrent_file_content]() -> std::optional<bencode::Metadata> {
+                           const auto torrent_metadata = [&file_path,&file_content]() -> std::optional<bencode::Metadata> {
 
                                     try{
-                                             return bencode::extract_metadata(bencode::parse_content(torrent_file_content,file_path.toStdString()),torrent_file_content.toStdString());
+                                             const auto compl_file_content = file_content.toStdString();
+                                             return bencode::extract_metadata(bencode::parse_content(compl_file_content,file_path.toStdString()),compl_file_content);
 
                                     }catch(const std::exception & exception){
                                              qWarning() << exception.what();
