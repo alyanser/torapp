@@ -19,6 +19,14 @@ Url_input_dialog::Url_input_dialog(QWidget * const parent)
          package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
 }
 
+void Url_input_dialog::setup_tab_order() noexcept {
+         setTabOrder(&url_line_,&package_name_line_);
+         setTabOrder(&package_name_line_,&path_line_);
+         setTabOrder(&path_line_,&path_button_);
+         setTabOrder(&path_button_,&download_button_);
+         setTabOrder(&download_button_,&cancel_button_);
+}
+
 void Url_input_dialog::configure_default_connections() noexcept {
 
          connect(&path_button_,&QToolButton::clicked,this,[this]{

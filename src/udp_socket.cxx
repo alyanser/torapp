@@ -10,7 +10,7 @@ void Udp_socket::configure_default_connections() noexcept {
          });
          
          interval_timer_.callOnTimeout(this,[this]{
-                  send_request(announce_request_);
+                  send_request(announce_request);
          });
 
          connection_timer_.callOnTimeout(this,[this]{
@@ -26,12 +26,12 @@ void Udp_socket::configure_default_connections() noexcept {
                                     }
 
                                     case State::Scrape : { 
-                                             send_request(scrape_request_);
+                                             send_request(scrape_request);
                                              break;
                                     }
 
                                     case State::Announce : {
-                                             send_request(announce_request_);
+                                             send_request(announce_request);
                                              break;
                                     }
 
@@ -49,15 +49,14 @@ void Udp_socket::configure_default_connections() noexcept {
          });
 }
 
-void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
-         const auto raw_packet = QByteArray::fromHex(hex_packet);
-         write(raw_packet);
+void Udp_socket::reset_time_specs() noexcept {
+         timeout_factor_ = 0;
+         connection_timer_.start(get_timeout());
+         connection_id_valid_ = true;
 
-         constexpr auto txn_id_offset = 12;
-         [[maybe_unused]] bool conversion_success = true;
+         constexpr std::chrono::minutes protocol_validity_timeout {1};
 
-         const auto sent_txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
-
-         assert(conversion_success);
-         txn_id_ = sent_txn_id;
+         QTimer::singleShot(protocol_validity_timeout,this,[&connection_id_valid_ = connection_id_valid_]{
+                  connection_id_valid_ = false;
+         });
 }

@@ -6,7 +6,7 @@ set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-set(CXX_FLAGS "-pedantic -Wall -Wextra -Wshadow -Wconversion -Wcast-align -Wfloat-equal")
+set(CXX_FLAGS "-pedantic -Wall -Wextra -Wshadow -Wconversion -Wcast-align")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DQT_NO_DEBUG_OUTPUT -DNDEBUG ${CXX_FLAGS}")
 

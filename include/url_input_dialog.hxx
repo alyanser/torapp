@@ -42,15 +42,4 @@ inline void Url_input_dialog::reset_lines() noexcept {
          url_line_.clear();
          package_name_line_.clear();
          path_line_.setText(default_path_);
-
-         assert(!url_line_.placeholderText().isEmpty());
-         assert(!package_name_line_.placeholderText().isEmpty());
-}
-
-inline void Url_input_dialog::setup_tab_order() noexcept {
-         setTabOrder(&url_line_,&package_name_line_);
-         setTabOrder(&package_name_line_,&path_line_);
-         setTabOrder(&path_line_,&path_button_);
-         setTabOrder(&path_button_,&download_button_);
-         setTabOrder(&download_button_,&cancel_button_);
 }

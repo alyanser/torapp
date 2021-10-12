@@ -12,10 +12,9 @@ namespace bencode {
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT
 public:
+         constexpr std::int32_t download_count() const noexcept;
          void download(util::Download_resources resources,QUrl url) noexcept;
          void download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept;
-
-         constexpr std::int32_t download_count() const noexcept;
 private:
          std::int32_t download_cnt_ = 0;
 };

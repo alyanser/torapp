@@ -1,5 +1,4 @@
 #include "download_tracker.hxx"
-#include "utility.hxx"
 
 #include <bencode_parser.hxx>
 #include <QDesktopServices>

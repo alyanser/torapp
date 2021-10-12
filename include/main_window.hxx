@@ -31,10 +31,10 @@ protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
          void setup_menu_bar() noexcept;
+         void write_settings() noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
          void read_settings() noexcept;
-         void write_settings() noexcept;
          void add_dl_to_settings(const QString & dir_path,const QByteArray & torrent_file_content) noexcept;
          void add_dl_to_settings(const QString & file_path,QUrl url) noexcept;
          void remove_dl_from_settings(const QString & parent_group_heading,const QString & file_path) noexcept;
@@ -54,6 +54,10 @@ private:
          QSettings settings_;
 };
 
+inline Main_window::~Main_window() {
+         write_settings();
+}
+
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
@@ -61,10 +65,6 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
 
          response_button == QMessageBox::Yes ? event->accept() : event->ignore();
-}
-
-inline Main_window::~Main_window(){
-         write_settings();
 }
 
 inline void Main_window::setup_menu_bar() noexcept {

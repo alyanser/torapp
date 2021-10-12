@@ -76,14 +76,10 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
 }
 
 void Network_manager::download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept {
-         const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();
-
-         if(protocol == "udp"){
+         
+         if(const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();protocol == "udp"){
                   ++download_cnt_;
-
-                  auto * const udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
-
-                  QTimer::singleShot(0,udp_client,&Udp_torrent_client::send_connect_request);
+                  [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
          }else{
                   qDebug() << "unrecognized protocol : " << protocol;
          }
