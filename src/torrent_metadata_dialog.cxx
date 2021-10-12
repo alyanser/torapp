@@ -1,5 +1,6 @@
 #include "torrent_metadata_dialog.hxx"
-#include <QDebug>
+
+#include <QStorageInfo>
 
 void Torrent_metadata_dialog::setup_layout() noexcept {
          central_layout_.addLayout(&central_form_layout_,0,0);
@@ -83,23 +84,33 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                            constexpr std::string_view error_body("Path cannot be empty");
 
                            QMessageBox::critical(this,error_title.data(),error_body.data());
-
-                           return reject();
+                           return;
                   }
 
-                  path_line_.setText(dir_path);
-
                   if(QFileInfo::exists(dir_path)){
-                           qInfo() << dir_path;
                            constexpr std::string_view query_title("Already exists");
                            constexpr std::string_view query_body("Directory already exists. Do you wish to replace it?");
 
                            const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
                            if(response_button == QMessageBox::No){
-                                    return reject();
+                                    return;
                            }
                   }
+
+                  {
+                           QStorageInfo storage(path_line_.text());
+                           assert(storage.isValid());
+                           
+                           if(storage.bytesFree() < (torrent_metadata->single_file ? torrent_metadata->single_file_size : torrent_metadata->multiple_files_size)){
+                                    constexpr std::string_view error_title("Not enough space");
+                                    constexpr std::string_view error_body("Not enough space available in the specified directory. Choose another path and retry");
+
+                                    QMessageBox::critical(this,error_title.data(),error_body.data());
+                                    return;
+                           }
+                  }
+
 
                   accept();
                   emit new_request_received(dir_path,*torrent_metadata);

@@ -57,11 +57,11 @@ inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_
          extract_metadata(torrent_file_path);
          configure_default_connections();
 
-         path_line_.setText(QFileInfo(torrent_file_path).absolutePath());
+         path_line_.setText(QFileInfo(torrent_file_path).absolutePath() + '/');
+         path_line_.setToolTip("Note: Torrent name will be appended to the provided path");
 }
 
 inline void Torrent_metadata_dialog::configure_default_connections() noexcept {
-         connect(&begin_download_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::accept);
          connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::reject);
 
          connect(&path_button_,&QToolButton::clicked,this,[this]{

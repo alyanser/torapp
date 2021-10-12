@@ -119,6 +119,7 @@ void Main_window::initiate_download(const QString & file_path,request_type && do
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
                            assert(tracker->error() == Download_tracker::Error::Null);
+                           
                            network_manager_.download({file_path,std::move(*file_handles),tracker},std::forward<request_type>(download_request));
                            break;
                   }

@@ -15,7 +15,6 @@ public:
                   Already_Exists,
                   File_Lock,
                   Permissions,
-                  Not_Enough_Space
          };
 
          Q_ENUM(File_Error);
@@ -47,8 +46,8 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                   dir.removeRecursively();
          };
 
-         for(const auto & [file_path,file_size] : torrent_metadata.file_info){
-                  QFileInfo file_info(file_path.data());
+         for(const auto & [torrent_file_path,torrent_file_size] : torrent_metadata.file_info){
+                  QFileInfo file_info(torrent_file_path.data());
 
                   dir.mkpath(file_info.absolutePath());
 
@@ -58,16 +57,11 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
                            remove_file_handles();
                            return {File_Error::Permissions,{}};
                   }
-
-                  if(!file_handle->resize(static_cast<qsizetype>(file_size))){
-                           remove_file_handles();
-                           return {File_Error::Not_Enough_Space,{}};
-                  }
          }
 
          assert(!file_handles.empty());
 
-         return {File_Error::Null,file_handles};
+         return {File_Error::Null,std::move(file_handles)};
 }
 
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {

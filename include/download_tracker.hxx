@@ -33,7 +33,7 @@ public:
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
          constexpr Error error() const noexcept;
-         constexpr void set_downloaded_bytes_offset(std::int64_t dl_bytes_offset) noexcept;
+         constexpr void set_downloaded_bytes_offset(std::int64_t dl_byte_offset) noexcept;
          std::int32_t get_elapsed_seconds() const noexcept;
          void set_error_and_finish(Error new_error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
@@ -104,7 +104,7 @@ private:
          QPushButton delete_button_ {"Delete"};
          QPushButton open_dir_button_ {"Open directory"};
 
-         std::int64_t dl_bytes_offset_ = 0;
+         std::int64_t dl_byte_offset_ = 0;
 };
 
 inline void Download_tracker::setup_layout() noexcept {
@@ -118,8 +118,8 @@ constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 
-constexpr void Download_tracker::set_downloaded_bytes_offset(const std::int64_t dl_bytes_offset) noexcept {
-         dl_bytes_offset_ = dl_bytes_offset;
+constexpr void Download_tracker::set_downloaded_bytes_offset(const std::int64_t dl_byte_offset) noexcept {
+         dl_byte_offset_ = dl_byte_offset;
 }
 
 [[nodiscard]]
