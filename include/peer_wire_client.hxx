@@ -9,7 +9,6 @@
 #include <QTimer>
 #include <QSet>
 #include <random>
-#include <QDebug>
 
 class Tcp_socket;
 
@@ -35,7 +34,7 @@ public:
 
          Q_ENUM(Message_Id);
 
-         Peer_wire_client(bencode::Metadata torrent_metadata,QList<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash);
+         Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
 
          void do_handshake(const QList<QUrl> & peer_urls) noexcept;
 signals:
@@ -83,24 +82,24 @@ private:
          std::int32_t get_current_target_piece() const noexcept;
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
-         std::optional<std::pair<qsizetype,qsizetype>> get_file_handle_info(std::int32_t piece_idx) const noexcept;
+         std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_handle_info(std::int32_t piece_idx) const noexcept;
          void update_bitfield() noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
          ///
-         constexpr static std::string_view keep_alive_msg {"00000000"};
-         constexpr static std::string_view choke_msg {"0000000100"};
-         constexpr static std::string_view unchoke_msg {"0000000101"};
-         constexpr static std::string_view interested_msg {"0000000102"};
-         constexpr static std::string_view uninterested_msg {"0000000103"};
-         constexpr static std::string_view have_all_msg {"000000010E"};
-         constexpr static std::string_view have_none_msg {"000000010F"};
+         constexpr static std::string_view keep_alive_msg{"00000000"};
+         constexpr static std::string_view choke_msg{"0000000100"};
+         constexpr static std::string_view unchoke_msg{"0000000101"};
+         constexpr static std::string_view interested_msg{"0000000102"};
+         constexpr static std::string_view uninterested_msg{"0000000103"};
+         constexpr static std::string_view have_all_msg{"000000010E"};
+         constexpr static std::string_view have_none_msg{"000000010F"};
          constexpr static auto max_block_size = 1 << 14;
          inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
          QSet<QUrl> active_peers_;
          QSet<std::int32_t> remaining_pieces_;
          
-         bencode::Metadata torrent_metadata_;
+         bencode::Metadata & torrent_metadata_;
          QList<QFile *> file_handles_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
@@ -115,12 +114,13 @@ private:
          QList<Piece> pieces_;
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t downloaded_piece_cnt_ = 0;
+         Download_tracker * const tracker_ = nullptr;
 };
 
-inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QList<QFile *> file_handles,QByteArray peer_id,QByteArray info_sha1_hash)
-         : torrent_metadata_(std::move(torrent_metadata))
-         , file_handles_(std::move(file_handles))
-         , id_(std::move(peer_id))
+inline Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash)
+         : torrent_metadata_(torrent_metadata)
+         , file_handles_(std::move(resources.file_handles))
+         , id_(std::move(id))
          , info_sha1_hash_(std::move(info_sha1_hash))
          , handshake_msg_(craft_handshake_message())
          , torrent_size_(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)
@@ -130,21 +130,12 @@ inline Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,QLi
          , average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(piece_size_) / max_block_size)))
          , bitfield_(static_cast<qsizetype>(piece_cnt_ + spare_bit_cnt_))
          , pieces_(piece_cnt_)
+         , tracker_(resources.tracker)
 {
-         assert(!file_handles_.empty());
-
-         QTimer::singleShot(0,this,[this]{
-                  update_bitfield();
-
-                  remaining_pieces_.reserve(piece_cnt_);
-
-                  for(std::int32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
-
-                           if(!bitfield_[piece_idx]){
-                                    remaining_pieces_.insert(piece_idx);
-                           }
-                  }
-         });
+         assert(tracker_);
+         assert(!info_sha1_hash_.isEmpty());
+         assert(!id_.isEmpty());
+         assert(file_handles_.size() == static_cast<qsizetype>(torrent_metadata_.file_info.size()));
 }
 
 inline std::int32_t Peer_wire_client::get_current_target_piece() const noexcept {

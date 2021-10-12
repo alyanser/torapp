@@ -64,7 +64,7 @@ private:
          void configure_default_connections() noexcept;
          ///
          inline static std::mt19937 random_generator {std::random_device{}()};
-         inline static std::uniform_int_distribution<std::int32_t> random_id_range;
+         inline static std::uniform_int_distribution<std::int32_t> random_id_range {0,std::numeric_limits<std::int32_t>::max()};
          inline const static auto id = QByteArray("-TA0001-ABC134ZXClli").toHex();
 
          bencode::Metadata torrent_metadata_;
@@ -82,12 +82,13 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          : QObject(parent)
          , torrent_metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
-         , peer_client_(torrent_metadata_,std::move(resources.file_handles),id,info_sha1_hash_)
+         , peer_client_(torrent_metadata_,{std::move(resources.file_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
          , total_(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size)
          , left_(total_)
 {
          configure_default_connections();
+
 
          if(torrent_metadata_.announce_url_list.empty()){
                   assert(!torrent_metadata_.announce_url.empty());

@@ -1,15 +1,16 @@
 #include "peer_wire_client.hxx"
 #include "tcp_socket.hxx"
+#include "download_tracker.hxx"
 
 #include <QPointer>
 #include <QFile>
 
 [[nodiscard]]
 bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece,const std::int32_t piece_idx) const noexcept {
-         constexpr auto sha1_hash_byte_cnt = 20;
-
-         assert(torrent_metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
          assert(piece_idx < piece_cnt_);
+
+         constexpr auto sha1_hash_byte_cnt = 20;
+         assert(torrent_metadata_.pieces.size() % sha1_hash_byte_cnt == 0);
          assert(piece_idx * sha1_hash_byte_cnt < static_cast<qsizetype>(torrent_metadata_.pieces.size()));
 
          const auto beginning_hash_idx = piece_idx * sha1_hash_byte_cnt;
@@ -19,10 +20,9 @@ bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece,const
 }
 
 void Peer_wire_client::update_bitfield() noexcept {
-         QByteArray temp_piece;
-         QByteArray piece_buffer;
+         downloaded_piece_cnt_ = 0;
 
-         assert(piece_size_);
+         QByteArray temp_piece;
          temp_piece.reserve(piece_size_);
 
          for(std::int32_t piece_idx = 0,file_handle_idx = 0,file_offset = 0;piece_idx < piece_cnt_;){
@@ -40,14 +40,12 @@ void Peer_wire_client::update_bitfield() noexcept {
                   assert(file_handle->size() - file_offset > 0);
                   assert(piece_size_ - temp_piece.size() > 0);
 
-                  const auto bytes_to_read = std::min<qsizetype>(file_handle->size() - file_offset,piece_size_ - temp_piece.size());
+                  const auto bytes_to_read = std::min(file_handle->size() - file_offset,piece_size_ - temp_piece.size());
+                  assert(bytes_to_read > 0);
+                  const auto piece_buffer = file_handle->read(bytes_to_read);
 
-                  piece_buffer.resize(bytes_to_read);
-
-                  const auto bytes_read = file_handle->read(piece_buffer.data(),piece_buffer.size());
-
-                  if(constexpr auto failure = -1;bytes_read != failure){
-                           file_offset += bytes_read;
+                  if(piece_buffer.size() == bytes_to_read){
+                           file_offset += piece_buffer.size();
                            temp_piece += piece_buffer;
 
                            assert(file_offset <= file_handle->size());
@@ -72,6 +70,8 @@ void Peer_wire_client::update_bitfield() noexcept {
                                     assert(downloaded_piece_cnt_ < piece_cnt_);
                            }
 
+                           // todo: make the call for next piece instead of loop
+
                            ++piece_idx;
                            temp_piece.clear();
                   }
@@ -81,6 +81,7 @@ void Peer_wire_client::update_bitfield() noexcept {
 [[nodiscard]]
 Peer_wire_client::Piece_metadata Peer_wire_client::get_piece_info(const std::int32_t piece_idx,const std::int32_t offset) const noexcept {
          const auto piece_size = piece_idx == piece_cnt_ - 1 && torrent_size_ % piece_size_ ? torrent_size_ % piece_size_ : piece_size_;
+         assert(piece_size < std::numeric_limits<std::int32_t>::max());
          const auto total_block_cnt = static_cast<std::int32_t>(std::ceil(static_cast<double>(piece_size) / max_block_size));
 
          assert(offset / max_block_size < total_block_cnt);
@@ -90,6 +91,16 @@ Peer_wire_client::Piece_metadata Peer_wire_client::get_piece_info(const std::int
 }
 
 void Peer_wire_client::do_handshake(const QList<QUrl> & peer_urls) noexcept {
+         update_bitfield();
+
+         remaining_pieces_.reserve(piece_cnt_);
+
+         for(std::int32_t piece_idx = 0;piece_idx < piece_cnt_;++piece_idx){
+
+                  if(!bitfield_[piece_idx]){
+                           remaining_pieces_.insert(piece_idx);
+                  }
+         }
 
          for(const auto & peer_url : peer_urls){
 
@@ -178,7 +189,8 @@ void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) noexcept 
                                     }else if(!downloaded_piece_cnt_){
 
                                              if(socket->fast_ext_enabled()){
-                                                      assert(remaining_pieces_.size() == piece_cnt_);
+                                                      // todo: add again
+                                                      // assert(remaining_pieces_.size() == piece_cnt_);
                                                       socket->send_packet(have_none_msg.data());
                                              }
 
@@ -510,7 +522,7 @@ void Peer_wire_client::on_piece_request_received(Tcp_socket * const socket,const
 }
 
 [[nodiscard]]
-std::optional<std::pair<qsizetype,qsizetype>> Peer_wire_client::get_file_handle_info(const std::int32_t piece_idx) const noexcept {
+std::optional<std::pair<qsizetype,qsizetype>> Peer_wire_client::get_beginning_file_handle_info(const std::int32_t piece_idx) const noexcept {
          assert(piece_size_);
          assert(piece_idx < piece_cnt_);
          assert(torrent_metadata_.piece_length);
@@ -540,11 +552,10 @@ std::optional<std::pair<qsizetype,qsizetype>> Peer_wire_client::get_file_handle_
 
 [[nodiscard]]
 bool Peer_wire_client::write_to_disk(const QByteArray & received_piece,const std::int32_t received_piece_idx) noexcept {
+         assert(received_piece.size() == get_piece_info(received_piece_idx).piece_size);
          assert(verify_piece_hash(received_piece,received_piece_idx));
-         assert(file_handles_.size() == static_cast<qsizetype>(torrent_metadata_.file_info.size()));
-         assert(received_piece.size() == static_cast<qsizetype>(torrent_metadata_.piece_length));
 
-         const auto file_handle_info = get_file_handle_info(received_piece_idx);
+         const auto file_handle_info = get_beginning_file_handle_info(received_piece_idx);
 
          if(!file_handle_info){ // todo: report to tracker and stop the download
                   return false;
@@ -554,37 +565,40 @@ bool Peer_wire_client::write_to_disk(const QByteArray & received_piece,const std
          assert(beginning_file_handle_idx < file_handles_.size());
          const auto beginning_file_byte_cnt = torrent_metadata_.file_info[static_cast<std::size_t>(beginning_file_handle_idx)].second - beginning_file_offset;
 
-         for(std::int64_t bytes_written = 0,cur_file_idx = beginning_file_handle_idx;bytes_written < received_piece.size();++cur_file_idx){
-                  assert(cur_file_idx < file_handles_.size());
+         for(std::int64_t total_written_byte_cnt = 0,file_idx = beginning_file_handle_idx;total_written_byte_cnt < received_piece.size();++file_idx){
+                  assert(file_idx < file_handles_.size());
 
-                  const auto remaining_bytes = received_piece.size() - bytes_written;
-                  auto * const file_handle = file_handles_[cur_file_idx];
+                  const auto remaining_byte_cnt = received_piece.size() - total_written_byte_cnt;
+                  auto * const file_handle = file_handles_[file_idx];
 
                   {
-                           [[maybe_unused]] const auto seeked_success = file_handle->seek(bytes_written ? 0 : beginning_file_offset);
+                           
+                           [[maybe_unused]] const auto seeked_success = file_handle->seek(total_written_byte_cnt ? 0 : beginning_file_offset);
                            assert(seeked_success);
                   }
 
-                  const auto cur_file_size = torrent_metadata_.file_info[static_cast<std::size_t>(cur_file_idx)].second;
-                  assert(file_handle->size() == cur_file_size);
+                  const auto cur_file_size = torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second;
 
-                  const auto bytes_to_write = std::min(remaining_bytes,bytes_written ? cur_file_size : beginning_file_byte_cnt);
+                  if(file_handle->size() != cur_file_size){
+                           qDebug() << file_handle->size() << cur_file_size;
+                           // here we are fighting for our life
+                           __builtin_unreachable();
+                  }
 
-                  qDebug() << "here";
+                  const auto to_write_byte_cnt = std::min(remaining_byte_cnt,total_written_byte_cnt ? cur_file_size : beginning_file_byte_cnt);
 
-                  assert(bytes_to_write);
-                  assert(beginning_file_offset + bytes_to_write < file_handle->size());
+                  assert(to_write_byte_cnt);
+                  assert(file_handle->pos() + to_write_byte_cnt <= file_handle->size());
 
-                  const auto new_bytes_written = file_handle->write(received_piece.sliced(bytes_written,bytes_to_write));
+                  const auto written_byte_cnt = file_handle->write(received_piece.sliced(total_written_byte_cnt,to_write_byte_cnt));
 
-                  if(new_bytes_written == -1){
+                  if(written_byte_cnt != to_write_byte_cnt){
                            qDebug() << "Could not write to file";
                            return false;
                   }
 
-                  assert(new_bytes_written == bytes_to_write);
-                  bytes_written += new_bytes_written;
-                  assert(bytes_written <= received_piece.size());
+                  total_written_byte_cnt += written_byte_cnt;
+                  assert(total_written_byte_cnt <= received_piece.size());
          }
 
          return true;
@@ -594,7 +608,7 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
          assert(requested_piece_idx < piece_cnt_);
          assert(bitfield_[requested_piece_idx]);
 
-         const auto file_handle_info = get_file_handle_info(requested_piece_idx);
+         const auto file_handle_info = get_beginning_file_handle_info(requested_piece_idx);
 
          if(!file_handle_info){
                   return {};
@@ -899,7 +913,8 @@ void Peer_wire_client::on_piece_received(Tcp_socket * const socket,const QByteAr
 
 void Peer_wire_client::on_allowed_fast_received(Tcp_socket * const socket,const std::int32_t allowed_piece_idx) noexcept {
          assert(socket->fast_ext_enabled());
-
+         assert(!socket->peer_bitfield().isEmpty());
+         
          if(allowed_piece_idx >= piece_cnt_){
                   qDebug() << "invalid allowed fast index";
                   socket->abort();

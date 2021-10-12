@@ -87,6 +87,8 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                            return reject();
                   }
 
+                  path_line_.setText(dir_path);
+
                   if(QFileInfo::exists(dir_path)){
                            qInfo() << dir_path;
                            constexpr std::string_view query_title("Already exists");
