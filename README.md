@@ -1,2 +1,2 @@
 # torapp
-Torrent and Application Downloader
+Torrent client
