@@ -39,6 +39,7 @@ public:
          void begin_download(const QList<QUrl> & peer_urls) noexcept;
 signals:
          void piece_downloaded(std::int32_t piece_idx) const;
+         void existing_pieces_verified() const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;
@@ -83,7 +84,7 @@ private:
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
-         void update_bitfield() noexcept;
+         void verify_existing_pieces() noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
          std::int32_t get_piece_size(std::int32_t piece_idx) const noexcept;
          ///
