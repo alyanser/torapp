@@ -52,7 +52,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
                   assert(!bitfield_[dled_piece_idx]);
                   bitfield_[dled_piece_idx] = true;
 
-                  tracker_->download_progress_update(dled_piece_cnt_,total_piece_cnt_);
+                  tracker_->download_progress_update(dled_byte_cnt_,total_byte_cnt_);
 
                   assert(rem_pieces_.contains(dled_piece_idx));
                   rem_pieces_.remove(dled_piece_idx);
@@ -93,7 +93,8 @@ Peer_wire_client::Piece_metadata Peer_wire_client::get_piece_info(const std::int
 void Peer_wire_client::verify_existing_pieces() noexcept {
 
          auto verify_piece = [this](auto verify_piece,const std::int32_t piece_idx) -> void {
-                  assert(piece_idx >= 0);
+                  assert(piece_idx >= 0 && piece_idx <= total_piece_cnt_);
+                  tracker_->verification_progress_update(piece_idx,total_piece_cnt_);
 
                   if(piece_idx < total_piece_cnt_){
 
@@ -106,6 +107,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                     verify_piece(verify_piece,piece_idx + 1);
                            });
                   }else{
+                           tracker_->set_state(Download_tracker::State::Download);
                            tracker_->download_progress_update(dled_byte_cnt_,total_byte_cnt_);
                            emit existing_pieces_verified();
                   }
@@ -116,7 +118,8 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
          assert(!bitfield_.isEmpty());
          bitfield_.fill(false);
 
-         QTimer::singleShot(0,this,[verify_piece]{
+         QTimer::singleShot(0,this,[verify_piece,tracker_ = tracker_]{
+                  tracker_->set_state(Download_tracker::State::Verification);
                   verify_piece(verify_piece,0);
          });
 }

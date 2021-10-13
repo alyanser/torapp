@@ -12,13 +12,13 @@ Download_tracker::Download_tracker(const QString & dl_path,QWidget * const paren
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
-         setup_state_widget();
+         setup_state_holder();
          update_error_line();
          configure_default_connections();
 
-         refresh_timer_.start(std::chrono::seconds(1));
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
+         dl_progress_bar_.setTextVisible(true);
 
          connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
                   assert(dl_path.lastIndexOf('/') != -1);
@@ -47,6 +47,7 @@ Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget *
          assert(!path.isEmpty());
          
          package_name_label_.setText(url.fileName());
+         refresh_timer_.start(std::chrono::seconds(1));
          dl_path_label.setText(path);
 
          connect(&retry_button_,&QPushButton::clicked,this,[this,path,url]{
@@ -80,7 +81,6 @@ void Download_tracker::setup_file_status_layout() noexcept {
          dl_path_layout_.addWidget(&open_dir_button_);
          dl_path_buddy_.setBuddy(&dl_path_label);
 
-         state_holder_.addWidget(&dl_progress_bar_);
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
@@ -112,20 +112,28 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
          dled_byte_cnt_ = received_byte_cnt;
          total_byte_cnt_ = total_byte_cnt;
 
+         if(state_ == State::Verification){
+                  restored_byte_cnt_ = received_byte_cnt;
+         }
+
          assert(received_byte_cnt >= 0);
          assert(!dl_progress_bar_.minimum());
 
          if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
-                  // sets the bar in pending state
-                  dl_progress_bar_.reset();
-                  // dl_progress_bar_.setRange(0,0);
+                  dl_progress_bar_.setRange(0,0); // sets in pending state
          }else{
                   // ! consider the overflow
                   dl_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
                   dl_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
          }
 
-         dl_quantity_label_.setText(util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt));
+         const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
+
+         dl_quantity_label_.setText(text_fmt);
+
+         using util::conversion::convert_to_percentile;
+         assert(total_byte_cnt);
+         dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : " " + QString::number(convert_to_percentile(received_byte_cnt,total_byte_cnt)) + "%"));
 }
 
 void Download_tracker::configure_default_connections() noexcept {
@@ -173,12 +181,14 @@ void Download_tracker::configure_default_connections() noexcept {
 void Download_tracker::switch_to_finished_state() noexcept {
          refresh_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
-         state_holder_.setCurrentWidget(&error_line_);
+         state_holder_.setCurrentWidget(&finish_line_);
          terminate_buttons_holder_.setCurrentWidget(&finish_button_);
          
          if(static_cast<bool>(error_)){
                   initiate_buttons_holder_.setCurrentWidget(&retry_button_);
          }else{
+                  assert(!delete_button_.isEnabled());
+                  assert(!open_button_.isEnabled());
                   delete_button_.setEnabled(true);
                   open_button_.setEnabled(true);
          }
@@ -189,22 +199,22 @@ void Download_tracker::update_error_line() noexcept {
          switch(error_){
                   
                   case Error::Null : {
-                           error_line_.setText("Download completed successfully. Click on Open button to view");
+                           finish_line_.setText("Download completed successfully. Click on open button to view");
                            break;
                   }
 
                   case Error::File_Write : {
-                           error_line_.setText("Given file could not be opened for writing");
+                           finish_line_.setText("Given file could not be opened for writing");
                            break;
                   }
 
                   case Error::Unknown_Network : {
-                           error_line_.setText("Unknown network error. Try restarting the download");
+                           finish_line_.setText("Unknown network error. Try restarting the download");
                            break;
                   }
                   
                   case Error::File_Lock : { 
-                           error_line_.setText("Given path already exists. Cannot overwire");
+                           finish_line_.setText("Given path already exists. Cannot overwire");
                            break;
                   }
 

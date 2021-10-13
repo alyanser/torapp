@@ -44,13 +44,11 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
          std::string_view total_bytes_postfix("inf");
          double converted_total_byte_cnt = 0;
 
-         constexpr auto format = Conversion_Format::Memory;
-
          if(constexpr auto unknown_bound = -1;total_byte_cnt != unknown_bound){
-                  std::tie(converted_total_byte_cnt,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt),format);
+                  std::tie(converted_total_byte_cnt,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt),Conversion_Format::Memory);
          }
 
-         const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),format);
+         const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),Conversion_Format::Memory);
 
          QString converted_str("%1 %2 / %3 %4");
 
@@ -58,6 +56,12 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
          converted_str = converted_str.arg(converted_total_byte_cnt).arg(total_bytes_postfix.data());
 
          return converted_str;
+}
+
+template<typename numeric_type,typename = std::enable_if<std::is_arithmetic_v<numeric_type>>>
+numeric_type convert_to_percentile(const numeric_type dividend,const numeric_type divisor) noexcept {
+         assert(divisor);
+         return static_cast<numeric_type>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100);
 }
 
 //todo figure SFINAE for 'q.int_.e' types
