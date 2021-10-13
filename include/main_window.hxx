@@ -42,7 +42,6 @@ private:
          void restore_torrent_downloads() noexcept;
          ///
          constexpr static std::string_view settings_base_group{"main_window"};
-
          QWidget central_widget_;
          QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;

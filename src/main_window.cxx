@@ -18,6 +18,8 @@ Main_window::Main_window(){
          setup_sort_menu();
          add_top_actions();
          read_settings();
+
+         central_layout_.setAlignment(Qt::AlignTop);
 }
 
 void Main_window::setup_sort_menu() noexcept {
@@ -73,7 +75,6 @@ void Main_window::add_top_actions() noexcept {
 
          connect(exit_action,&QAction::triggered,this,&Main_window::close);
 
-
          connect(torrent_action,&QAction::triggered,this,[this]{
 
                   auto file_path = [this]{
@@ -89,8 +90,6 @@ void Main_window::add_top_actions() noexcept {
                   
                   Torrent_metadata_dialog torrent_dialog(file_path,this);
 
-                  connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
-
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,[this,file_path = std::move(file_path)](const QString & dl_dir){
                            QFile torrent_file(file_path);
 
@@ -98,6 +97,8 @@ void Main_window::add_top_actions() noexcept {
                                     add_dl_to_settings(dl_dir,torrent_file.readAll());
                            }
                   });
+
+                  connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
 
                   torrent_dialog.exec();
          });

@@ -3,6 +3,7 @@
 #include "utility.hxx"
 
 #include <QStackedWidget>
+#include <QFormLayout>
 #include <QProgressBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -38,7 +39,6 @@ public:
          std::int32_t get_elapsed_seconds() const noexcept;
          void set_error_and_finish(Error error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
-
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt) noexcept;
          void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;
          void switch_to_finished_state() noexcept;
@@ -58,61 +58,51 @@ private:
          void setup_network_status_layout() noexcept;
          void setup_state_widget() noexcept;
          void update_error_line() noexcept;
+         void update_download_speed() noexcept;
          ///
          QVBoxLayout central_layout_{this};
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
-
          QHBoxLayout package_name_layout_;
+         QHBoxLayout dl_path_layout_;
+         QHBoxLayout dl_quanitity_layout_;
+         QHBoxLayout ul_quantity_layout_;
+         QHBoxLayout time_elapsed_layout_;
+         QHBoxLayout dl_speed_layout_;
+         QFormLayout network_form_layout_;
+         QStackedWidget state_holder_;
+         QStackedWidget terminate_buttons_holder_;
+         QStackedWidget initiate_buttons_holder_;
+         QTime time_elapsed_{0,0,1}; // 1 to prevent zero division
+         QLineEdit error_line_;
          QLabel package_name_buddy_{"Name:"};
          QLabel package_name_label_;
-
-         QHBoxLayout dl_path_layout_;
          QLabel dl_path_buddy_{"Path:"};
          QLabel dl_path_label;
-
-         QStackedWidget state_holder_;
-         QLineEdit error_line_;
-         QProgressBar dl_progress_bar_;
-
-         QHBoxLayout dl_quanitity_layout_;
-         QLabel dl_quantity_buddy_{"Downloaded:"};
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
-
-         QHBoxLayout ul_quantity_layout_;
-         QLabel ul_quantity_buddy_{"Uploaded:"};
-         QLabel ul_quanitity_label_{"0 byte (s) / 0 byte (s)"};
-
-         QStackedWidget terminate_buttons_holder_;
-         QPushButton finish_button_{"Finish"};
-         QPushButton cancel_button_{"Cancel"};
-
-         QStackedWidget initiate_buttons_holder_;
-         QPushButton open_button_{"Open"};
-         QPushButton retry_button_{"Retry"};
-
-         QHBoxLayout time_elapsed_layout_;
-         QTime time_elapsed_{0,0,1}; // 1 to prevent zero division
-         QTimer time_elapsed_timer_;
+         QLabel ul_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + " hh::mm::ss"};
-
-         QHBoxLayout dl_speed_layout_;
-         QLabel dl_speed_buddy_{"Download Speed:"};
          QLabel dl_speed_label_{"0 bytes/sec"};
-
+         QPushButton finish_button_{"Finish"};
+         QPushButton cancel_button_{"Cancel"};
+         QPushButton open_button_{"Open"};
+         QPushButton retry_button_{"Retry"};
          QPushButton delete_button_{"Delete"};
          QPushButton open_dir_button_{"Open directory"};
-
+         QProgressBar dl_progress_bar_;
+         QTimer refresh_timer_;
          std::int64_t dl_byte_offset_ = 0;
+         std::int64_t dled_byte_cnt_ = 0;
+         std::int64_t uled_byte_cnt_ = 0;
+         std::int64_t total_byte_cnt_ = 0;
          Error error_{Error::Null};
 };
 
 [[nodiscard]]
 inline std::int32_t Download_tracker::get_elapsed_seconds() const noexcept {
-         constexpr auto secs_in_min = 60;
-         constexpr auto secs_in_hr = secs_in_min * 60;
-         return time_elapsed_.second() + time_elapsed_.minute() * secs_in_min + time_elapsed_.hour() * secs_in_hr;
+         assert(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600 > 0);
+         return time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
 }
 
 inline void Download_tracker::set_error_and_finish(const Error error) noexcept {
@@ -129,7 +119,7 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
 }
 
 inline void Download_tracker::upload_progress_update(const std::int64_t send_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         ul_quanitity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
+         ul_quantity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
 }
 
 [[nodiscard]]
@@ -145,4 +135,18 @@ inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&state_holder_);
          central_layout_.addLayout(&network_stat_layout_);
+}
+
+inline void Download_tracker::update_download_speed() noexcept {
+         const auto speed = dled_byte_cnt_ / get_elapsed_seconds();
+         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Conversion_Format::Speed);
+         dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
+}
+
+inline void Download_tracker::setup_state_widget() noexcept {
+         state_holder_.addWidget(&error_line_);
+         dl_progress_bar_.setMinimum(0);
+         dl_progress_bar_.setValue(0);
+         error_line_.setAlignment(Qt::AlignCenter);
+         assert(state_holder_.currentWidget() == &dl_progress_bar_);
 }
