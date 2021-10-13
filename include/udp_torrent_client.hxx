@@ -53,7 +53,7 @@ private:
          static QByteArray craft_connect_request() noexcept;
          static QByteArray craft_scrape_request(const bencode::Metadata & metadata,std::int64_t tracker_connection_id) noexcept;
          QByteArray craft_announce_request(std::int64_t tracker_connection_id) const noexcept;
-         std::optional<QByteArray> extract_tracker_error(const QByteArray & response,std::int32_t sent_txn_id);
+         static std::optional<QByteArray> extract_tracker_error(const QByteArray & response,std::int32_t sent_txn_id);
          static std::optional<std::int64_t> extract_connect_response(const QByteArray & response,std::int32_t sent_txn_id);
          static std::optional<Announce_response> extract_announce_response(const QByteArray & response,std::int32_t sent_txn_id);
          static std::optional<Swarm_metadata> extract_scrape_response(const QByteArray & response,std::int32_t sent_txn_id);

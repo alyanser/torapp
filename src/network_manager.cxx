@@ -69,7 +69,10 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          connect(tracker,&Download_tracker::delete_file_permanently,file_handle,qOverload<>(&QFile::remove));
          connect(tracker,&Download_tracker::move_file_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
 
-         connect(network_reply,&QNetworkReply::downloadProgress,tracker,&Download_tracker::download_progress_update);
+         connect(network_reply,&QNetworkReply::downloadProgress,tracker,[tracker = tracker](const std::int64_t dled_byte_cnt,const std::int64_t total_byte_cnt){
+                  tracker->download_progress_update(dled_byte_cnt,total_byte_cnt);
+         });
+
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::upload_progress_update);
 
          connect(network_reply,&QNetworkReply::redirected,&QNetworkReply::redirectAllowed);

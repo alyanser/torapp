@@ -59,7 +59,6 @@ private:
          void setup_state_widget() noexcept;
          void update_error_line() noexcept;
          ///
-         Error error_{Error::Null};
          QVBoxLayout central_layout_{this};
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
@@ -106,6 +105,7 @@ private:
          QPushButton open_dir_button_{"Open directory"};
 
          std::int64_t dl_byte_offset_ = 0;
+         Error error_{Error::Null};
 };
 
 [[nodiscard]]

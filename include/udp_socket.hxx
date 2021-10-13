@@ -35,7 +35,7 @@ private:
          QByteArray connect_request_;
          QTimer connection_timer_;
          QTimer interval_timer_;
-         std::chrono::seconds interval_time_ {};
+         std::chrono::seconds interval_time_{};
          State state_ = State::Connect;
          std::int8_t timeout_factor_ = 0; //! 
          bool connection_id_valid_ = true;

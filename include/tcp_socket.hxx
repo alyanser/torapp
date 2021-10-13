@@ -17,8 +17,8 @@ public:
          void send_packet(const QByteArray & packet) noexcept;
          ///
          QBitArray peer_bitfield;
-         QSet<std::int32_t> pending_pieces;
          QByteArray peer_id;
+         QSet<std::int32_t> pending_pieces;
          QUrl peer_url;
          bool handshake_done = false;
          bool am_choking = true;

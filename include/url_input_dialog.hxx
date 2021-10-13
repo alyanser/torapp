@@ -21,21 +21,17 @@ private:
          void setup_layout() noexcept;
          void on_input_received() noexcept;
          ///
-         QString default_path_ = QDir::currentPath();
-
          QVBoxLayout central_layout_{this};
          QFormLayout central_form_layout_;
-
+         QHBoxLayout path_layout_;
+         QHBoxLayout button_layout_;
          QLineEdit url_line_;
          QLineEdit package_name_line_;
-
-         QHBoxLayout path_layout_;
          QLineEdit path_line_;
-         QToolButton path_button_;
-
-         QHBoxLayout button_layout_;
          QPushButton download_button_{"Download"};
          QPushButton cancel_button_{"Cancel"};
+         QToolButton path_button_;
+         QString default_path_ = QDir::currentPath();
 };
 
 inline void Url_input_dialog::reset_lines() noexcept {

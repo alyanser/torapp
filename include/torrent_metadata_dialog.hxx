@@ -27,9 +27,6 @@ private:
          void setup_display(const bencode::Metadata & metadata) noexcept;
          void configure_default_connections() noexcept;
          ///
-         QGridLayout central_layout_{this};
-         QFormLayout central_form_layout_;
-
          QLabel torrent_name_label_;
          QLabel created_by_label_;
          QLabel creation_date_label_;
@@ -38,15 +35,15 @@ private:
          QLabel torrent_length_label_;
          QLabel announce_label_;
          QLineEdit path_line_;
-         QToolButton path_button_;
-
-         QHBoxLayout button_layout_;
          QPushButton begin_download_button_{"Begin Download"};
          QPushButton cancel_button_{"Cancel"};
-
+         QToolButton path_button_;
+         QGridLayout central_layout_{this};
+         QFormLayout central_form_layout_;
          QFormLayout file_form_layout_;
          QVBoxLayout file_layout_;
          QHBoxLayout path_layout_;
+         QHBoxLayout button_layout_;
 };
 
 inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) 

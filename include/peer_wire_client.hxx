@@ -59,7 +59,7 @@ private:
          };
 
          std::int32_t get_target_piece_idx() const noexcept;
-         std::int32_t get_piece_size(const std::int32_t piece_idx) const noexcept;
+         std::int32_t get_piece_size(std::int32_t piece_idx) const noexcept;
 
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t offset) noexcept;
@@ -105,28 +105,27 @@ private:
          constexpr static auto max_block_size = 1 << 14;
          inline static const auto reserved_bytes = QByteArray("\x00\x00\x00\x00\x00\x00\x00\x04",8).toHex();
 
-         QSet<QUrl> active_peers_;
-         QSet<std::int32_t> rem_pieces_;
-         
-         bencode::Metadata & torrent_metadata_;
-         QList<std::int64_t> torrent_file_sizes_;
-         QList<QFile *> file_handles_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
+         QList<std::int64_t> torrent_file_sizes_;
+         QList<QFile *> file_handles_;
+         QSet<QUrl> active_peers_;
+         QSet<std::int32_t> rem_pieces_;
          QTimer acquire_piece_timer_;
+         bencode::Metadata & torrent_metadata_;
+         Download_tracker * const tracker_ = nullptr;
+         std::int64_t dled_byte_cnt_ = 0;
+         std::int64_t uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t piece_size_ = 0;
          std::int32_t total_piece_cnt_ = 0;
          std::int32_t spare_bit_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
-         QBitArray bitfield_;
-         QList<Piece> pieces_;
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
-         Download_tracker * const tracker_ = nullptr;
-         std::int64_t dled_byte_cnt_ = 0;
-         std::int64_t uled_byte_cnt_ = 0;
+         QList<Piece> pieces_;
+         QBitArray bitfield_;
 };
 
 [[nodiscard]]
