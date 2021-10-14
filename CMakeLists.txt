@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.21)
 
 project(torapp)
 
-set(CMAKE_CXX_COMPILER "g++-11")
+set(CMAKE_CXX_COMPILER "clang++-13")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-set(CXX_FLAGS "-pedantic -Wall -Wextra -Wshadow -Wconversion -Wcast-align")
+set(CXX_FLAGS "-pedantic -Wall -Wextra -Wshadow -Wconversion")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer ${CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DQT_NO_DEBUG_OUTPUT -DNDEBUG ${CXX_FLAGS}")
 
@@ -40,8 +40,8 @@ set(MOC_INCLUDES
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-         SYSTEM "ext"
          "include"
+         SYSTEM "ext"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)

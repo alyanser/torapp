@@ -88,7 +88,7 @@ inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 }
 
 [[nodiscard]]
-inline QByteArray convert_to_hex_bytes(const QBitArray & bits) noexcept {
+inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
          constexpr auto bits_in_byte = 8;
          assert(bits.size() % bits_in_byte == 0);
          QByteArray bytes(bits.size() / bits_in_byte,'\x00');

@@ -37,12 +37,12 @@ private:
          QUrl peer_url_;
 };
 
-inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent) 
+inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent) 
          : QTcpSocket(parent)
-         , peer_url_(peer_url)
+         , peer_url_(std::move(peer_url))
 {
          configure_default_connections();
-         connectToHost(QHostAddress(peer_url.host()),static_cast<std::uint16_t>(peer_url.port()));
+         connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
          reset_disconnect_timer();
 
          disconnect_timer_.setSingleShot(true);
@@ -56,7 +56,6 @@ inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_pac
          }
 
          assert(handshake_done);
-
          reset_disconnect_timer();
          startTransaction();
          

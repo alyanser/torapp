@@ -113,13 +113,6 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
          return scrape_request;
 }
 
-[[nodiscard]]
-bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::int32_t sent_txn_id){
-         constexpr auto txn_id_offset = 4;
-         const auto received_txn_id = util::extract_integer<std::int32_t>(response,txn_id_offset);
-         return sent_txn_id == received_txn_id;
-}
-
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
          auto on_tracker_action_connect = [this,socket](const QByteArray & tracker_response){
@@ -223,7 +216,7 @@ std::optional<Udp_torrent_client::Announce_response> Udp_torrent_client::extract
          }();
 
          auto peer_urls = [&response]{
-                  QList<QUrl> peer_urls;
+                  QList<QUrl> ret_peer_urls;
 
                   constexpr auto peers_ip_offset = 20;
                   constexpr auto peer_url_byte_cnt = 6;
@@ -234,13 +227,13 @@ std::optional<Udp_torrent_client::Announce_response> Udp_torrent_client::extract
                            const auto peer_ip = util::extract_integer<std::uint32_t>(response,idx);
                            const auto peer_port = util::extract_integer<std::uint16_t>(response,idx + ip_byte_cnt);
 
-                           auto & url = peer_urls.emplace_back();
+                           auto & url = ret_peer_urls.emplace_back();
                            
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
                   }
 
-                  return peer_urls;
+                  return ret_peer_urls;
          }();
 
          return Announce_response{std::move(peer_urls),interval_time,leecher_cnt,seed_cnt};

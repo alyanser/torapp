@@ -113,3 +113,10 @@ inline std::optional<std::int64_t> Udp_torrent_client::extract_connect_response(
          constexpr auto connection_id_offset = 8;
          return util::extract_integer<std::int64_t>(response,connection_id_offset);
 }
+
+[[nodiscard]]
+inline bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::int32_t sent_txn_id){
+         constexpr auto txn_id_offset = 4;
+         const auto received_txn_id = util::extract_integer<std::int32_t>(response,txn_id_offset);
+         return sent_txn_id == received_txn_id;
+}

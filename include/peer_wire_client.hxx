@@ -7,6 +7,7 @@
 #include <QBitArray>
 #include <QObject>
 #include <QTimer>
+#include <QDebug>
 #include <QSet>
 #include <random>
 
@@ -77,7 +78,8 @@ private:
          void on_piece_received(Tcp_socket * socket,const QByteArray & response) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::int32_t allowed_piece_idx) noexcept;
          void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
-         void on_piece_request_received(Tcp_socket * socket,const QByteArray & response) noexcept;
+         void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
+         void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
          static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & response);
@@ -87,7 +89,6 @@ private:
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset = 0) const noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
-
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
