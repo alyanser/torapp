@@ -1,5 +1,5 @@
 #include "url_input_dialog.hxx"
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <QFileDialog>
 #include <QMessageBox>

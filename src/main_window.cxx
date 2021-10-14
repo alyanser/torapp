@@ -1,6 +1,6 @@
 #include "main_window.hxx"
 #include "torrent_metadata_dialog.hxx"
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <bencode_parser.hxx>
 #include <QMessageBox>

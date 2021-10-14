@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <QHostAddress>
 #include <QTcpSocket>
@@ -15,11 +15,11 @@ public:
          void reset_disconnect_timer() noexcept;
          std::optional<std::pair<std::int32_t,QByteArray>> receive_packet();
          void send_packet(const QByteArray & packet) noexcept;
+         QUrl peer_url() const noexcept;
          ///
          QBitArray peer_bitfield;
          QByteArray peer_id;
          QSet<std::int32_t> pending_pieces;
-         QUrl peer_url;
          bool handshake_done = false;
          bool am_choking = true;
          bool peer_choked = true;
@@ -34,11 +34,12 @@ private:
          void configure_default_connections() noexcept;
          ///
          QTimer disconnect_timer_;
+         QUrl peer_url_;
 };
 
 inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent) 
          : QTcpSocket(parent)
-         , peer_url(peer_url)
+         , peer_url_(peer_url)
 {
          configure_default_connections();
          connectToHost(QHostAddress(peer_url.host()),static_cast<std::uint16_t>(peer_url.port()));
@@ -50,13 +51,13 @@ inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent)
 [[nodiscard]]
 inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet(){
 
-         if(constexpr auto minimum_response_size = 4;bytesAvailable() < minimum_response_size){
+         if(constexpr auto min_response_size = 4;bytesAvailable() < min_response_size){
                   return {};
          }
 
-         reset_disconnect_timer();
-
          assert(handshake_done);
+
+         reset_disconnect_timer();
          startTransaction();
          
          const auto msg_size = [this]() -> std::optional<std::int32_t> {
@@ -68,7 +69,6 @@ inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_pac
                   }
 
                   constexpr auto size_offset = 0;
-
                   return util::extract_integer<std::int32_t>(size_buffer,size_offset);
          }();
 
@@ -101,12 +101,17 @@ inline void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
          }
 }
 
+[[nodiscard]]
+inline QUrl Tcp_socket::peer_url() const noexcept {
+         return peer_url_;
+}
+
 inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
 
          disconnect_timer_.callOnTimeout(this,[this]{
-                  qDebug() << "disconnecting from peer due to connection timeout";
+                  qDebug() << "connection timed out" << peer_id;
                   state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
          });
 }

@@ -36,10 +36,8 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          rem_pieces_.reserve(total_piece_cnt_);
 
          for(std::int32_t piece_idx = 0;piece_idx < total_piece_cnt_;++piece_idx){
-
-                  if(!bitfield_[piece_idx]){
-                           rem_pieces_.insert(piece_idx);
-                  }
+                  assert(!bitfield_[piece_idx]);
+                  rem_pieces_.insert(piece_idx);
          }
 
          connect(this,&Peer_wire_client::piece_downloaded,[this](const std::int32_t dled_piece_idx){
@@ -98,7 +96,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
 
                   if(piece_idx < total_piece_cnt_){
 
-                           //! consider storing random pieces
+                           // ! consider storing random pieces into memory
                            if(const auto read_piece = read_from_disk(piece_idx)){
                                     emit piece_downloaded(piece_idx);
                            }
@@ -235,14 +233,14 @@ QByteArray Peer_wire_client::craft_request_message(const std::int32_t piece_idx,
          using util::conversion::convert_to_hex;
 
          auto request_msg = []{
-                  constexpr qint32_be request_msg_size(13);
+                  constexpr auto request_msg_size = 13;
                   return convert_to_hex(request_msg_size);
          }();
 
          request_msg += convert_to_hex(static_cast<std::int8_t>(Message_Id::Request));
-         request_msg += convert_to_hex(static_cast<qint32_be>(piece_idx));
-         request_msg += convert_to_hex(static_cast<qint32_be>(offset));
-         request_msg += convert_to_hex(static_cast<qint32_be>(get_piece_info(piece_idx,offset).block_size));
+         request_msg += convert_to_hex(piece_idx);
+         request_msg += convert_to_hex(offset);
+         request_msg += convert_to_hex(get_piece_info(piece_idx,offset).block_size);
 
          assert(request_msg.size() == 34);
          return request_msg;
@@ -254,13 +252,13 @@ QByteArray Peer_wire_client::craft_cancel_message(const std::int32_t piece_idx,c
          using util::conversion::convert_to_hex;
 
          auto cancel_msg = []{
-                  constexpr qint32_be cancel_msg_size(13);
+                  constexpr auto cancel_msg_size = 13;
                   return convert_to_hex(cancel_msg_size);
          }();
 
          cancel_msg += convert_to_hex(static_cast<std::int8_t>(Message_Id::Cancel));
-         cancel_msg += convert_to_hex(static_cast<qint32_be>(piece_idx));
-         cancel_msg += convert_to_hex(static_cast<qint32_be>(offset));
+         cancel_msg += convert_to_hex(piece_idx);
+         cancel_msg += convert_to_hex(offset);
          cancel_msg += convert_to_hex(get_piece_info(piece_idx,offset).block_size);
 
          assert(cancel_msg.size() == 34);
@@ -272,12 +270,12 @@ QByteArray Peer_wire_client::craft_allowed_fast_message(const std::int32_t piece
          using util::conversion::convert_to_hex;
 
          auto allowed_fast_msg = []{
-                  constexpr qint32_be allowed_fast_msg_size(5);
+                  constexpr auto allowed_fast_msg_size = 5;
                   return convert_to_hex(allowed_fast_msg_size);
          }();
 
          allowed_fast_msg += convert_to_hex(static_cast<std::int8_t>(Message_Id::Allowed_Fast));
-         allowed_fast_msg += convert_to_hex(static_cast<qint32_be>(piece_idx));
+         allowed_fast_msg += convert_to_hex(piece_idx);
 
          assert(allowed_fast_msg.size() == 18);
          return allowed_fast_msg;
@@ -288,12 +286,12 @@ QByteArray Peer_wire_client::craft_have_message(const std::int32_t piece_idx) no
          using util::conversion::convert_to_hex;
 
          auto have_msg = []{
-                  constexpr qint32_be have_msg_size(5);
+                  constexpr auto have_msg_size = 5;
                   return convert_to_hex(have_msg_size);
          }();
 
          have_msg += convert_to_hex(static_cast<std::int8_t>(Message_Id::Have));
-         have_msg += convert_to_hex(static_cast<qint32_be>(piece_idx));
+         have_msg += convert_to_hex(piece_idx);
          
          assert(have_msg.size() == 18);
          return have_msg;
@@ -310,7 +308,7 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
                   return util::conversion::convert_to_hex(pstrlen) + QByteArray(protocol.data(),protocol.size()).toHex();
          }();
 
-         handshake_msg += reserved_bytes + info_sha1_hash_ + id_;
+         handshake_msg += reserved_bytes.data()+ info_sha1_hash_ + id_;
 
          assert(handshake_msg.size() == 136);
          return handshake_msg;
@@ -320,14 +318,14 @@ QByteArray Peer_wire_client::craft_reject_message(const std::int32_t piece_idx,c
          using util::conversion::convert_to_hex;
 
          auto reject_message = []{
-                  constexpr qint32_be reject_msg_size(13);
+                  constexpr auto reject_msg_size = 13;
                   return convert_to_hex(reject_msg_size);
          }();
 
          reject_message += convert_to_hex(static_cast<std::int8_t>(Message_Id::Reject_Request));
-         reject_message += convert_to_hex(static_cast<qint32_be>(piece_idx));
-         reject_message += convert_to_hex(static_cast<qint32_be>(piece_offset));
-         reject_message += convert_to_hex(static_cast<qint32_be>(byte_cnt));
+         reject_message += convert_to_hex(piece_idx);
+         reject_message += convert_to_hex(piece_offset);
+         reject_message += convert_to_hex(byte_cnt);
 
          assert(reject_message.size() == 26);
          return reject_message;
@@ -338,13 +336,13 @@ QByteArray Peer_wire_client::craft_piece_message(const QByteArray & piece_data,c
          using util::conversion::convert_to_hex;
 
          auto piece_msg = [piece_size = piece_data.size()]{
-                  const qint32_be piece_msg_size(9 + static_cast<std::int32_t>(piece_size));
+                  const auto piece_msg_size = 9 + static_cast<std::int32_t>(piece_size);
                   return convert_to_hex(piece_msg_size);
          }();
          
          piece_msg += convert_to_hex(static_cast<std::int8_t>(Message_Id::Piece));
-         piece_msg += convert_to_hex(static_cast<qint32_be>(piece_idx));
-         piece_msg += convert_to_hex(static_cast<qint32_be>(offset));
+         piece_msg += convert_to_hex(piece_idx);
+         piece_msg += convert_to_hex(offset);
          assert(piece_msg.size() == 26);
          piece_msg += piece_data.toHex();
          
@@ -356,7 +354,7 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 
          auto bitfield_msg = [&bitfield]{
                   assert(bitfield.size() % 8 == 0);
-                  const qint32_be bitfield_msg_size(1 + static_cast<std::int32_t>(bitfield.size()) / 8);
+                  const auto bitfield_msg_size = 1 + static_cast<std::int32_t>(bitfield.size() / 8);
                   return util::conversion::convert_to_hex(bitfield_msg_size);
          }();
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <QNetworkAccessManager>
 #include <QSettings>

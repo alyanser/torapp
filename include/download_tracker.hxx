@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <QStackedWidget>
 #include <QFormLayout>
@@ -90,13 +90,13 @@ private:
          QLabel ul_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + " hh::mm::ss"};
-         QLabel dl_speed_label_{"0 bytes/sec"};
+         QLabel dl_speed_label_{"0 byte (s) / sec"};
          QPushButton finish_button_{"Finish"};
          QPushButton cancel_button_{"Cancel"};
          QPushButton open_button_{"Open"};
          QPushButton retry_button_{"Retry"};
          QPushButton delete_button_{"Delete"};
-         QPushButton open_dir_button_{"Open directory"};
+         QPushButton open_dir_button_{"Open in directory"};
          QProgressBar dl_progress_bar_;
          QProgressBar verify_progress_bar_;
          QTimer refresh_timer_;
@@ -171,8 +171,10 @@ inline void Download_tracker::setup_state_holder() noexcept {
          state_holder_.addWidget(&dl_progress_bar_);
          state_holder_.addWidget(&verify_progress_bar_);
          state_holder_.addWidget(&finish_line_);
+
          dl_progress_bar_.setMinimum(0);
          dl_progress_bar_.setValue(0);
+         
          finish_line_.setAlignment(Qt::AlignCenter);
          assert(state_holder_.currentWidget() == &dl_progress_bar_);
 }

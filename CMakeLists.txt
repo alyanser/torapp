@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(torapp)
 
-set(CMAKE_CXX_COMPILER "clang++-13")
+set(CMAKE_CXX_COMPILER "g++-11")
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
@@ -75,5 +75,4 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QSettings"]]
          [["QFileInfo"]]
          [["QCryptographicHash"]]
-         [["iostream"]]
 )

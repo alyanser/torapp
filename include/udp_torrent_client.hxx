@@ -2,7 +2,7 @@
 
 #include "udp_socket.hxx"
 #include "peer_wire_client.hxx"
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <bencode_parser.hxx>
 #include <QCryptographicHash>
@@ -82,7 +82,7 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
 
          if(torrent_metadata_.announce_url_list.empty()){
                   assert(!torrent_metadata_.announce_url.empty());
-                  torrent_metadata_.announce_url_list.push_back(torrent_metadata_.announce_url);
+                  torrent_metadata_.announce_url_list.emplace_back(torrent_metadata_.announce_url);
          }
 }
 
@@ -101,4 +101,15 @@ inline std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const
 
          constexpr auto error_offset = 8;
          return response.sliced(error_offset);
+}
+
+[[nodiscard]]
+inline std::optional<std::int64_t> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::int32_t sent_txn_id){
+
+         if(!verify_txn_id(response,sent_txn_id)){
+                  return {};
+         }
+
+         constexpr auto connection_id_offset = 8;
+         return util::extract_integer<std::int64_t>(response,connection_id_offset);
 }

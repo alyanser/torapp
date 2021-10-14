@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utility.hxx"
+#include "util.hxx"
 
 #include <QUdpSocket>
 #include <QTimer>
@@ -80,7 +80,6 @@ inline void Udp_socket::send_request(const QByteArray & request) noexcept {
 inline void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          const auto raw_packet = QByteArray::fromHex(hex_packet);
          write(raw_packet);
-
          constexpr auto txn_id_offset = 12;
          txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
 }

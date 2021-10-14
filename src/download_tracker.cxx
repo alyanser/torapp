@@ -132,7 +132,6 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
          dl_quantity_label_.setText(text_fmt);
 
          using util::conversion::convert_to_percentile;
-         assert(total_byte_cnt);
          dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : " " + QString::number(convert_to_percentile(received_byte_cnt,total_byte_cnt)) + "%"));
 }
 

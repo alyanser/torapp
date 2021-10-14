@@ -42,14 +42,14 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          using util::conversion::convert_to_hex;
 
          QByteArray connect_request = []{
-                  constexpr qint64_be protocol_constant(0x41727101980);
+                  constexpr auto protocol_constant = 0x41727101980;
                   return convert_to_hex(protocol_constant);
          }();
 
-         connect_request += convert_to_hex(static_cast<qint32_be>(static_cast<std::int32_t>(Action_Code::Connect)));
+         connect_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Connect));
 
          connect_request += []{
-                  const qint32_be txn_id(random_id_range(random_generator));
+                  const auto txn_id = random_id_range(random_generator);
                   return convert_to_hex(txn_id);
          }();
 
@@ -60,38 +60,35 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
 QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker_connection_id) const noexcept {
          using util::conversion::convert_to_hex;
          
-         QByteArray announce_request = convert_to_hex(static_cast<qint64_be>(tracker_connection_id));
-         announce_request += convert_to_hex(static_cast<qint32_be>(static_cast<std::int32_t>(Action_Code::Announce)));
+         auto announce_request = convert_to_hex(tracker_connection_id);
+         announce_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Announce));
 
          announce_request += []{
-                  const qint32_be txn_id(random_id_range(random_generator));
+                  const auto txn_id = random_id_range(random_generator);
                   return convert_to_hex(txn_id);
          }();
 
          announce_request += info_sha1_hash_;
          announce_request += id;
-         announce_request += convert_to_hex(static_cast<qint64_be>(peer_client_.downloaded_byte_count()));
-         announce_request += convert_to_hex(static_cast<qint64_be>(peer_client_.remaining_byte_count()));
-         announce_request += convert_to_hex(static_cast<qint64_be>(peer_client_.uploaded_byte_count()));
-         announce_request += convert_to_hex(static_cast<qint32_be>(static_cast<std::int32_t>(event_)));
+         announce_request += convert_to_hex(peer_client_.downloaded_byte_count());
+         announce_request += convert_to_hex(peer_client_.remaining_byte_count());
+         announce_request += convert_to_hex(peer_client_.uploaded_byte_count());
+         announce_request += convert_to_hex(static_cast<std::int32_t>(event_));
 
          announce_request += []{
                   constexpr auto default_ip_address = 0;
                   return convert_to_hex(default_ip_address);
          }();
 
-         announce_request += []{
-                  const qint32_be random_key(random_id_range(random_generator));
-                  return convert_to_hex(random_key);
-         }();
+         announce_request += convert_to_hex(random_id_range(random_generator)); // random peer key
 
          announce_request += []{
-                  constexpr qint32_be default_num_want(-1);
+                  constexpr auto default_num_want = -1;
                   return convert_to_hex(default_num_want);
          }();
 
          announce_request += []{
-                  constexpr qint32_be default_port(6881);
+                  constexpr std::uint16_t default_port = 6889;
                   return convert_to_hex(default_port);
          }();
 
@@ -102,12 +99,12 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
 QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const std::int64_t tracker_connection_id) noexcept {
          using util::conversion::convert_to_hex;
          
-         auto scrape_request = convert_to_hex(static_cast<qint64_be>(tracker_connection_id));
+         auto scrape_request = convert_to_hex(tracker_connection_id);
 
-         scrape_request += convert_to_hex(static_cast<qint32_be>(static_cast<std::int32_t>(Action_Code::Scrape)));
+         scrape_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Scrape));
 
          scrape_request += []{
-                  const qint32_be txn_id(random_id_range(random_generator));
+                  const auto txn_id = random_id_range(random_generator);
                   return convert_to_hex(txn_id);
          }();
 
@@ -171,6 +168,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                   }();
 
                   switch(tracker_action){
+
                            case Action_Code::Connect : {
                                     on_tracker_action_connect(response); 
                                     break;
@@ -200,17 +198,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
          }
 
          assert(!socket->bytesAvailable());
-}
-
-[[nodiscard]]
-std::optional<std::int64_t> Udp_torrent_client::extract_connect_response(const QByteArray & response,const std::int32_t sent_txn_id){
-
-         if(!verify_txn_id(response,sent_txn_id)){
-                  return {};
-         }
-         
-         constexpr auto connection_id_offset = 8;
-         return util::extract_integer<std::int64_t>(response,connection_id_offset);
 }
 
 [[nodiscard]]
