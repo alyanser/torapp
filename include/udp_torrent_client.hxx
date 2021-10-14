@@ -17,7 +17,6 @@ public:
                   Announce,
                   Scrape,
                   Error,
-                  Invalid
          };
 
          enum class Download_Event {
@@ -67,7 +66,7 @@ private:
          bencode::Metadata torrent_metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
-         Download_tracker * tracker_ = nullptr;
+         Download_tracker * const tracker_ = nullptr;
          Download_Event event_{Download_Event::None};
 };
 

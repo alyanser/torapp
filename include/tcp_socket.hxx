@@ -26,6 +26,11 @@ public:
          bool am_interested = false;
          bool peer_interested = false;
          bool fast_ext_enabled = false;
+
+         void abort(){
+                  qInfo() << "aborting ourself";
+                  QTcpSocket::abort();
+         }
 signals:
          void got_choked() const;
          void request_rejected() const;

@@ -7,7 +7,8 @@
 
 void Udp_torrent_client::configure_default_connections() noexcept {
 
-         connect(this,&Udp_torrent_client::announce_response_received,&peer_client_,[&peer_client_ = peer_client_](const Announce_response & response){
+         connect(this,&Udp_torrent_client::announce_response_received,[&peer_client_ = peer_client_,&event_ = event_](const Announce_response & response){
+                  event_ = Download_Event::Started;
                   assert(!response.peer_urls.empty());
                   peer_client_.connect_to_peers(response.peer_urls);
          });
@@ -228,7 +229,7 @@ std::optional<Udp_torrent_client::Announce_response> Udp_torrent_client::extract
                            const auto peer_port = util::extract_integer<std::uint16_t>(response,idx + ip_byte_cnt);
 
                            auto & url = ret_peer_urls.emplace_back();
-                           
+
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
                   }

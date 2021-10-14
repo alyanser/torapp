@@ -94,7 +94,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          network_form_layout_.addRow("Download Speed",&dl_speed_label_);
          network_form_layout_.addRow("Downloaded",&dl_quantity_label_);
-         network_form_layout_.addRow("Uploaded",&ul_quantity_label_);
+         network_form_layout_.addRow("Uploaded (Session)",&ul_quantity_label_);
 
          network_stat_layout_.addWidget(&delete_button_);
          network_stat_layout_.addWidget(&initiate_buttons_holder_);

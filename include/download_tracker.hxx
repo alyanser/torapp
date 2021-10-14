@@ -47,7 +47,7 @@ public:
          void set_error_and_finish(const QString & custom_error) noexcept;
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt = -1) noexcept;
          void verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept;
-         void upload_progress_update(std::int64_t send_byte_cnt,std::int64_t total_byte_cnt) noexcept;
+         void upload_progress_update(std::int64_t uled_byte_cnt) noexcept;
          void switch_to_finished_state() noexcept;
 signals:
          void retry_download(const QString & file_path,const QUrl & url) const;
@@ -87,7 +87,7 @@ private:
          QLabel dl_path_buddy_{"Path:"};
          QLabel dl_path_label;
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
-         QLabel ul_quantity_label_{"0 byte (s) / 0 byte (s)"};
+         QLabel ul_quantity_label_{"0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + " hh::mm::ss"};
          QLabel dl_speed_label_{"0 byte (s) / sec"};
@@ -102,7 +102,6 @@ private:
          QTimer refresh_timer_;
          std::int64_t dl_byte_offset_ = 0;
          std::int64_t dled_byte_cnt_ = 0;
-         std::int64_t uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t restored_byte_cnt_ = 0;
          State state_{State::Download};
@@ -128,8 +127,9 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
          switch_to_finished_state();
 }
 
-inline void Download_tracker::upload_progress_update(const std::int64_t send_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         ul_quantity_label_.setText(util::conversion::stringify_bytes(send_byte_cnt,total_byte_cnt));
+inline void Download_tracker::upload_progress_update(const std::int64_t uled_byte_cnt) noexcept {
+         const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Conversion_Format::Memory);
+         ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
 }
 
 [[nodiscard]]

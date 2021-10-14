@@ -80,20 +80,20 @@ private:
          void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
          void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
+         void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
-         static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & response);
+         void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
+         static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & response);
          void extract_peer_response(const QByteArray & peer_response) const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset = 0) const noexcept;
-         void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
-         void verify_existing_pieces() noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
