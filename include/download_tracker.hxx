@@ -56,6 +56,8 @@ signals:
          void move_file_to_trash() const;
          void request_satisfied() const;
          void download_dropped() const;
+         void download_paused() const;
+         void download_resumed() const;
 private:
          explicit Download_tracker(const QString & dl_path,QWidget * parent = nullptr);
 
@@ -63,7 +65,7 @@ private:
          void configure_default_connections() noexcept;
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
-         void setup_state_holder() noexcept;
+         void setup_state_stack() noexcept;
          void update_error_line() noexcept;
          void update_download_speed() noexcept;
          ///
@@ -77,9 +79,10 @@ private:
          QHBoxLayout time_elapsed_layout_;
          QHBoxLayout dl_speed_layout_;
          QFormLayout network_form_layout_;
-         QStackedWidget state_holder_;
-         QStackedWidget terminate_buttons_holder_;
-         QStackedWidget initiate_buttons_holder_;
+         QStackedWidget state_stack_;
+         QStackedWidget terminate_button_stack_;
+         QStackedWidget initiate_button_stack_;
+         QStackedWidget state_button_stack_;
          QTime time_elapsed_{0,0,0};
          QLineEdit finish_line_;
          QLabel package_name_buddy_{"Name:"};
@@ -97,6 +100,8 @@ private:
          QPushButton retry_button_{"Retry"};
          QPushButton delete_button_{"Delete"};
          QPushButton open_dir_button_{"Open in directory"};
+         QPushButton pause_button_{"Pause"};
+         QPushButton resume_button_{"Resume"};
          QProgressBar dl_progress_bar_;
          QProgressBar verify_progress_bar_;
          QTimer refresh_timer_;
@@ -145,16 +150,16 @@ inline void Download_tracker::set_state(const State state) noexcept {
 
          if(state_ == State::Download){
                   refresh_timer_.start(std::chrono::seconds(1));
-                  state_holder_.setCurrentWidget(&dl_progress_bar_);
+                  state_stack_.setCurrentWidget(&dl_progress_bar_);
          }else{
                   assert(state_ == State::Verification);
-                  state_holder_.setCurrentWidget(&verify_progress_bar_);
+                  state_stack_.setCurrentWidget(&verify_progress_bar_);
          }
 }
 
 inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);
-         central_layout_.addWidget(&state_holder_);
+         central_layout_.addWidget(&state_stack_);
          central_layout_.addLayout(&network_stat_layout_);
 }
 
@@ -166,16 +171,16 @@ inline void Download_tracker::update_download_speed() noexcept {
          dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
 
-inline void Download_tracker::setup_state_holder() noexcept {
-         state_holder_.addWidget(&dl_progress_bar_);
-         state_holder_.addWidget(&verify_progress_bar_);
-         state_holder_.addWidget(&finish_line_);
+inline void Download_tracker::setup_state_stack() noexcept {
+         state_stack_.addWidget(&dl_progress_bar_);
+         state_stack_.addWidget(&verify_progress_bar_);
+         state_stack_.addWidget(&finish_line_);
 
          dl_progress_bar_.setMinimum(0);
          dl_progress_bar_.setValue(0);
          
          finish_line_.setAlignment(Qt::AlignCenter);
-         assert(state_holder_.currentWidget() == &dl_progress_bar_);
+         assert(state_stack_.currentWidget() == &dl_progress_bar_);
 }
 
 inline void Download_tracker::verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept {

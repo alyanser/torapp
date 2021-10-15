@@ -108,13 +108,14 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
          if(offset + byte_cnt > raw_data.size()){
+                  __builtin_unreachable();
                   throw std::out_of_range("extraction out of bounds");
          }
 
          const auto hex_fmt = raw_data.sliced(offset,byte_cnt).toHex();
          constexpr auto hex_base = 16;
          bool conversion_success = true;
-         const auto result = static_cast<result_type>(raw_data.sliced(offset,byte_cnt).toHex().toULongLong(&conversion_success,hex_base));
+         const auto result = static_cast<result_type>(hex_fmt.toULongLong(&conversion_success,hex_base));
 
          if(!conversion_success){
                   assert(!result);

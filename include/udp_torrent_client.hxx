@@ -26,6 +26,8 @@ public:
                   Completed
          };
 
+         Q_ENUM(Download_Event);
+
          struct Swarm_metadata {
                   std::int32_t seed_cnt = 0;
                   std::int32_t completed_cnt = 0;
@@ -114,7 +116,7 @@ inline std::optional<std::int64_t> Udp_torrent_client::extract_connect_response(
 }
 
 [[nodiscard]]
-inline bool Udp_torrent_client::verify_txn_id(const QByteArray & response,std::int32_t sent_txn_id){
+inline bool Udp_torrent_client::verify_txn_id(const QByteArray & response,const std::int32_t sent_txn_id){
          constexpr auto txn_id_offset = 4;
          const auto received_txn_id = util::extract_integer<std::int32_t>(response,txn_id_offset);
          return sent_txn_id == received_txn_id;

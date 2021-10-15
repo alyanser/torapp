@@ -12,7 +12,7 @@ Download_tracker::Download_tracker(const QString & dl_path,QWidget * const paren
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
-         setup_state_holder();
+         setup_state_stack();
          update_error_line();
          configure_default_connections();
 
@@ -97,14 +97,18 @@ void Download_tracker::setup_network_status_layout() noexcept {
          network_form_layout_.addRow("Uploaded (Session)",&ul_quantity_label_);
 
          network_stat_layout_.addWidget(&delete_button_);
-         network_stat_layout_.addWidget(&initiate_buttons_holder_);
-         network_stat_layout_.addWidget(&terminate_buttons_holder_);
+         network_stat_layout_.addWidget(&state_button_stack_);
+         network_stat_layout_.addWidget(&initiate_button_stack_);
+         network_stat_layout_.addWidget(&terminate_button_stack_);
 
-         initiate_buttons_holder_.addWidget(&open_button_);
-         initiate_buttons_holder_.addWidget(&retry_button_);
+         initiate_button_stack_.addWidget(&open_button_);
+         initiate_button_stack_.addWidget(&retry_button_);
 
-         terminate_buttons_holder_.addWidget(&cancel_button_);
-         terminate_buttons_holder_.addWidget(&finish_button_);
+         terminate_button_stack_.addWidget(&cancel_button_);
+         terminate_button_stack_.addWidget(&finish_button_);
+
+         state_button_stack_.addWidget(&pause_button_);
+         state_button_stack_.addWidget(&resume_button_);
 }
 
 void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
@@ -139,6 +143,16 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::download_dropped);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+
+         connect(&pause_button_,&QPushButton::clicked,this,[this]{
+                  state_button_stack_.setCurrentWidget(&resume_button_);
+                  emit download_paused();
+         });
+
+         connect(&resume_button_,&QPushButton::clicked,this,[this]{
+                  state_button_stack_.setCurrentWidget(&pause_button_);
+                  emit download_resumed();
+         });
 
          connect(&delete_button_,&QPushButton::clicked,this,[this]{
                   QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::Button::NoButton);
@@ -180,11 +194,11 @@ void Download_tracker::configure_default_connections() noexcept {
 void Download_tracker::switch_to_finished_state() noexcept {
          refresh_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
-         state_holder_.setCurrentWidget(&finish_line_);
-         terminate_buttons_holder_.setCurrentWidget(&finish_button_);
+         state_stack_.setCurrentWidget(&finish_line_);
+         terminate_button_stack_.setCurrentWidget(&finish_button_);
          
          if(static_cast<bool>(error_)){
-                  initiate_buttons_holder_.setCurrentWidget(&retry_button_);
+                  initiate_button_stack_.setCurrentWidget(&retry_button_);
          }else{
                   assert(!delete_button_.isEnabled());
                   assert(!open_button_.isEnabled());

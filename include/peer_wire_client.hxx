@@ -42,8 +42,9 @@ public:
 
          void connect_to_peers(const QList<QUrl> & peer_urls) noexcept;
 signals:
-         void piece_downloaded(std::int32_t piece_idx) const;
+         void piece_verified(std::int32_t piece_idx) const;
          void existing_pieces_verified() const;
+         void download_paused() const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;
@@ -79,6 +80,7 @@ private:
          void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
+         void on_socket_connected(Tcp_socket * socket) noexcept;
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
          void verify_existing_pieces() noexcept;
@@ -102,8 +104,7 @@ private:
          constexpr static std::string_view have_all_msg{"000000010E"};
          constexpr static std::string_view have_none_msg{"000000010F"};
          constexpr static auto max_block_size = 1 << 14;
-         constexpr static std::string_view reserved_bytes{"0000000000000004"};
-
+         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bit
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;

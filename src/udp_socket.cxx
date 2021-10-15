@@ -44,7 +44,7 @@ void Udp_socket::configure_default_connections() noexcept {
                   }else{
                            //todo alert the tracker about connection timeout
                            connection_timer_.stop();
-                           disconnectFromHost();
+                           abort();
                   }
          });
 }

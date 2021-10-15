@@ -13,7 +13,7 @@ public:
          explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
 
          void reset_disconnect_timer() noexcept;
-         std::optional<std::pair<std::int32_t,QByteArray>> receive_packet();
+         std::optional<std::pair<std::int32_t,QByteArray>> receive_packet() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
          ///
@@ -26,11 +26,6 @@ public:
          bool am_interested = false;
          bool peer_interested = false;
          bool fast_ext_enabled = false;
-
-         void abort(){
-                  qDebug() << "aborting ourself";
-                  QTcpSocket::abort();
-         }
 signals:
          void got_choked() const;
          void request_rejected() const;
@@ -38,13 +33,14 @@ signals:
 private:
          void configure_default_connections() noexcept;
          ///
+         std::pair<std::optional<std::int32_t>,QByteArray> buffer_;
          QTimer disconnect_timer_;
          QUrl peer_url_;
 };
 
-inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent) 
+inline Tcp_socket::Tcp_socket(const  QUrl peer_url,QObject * const parent) 
          : QTcpSocket(parent)
-         , peer_url_(std::move(peer_url))
+         , peer_url_(peer_url)
 {
          configure_default_connections();
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
@@ -54,44 +50,56 @@ inline Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent)
 }
 
 [[nodiscard]]
-inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet(){
-
-         if(constexpr auto min_response_size = 4;bytesAvailable() < min_response_size){
-                  return {};
-         }
-
+inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet() noexcept {
          assert(handshake_done);
-         reset_disconnect_timer();
-         startTransaction();
+         auto & msg_size = buffer_.first;
          
-         const auto msg_size = [this]() -> std::optional<std::int32_t> {
+         if(!msg_size){
                   constexpr auto len_byte_cnt = 4;
-                  const auto size_buffer = read(len_byte_cnt);
 
-                  if(size_buffer.size() < len_byte_cnt){
+                  if(bytesAvailable() < len_byte_cnt){
                            return {};
                   }
 
-                  constexpr auto size_offset = 0;
-                  return util::extract_integer<std::int32_t>(size_buffer,size_offset);
-         }();
+                  startTransaction();
+                  const auto size_buffer = read(len_byte_cnt);
+                  assert(size_buffer.size() == len_byte_cnt);
 
-         if(!msg_size){
-                  rollbackTransaction();
-                  return {};
+                  try{
+                           msg_size = util::extract_integer<std::int32_t>(size_buffer,0);
+                  }catch(const std::exception & exception){
+                           qDebug() << exception.what();
+                           rollbackTransaction();
+                           assert(!msg_size);
+                           return {};
+                  }
+                  
+                  commitTransaction();
          }
+
+         assert(msg_size);
 
          if(!*msg_size){ // keep alive packet
-                  commitTransaction();
+                  qDebug() << "Keep alive packet";
+                  msg_size.reset();
                   return {};
          }
 
-         if(auto msg = read(*msg_size);msg.size() == *msg_size){
-                  commitTransaction();
-                  return std::make_pair(*msg_size,std::move(msg));
+         auto & buffer_data = buffer_.second;
+
+         if(buffer_data.capacity() != *msg_size){
+                  buffer_data.reserve(*msg_size);
          }
 
-         rollbackTransaction();
+         assert(buffer_data.size() < *msg_size);
+
+         if(buffer_data += read(*msg_size - buffer_data.size());buffer_data.size() == *msg_size){
+                  assert(buffer_data.size());
+                  const auto packet_size = *msg_size;
+                  msg_size.reset();
+                  return std::make_pair(packet_size,std::move(buffer_data));
+         }
+
          return {};
 }
 
@@ -116,7 +124,7 @@ inline void Tcp_socket::configure_default_connections() noexcept {
 
          disconnect_timer_.callOnTimeout(this,[this]{
                   qDebug() << "connection timed out" << peer_id;
-                  state() == SocketState::ConnectedState ? disconnectFromHost() : deleteLater();
+                  state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
          });
 }
 
