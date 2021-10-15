@@ -71,7 +71,7 @@ void Url_input_dialog::on_input_received() noexcept {
                   constexpr std::string_view error_body("URL field cannot be empty");
 
                   QMessageBox::critical(this,error_title.data(),error_body.data());
-                  return reject();
+                  return;
          }
          
          if(!url.isValid()){
@@ -83,14 +83,14 @@ void Url_input_dialog::on_input_received() noexcept {
                   }
 
                   QMessageBox::critical(this,"Invalid URL",error_body.arg(error_reason));
-                  return reject();
+                  return;
          }
 
          auto dir_path = path_line_.text().simplified();
 
          if(dir_path.isEmpty()){
                   QMessageBox::critical(this,"Invalid Path","Path field cannot be empty");
-                  return reject();
+                  return;
          }
 
          if(dir_path.back() != '/'){
@@ -107,7 +107,7 @@ void Url_input_dialog::on_input_received() noexcept {
                            constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
 
                            QMessageBox::critical(this,error_title.data(),error_body.data());
-                           return reject();
+                           return;
                   }
 
                   package_name = std::move(package_name_replacement);
@@ -120,7 +120,7 @@ void Url_input_dialog::on_input_received() noexcept {
                   const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
                   if(response_button == QMessageBox::No){
-                           return reject();
+                           return;
                   }
          }
 
@@ -129,7 +129,6 @@ void Url_input_dialog::on_input_received() noexcept {
          assert(dir_path.back() == '/');
 
          accept();
-
          // todo: add more options if temp already exists
          emit new_request_received(dir_path + (url.fileName().isEmpty() ? "temp" : url.fileName()),url);
 }

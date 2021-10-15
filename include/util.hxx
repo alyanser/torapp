@@ -51,7 +51,7 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
          const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),Conversion_Format::Memory);
 
          auto converted_str = QString("%1 %2 / %3 %4").arg(converted_received_byte_cnt).arg(received_bytes_postfix.data());
-         converted_str = converted_str.arg(converted_total_byte_cnt).arg(total_bytes_postfix.data());
+         converted_str = converted_str.arg(total_bytes_postfix == "inf" ? "" : QString::number(converted_total_byte_cnt)).arg(total_bytes_postfix.data());
          
          return converted_str;
 }

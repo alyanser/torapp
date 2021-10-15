@@ -28,7 +28,7 @@ public:
          bool fast_ext_enabled = false;
 
          void abort(){
-                  qInfo() << "aborting ourself";
+                  qDebug() << "aborting ourself";
                   QTcpSocket::abort();
          }
 signals:

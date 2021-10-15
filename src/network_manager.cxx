@@ -18,7 +18,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   return std::make_tuple(std::move(download_path),file_handles.front(),download_tracker);
          }();
 
-         tracker->set_downloaded_bytes_offset(file_handle->size());
+         tracker->set_restored_byte_count(file_handle->size());
          tracker->download_progress_update(0,-1);
 
          const QPointer network_reply = [this,url,file_handle = file_handle]{

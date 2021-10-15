@@ -3,7 +3,6 @@
 #include "util.hxx"
 
 #include <bencode_parser.hxx>
-#include <QCryptographicHash>
 #include <QBitArray>
 #include <QObject>
 #include <QTimer>
@@ -59,7 +58,6 @@ private:
                   std::int32_t total_block_cnt = 0;
          };
 
-         std::int32_t get_target_piece_idx() const noexcept;
          std::int32_t get_piece_size(std::int32_t piece_idx) const noexcept;
 
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
@@ -112,7 +110,6 @@ private:
          QList<std::int64_t> torrent_file_sizes_;
          QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
-         QSet<std::int32_t> rem_pieces_;
          QTimer acquire_piece_timer_;
          bencode::Metadata & torrent_metadata_;
          Download_tracker * const tracker_ = nullptr;
@@ -142,13 +139,6 @@ constexpr std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
 [[nodiscard]]
 constexpr std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
          return total_byte_cnt_ - dled_byte_cnt_;
-}
-
-[[nodiscard]]
-inline std::int32_t Peer_wire_client::get_target_piece_idx() const noexcept {
-         // todo: actually randomize the order
-         assert(!rem_pieces_.empty());
-         return *rem_pieces_.constBegin();
 }
 
 [[nodiscard]]

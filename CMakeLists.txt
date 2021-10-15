@@ -6,12 +6,6 @@ set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=undefined,address -fno-omit-frame-pointer")
-
-add_compile_options(-Wall -Wextra -pedantic -Wshadow -Wconversion)
-
-set(CMAKE_AUTOMOC on)
-
 set(SOURCES
          src/main.cxx
          src/main_window.cxx
@@ -37,7 +31,15 @@ set(MOC_INCLUDES
          include/file_manager.hxx
 )
 
+set(CMAKE_AUTOMOC on)
+
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+         -Wall -Wextra -pedantic -Wshadow -Wconversion
+)
+
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
          "include"

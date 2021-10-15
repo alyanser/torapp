@@ -39,7 +39,7 @@ public:
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
          constexpr Error error() const noexcept;
-         constexpr void set_downloaded_bytes_offset(std::int64_t dl_byte_offset) noexcept;
+         constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
 
          void set_state(State state) noexcept;
          std::int32_t get_elapsed_seconds() const noexcept;
@@ -100,7 +100,6 @@ private:
          QProgressBar dl_progress_bar_;
          QProgressBar verify_progress_bar_;
          QTimer refresh_timer_;
-         std::int64_t dl_byte_offset_ = 0;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t restored_byte_cnt_ = 0;
@@ -137,8 +136,8 @@ constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 
-constexpr void Download_tracker::set_downloaded_bytes_offset(const std::int64_t dl_byte_offset) noexcept {
-         dl_byte_offset_ = dl_byte_offset;
+constexpr void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
+         restored_byte_cnt_ = restored_byte_cnt;
 }
 
 inline void Download_tracker::set_state(const State state) noexcept {

@@ -108,7 +108,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
 }
 
 void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         received_byte_cnt += dl_byte_offset_;
+         received_byte_cnt += restored_byte_cnt_;
          dled_byte_cnt_ = received_byte_cnt;
          total_byte_cnt_ = total_byte_cnt;
 
