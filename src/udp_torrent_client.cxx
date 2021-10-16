@@ -26,7 +26,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                   auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
                   
                   connect(socket,&Udp_socket::readyRead,this,[this,socket]{
-                           
+
                            try {
                                     on_socket_ready_read(socket);
                            }catch(const std::exception & exception){
@@ -119,11 +119,7 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
          while(socket->hasPendingDatagrams()){
                   const auto response = socket->receiveDatagram().data();
-
-                  const auto tracker_action = [&response]{
-                           constexpr auto action_offset = 0;
-                           return static_cast<Action_Code>(util::extract_integer<std::int32_t>(response,action_offset));
-                  }();
+                  const auto tracker_action = static_cast<Action_Code>(util::extract_integer<std::int32_t>(response,0));
 
                   switch(tracker_action){
                            case Action_Code::Connect : {

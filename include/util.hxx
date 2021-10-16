@@ -126,7 +126,7 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
 }
 
 struct Download_resources {
-         QString file_path;
+         QString dl_path;
          QList<QFile *> file_handles;
          Download_tracker * tracker = nullptr;
 };

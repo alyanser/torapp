@@ -5,8 +5,8 @@
 #include <QMessageBox>
 #include <QDir>
 
-Download_tracker::Download_tracker(const QString & dl_path,QWidget * const parent) 
-         : QWidget(parent)
+Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
+         : QWidget(parent), dl_path_(dl_path),dl_type_(dl_type)
 {
          setMaximumHeight(200);
          setup_layout();
@@ -19,6 +19,9 @@ Download_tracker::Download_tracker(const QString & dl_path,QWidget * const paren
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
          dl_progress_bar_.setTextVisible(true);
+         dl_path_label_.setText(dl_path_);
+
+         read_settings();
 
          connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
                   assert(dl_path.lastIndexOf('/') != -1);
@@ -40,29 +43,28 @@ Download_tracker::Download_tracker(const QString & dl_path,QWidget * const paren
          });
 }
 
-Download_tracker::Download_tracker(const QString & path,const QUrl url,QWidget * const parent) 
-         : Download_tracker(path,parent)
+Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidget * const parent) 
+         : Download_tracker(dl_path,Download_Type::Url,parent)
 {
          assert(!url.isEmpty());
-         assert(!path.isEmpty());
+         assert(!dl_path.isEmpty());
          
          package_name_label_.setText(url.fileName());
          refresh_timer_.start(std::chrono::seconds(1));
-         dl_path_label.setText(path);
 
-         connect(&retry_button_,&QPushButton::clicked,this,[this,path,url]{
-                  emit retry_download(path,url);
+         connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,url]{
+                  emit retry_download(dl_path,url);
                   emit request_satisfied();
          });
 }
 
-Download_tracker::Download_tracker(const QString & path,bencode::Metadata torrent_metadata,QWidget * const parent) 
-         : Download_tracker(path,parent)
+Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * const parent) 
+         : Download_tracker(dl_path,Download_Type::Torrent,parent)
 {
          package_name_label_.setText(torrent_metadata.name.data());
 
-         connect(&retry_button_,&QPushButton::clicked,this,[this,path,torrent_metadata = std::move(torrent_metadata)]{
-                  emit retry_download(path,torrent_metadata);
+         connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,torrent_metadata = std::move(torrent_metadata)]{
+                  emit retry_download(dl_path,torrent_metadata);
                   emit request_satisfied();
          });
 }
@@ -77,9 +79,9 @@ void Download_tracker::setup_file_status_layout() noexcept {
          package_name_buddy_.setBuddy(&package_name_label_);
 
          dl_path_layout_.addWidget(&dl_path_buddy_);
-         dl_path_layout_.addWidget(&dl_path_label);
+         dl_path_layout_.addWidget(&dl_path_label_);
          dl_path_layout_.addWidget(&open_dir_button_);
-         dl_path_buddy_.setBuddy(&dl_path_label);
+         dl_path_buddy_.setBuddy(&dl_path_label_);
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
@@ -137,6 +139,65 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
 
          using util::conversion::convert_to_percentile;
          dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : " " + QString::number(convert_to_percentile(received_byte_cnt,total_byte_cnt)) + "%"));
+}
+
+
+void Download_tracker::set_state(const State state) noexcept {
+         state_ = state;
+
+         if(state_ == State::Download){
+                  refresh_timer_.start(std::chrono::seconds(1));
+                  state_stack_.setCurrentWidget(&dl_progress_bar_);
+         }else{
+                  assert(state_ == State::Verification);
+                  state_stack_.setCurrentWidget(&verify_progress_bar_);
+         }
+}
+
+void Download_tracker::update_download_speed() noexcept {
+         assert(dled_byte_cnt_ >= restored_byte_cnt_);
+         assert(get_elapsed_seconds() > 0);
+         const auto speed = (dled_byte_cnt_ - restored_byte_cnt_) / get_elapsed_seconds();
+         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Conversion_Format::Speed);
+         dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
+}
+
+void Download_tracker::setup_state_stack() noexcept {
+         state_stack_.addWidget(&dl_progress_bar_);
+         state_stack_.addWidget(&verify_progress_bar_);
+         state_stack_.addWidget(&finish_line_);
+
+         dl_progress_bar_.setMinimum(0);
+         dl_progress_bar_.setValue(0);
+         
+         finish_line_.setAlignment(Qt::AlignCenter);
+         assert(state_stack_.currentWidget() == &dl_progress_bar_);
+}
+
+void Download_tracker::verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept {
+         assert(total_asset_cnt);
+         assert(state_ == State::Verification);
+         verify_progress_bar_.setValue(verified_asset_cnt);
+         verify_progress_bar_.setMaximum(total_asset_cnt);
+         verify_progress_bar_.setFormat("Verifying " + QString::number(util::conversion::convert_to_percentile(verified_asset_cnt,total_asset_cnt)) + "%");
+}
+
+void Download_tracker::write_settings() const noexcept {
+         QSettings settings;
+         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
+         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+         settings.setValue("time_elapsed",QVariant::fromValue(time_elapsed_));
+}
+
+void Download_tracker::read_settings() noexcept {
+         QSettings settings;
+         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
+         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+
+         if(settings.contains("time_elapsed")){
+                  time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
+                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+         }
 }
 
 void Download_tracker::configure_default_connections() noexcept {

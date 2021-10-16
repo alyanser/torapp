@@ -20,6 +20,7 @@ public:
          QBitArray peer_bitfield;
          QByteArray peer_id;
          QSet<std::int32_t> pending_pieces;
+         QSet<std::int32_t> fast_pieces;
          bool handshake_done = false;
          bool am_choking = true;
          bool peer_choked = true;
@@ -51,9 +52,13 @@ inline Tcp_socket::Tcp_socket(const  QUrl peer_url,QObject * const parent)
 
 [[nodiscard]]
 inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet() noexcept {
-         assert(handshake_done);
          auto & msg_size = buffer_.first;
-         
+
+         if(!handshake_done && !msg_size){
+                  constexpr auto protocol_handshake_msg_size = 68;
+                  msg_size = protocol_handshake_msg_size;
+         }
+
          if(!msg_size){
                   constexpr auto len_byte_cnt = 4;
 

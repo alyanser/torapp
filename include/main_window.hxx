@@ -31,26 +31,23 @@ protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
          template<typename dl_metadata_type>
-         void add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) noexcept;
+         void add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept;
          
          template<typename dl_metadata_type>
-         void remove_dl_from_settings(const QString & file_path) noexcept;
+         void remove_dl_from_settings(const QString & file_path) const noexcept;
 
          template<typename dl_metadata_type>
          void restore_downloads() noexcept;
 
          template<typename dl_metadata_type>
-         void begin_setting_group() noexcept;
+         void begin_setting_group(QSettings & settings) const noexcept;
 
          void setup_menu_bar() noexcept;
-         void write_settings() noexcept;
+         void write_settings() const noexcept;
          void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          ///
-         constexpr static std::string_view base_setting_header{"main_window"};
-         constexpr static std::string_view url_dl_setting_header{"url_downloads"};
-         constexpr static std::string_view torrent_dl_setting_header{"torrent_downloads"};
          QWidget central_widget_;
          QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;
@@ -59,7 +56,6 @@ private:
          QActionGroup sort_action_group_{this};
          Network_manager network_manager_;
          File_manager file_manager_;
-         QSettings settings_;
 };
 
 inline Main_window::~Main_window() {
@@ -69,7 +65,6 @@ inline Main_window::~Main_window() {
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
-
          const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
          response_button == QMessageBox::Yes ? event->accept() : event->ignore();
 }
@@ -80,9 +75,11 @@ inline void Main_window::setup_menu_bar() noexcept {
          menuBar()->addMenu(&sort_menu_);
 }
 
-inline void Main_window::write_settings() noexcept {
-         settings_.setValue("size",size());
-         settings_.setValue("pos",pos());
+inline void Main_window::write_settings() const noexcept {
+         QSettings settings;
+         settings.beginGroup("main_window");
+         settings.setValue("size",size());
+         settings.setValue("pos",pos());
 }
 
 template<typename dl_metadata_type>
@@ -133,65 +130,50 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 }
 
 template<typename dl_metadata_type>
-void Main_window::begin_setting_group() noexcept {
+void Main_window::begin_setting_group(QSettings & settings) const noexcept {
 
          if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
-                  settings_.beginGroup(url_dl_setting_header.data());
+                  settings.beginGroup("url_downloads");
          }else{
-                  settings_.beginGroup(torrent_dl_setting_header.data());
+                  settings.beginGroup("torrent_downloads");
          }
 }
 
 template<typename dl_metadata_type>
-void Main_window::add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) noexcept {
-         assert(!path.isEmpty());
-         assert(settings_.group() == base_setting_header.data());
-
-         begin_setting_group<dl_metadata_type>();
-         settings_.beginGroup(QString(path).replace('/','\x20'));
-         settings_.setValue("path",path);
-         settings_.setValue("download_metadata",std::forward<dl_metadata_type>(dl_metadata));
-
-         settings_.endGroup();
-         settings_.endGroup();
-
-         assert(settings_.group() == base_setting_header.data());
+void Main_window::add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept {
+         QSettings settings;
+         begin_setting_group<dl_metadata_type>(settings);
+         settings.beginGroup(QString(path).replace('/','\x20'));
+         settings.setValue("path",path);
+         settings.setValue("download_metadata",std::forward<dl_metadata_type>(dl_metadata));
 }
 
 template<typename dl_metadata_type>
-void Main_window::remove_dl_from_settings(const QString & file_path) noexcept {
-         assert(settings_.group() == base_setting_header.data());
-
-         begin_setting_group<dl_metadata_type>();
-         settings_.beginGroup(QString(file_path).replace('/','\x20'));
-         settings_.remove(""); // removes current group and child keys
-         settings_.endGroup();
-         settings_.endGroup();
-
-         assert(settings_.group() == base_setting_header.data());
+void Main_window::remove_dl_from_settings(const QString & file_path) const noexcept {
+         QSettings settings;
+         begin_setting_group<dl_metadata_type>(settings);
+         settings.beginGroup(QString(file_path).replace('/','\x20'));
+         settings.remove(""); // removes current group and child keys
 }
 
 template<typename dl_metadata_type>
 void Main_window::restore_downloads() noexcept {
-         assert(settings_.group() == base_setting_header.data());
-         begin_setting_group<dl_metadata_type>();
-         assert(settings_.childKeys().empty());
+         QSettings settings;
+         begin_setting_group<dl_metadata_type>(settings);
 
-         const auto dl_groups = settings_.childGroups();
+         for(const auto & dl_group : settings.childGroups()){
+                  settings.beginGroup(dl_group);
 
-         for(const auto & dl_group : settings_.childGroups()){
-                  settings_.beginGroup(dl_group);
-
-                  const auto dl_metadata = [this]{
+                  const auto dl_metadata = [&settings]{
 
                            if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
-                                    return qvariant_cast<QUrl>(settings_.value("download_metadata"));
+                                    return qvariant_cast<QUrl>(settings.value("download_metadata"));
                            }else{
-                                    return qvariant_cast<QByteArray>(settings_.value("download_metadata"));
+                                    return qvariant_cast<QByteArray>(settings.value("download_metadata"));
                            }
                   }();
 
-                  auto path = qvariant_cast<QString>(settings_.value("path"));
+                  auto path = qvariant_cast<QString>(settings.value("path"));
 
                   if(dl_metadata.isEmpty() || path.isEmpty()){
                            constexpr std::string_view error_title("Settings modified");
@@ -222,10 +204,5 @@ void Main_window::restore_downloads() noexcept {
                                     }
                            }
                   });
-
-                  settings_.endGroup();
          }
-
-         settings_.endGroup();
-         assert(settings_.group() == base_setting_header.data());
 }

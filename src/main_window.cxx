@@ -41,11 +41,12 @@ void Main_window::setup_sort_menu() noexcept {
 }
 
 void Main_window::read_settings() noexcept {
-         settings_.beginGroup(base_setting_header.data());
+         QSettings settings;
+         settings.beginGroup("main_window");
 
-         if(settings_.contains("size")){
-                  resize(settings_.value("size").toSize());
-                  move(settings_.value("pos",QPoint(0,0)).toPoint());
+         if(settings.contains("size")){
+                  resize(settings.value("size").toSize());
+                  move(settings.value("pos",QPoint(0,0)).toPoint());
                   show();
          }else{
                   showMaximized();
@@ -80,7 +81,6 @@ void Main_window::add_top_actions() noexcept {
                   auto file_path = [this]{
                            constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
                            constexpr std::string_view caption("Choose a torrent file");
-                           
                            return QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
                   }();
 
@@ -91,9 +91,8 @@ void Main_window::add_top_actions() noexcept {
                   Torrent_metadata_dialog torrent_dialog(file_path,this);
 
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,[this,file_path = std::move(file_path)](const QString & dl_dir){
-                           QFile torrent_file(file_path);
 
-                           if(torrent_file.open(QFile::ReadOnly)){
+                           if(QFile torrent_file(file_path);torrent_file.open(QFile::ReadOnly)){
                                     add_dl_to_settings(dl_dir,torrent_file.readAll());
                            }
                   });

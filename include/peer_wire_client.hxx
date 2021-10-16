@@ -35,6 +35,11 @@ public:
          Q_ENUM(Message_Id);
 
          Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
+         Peer_wire_client(const Peer_wire_client & rhs) = delete;
+         Peer_wire_client(Peer_wire_client && rhs) = delete;
+         Peer_wire_client & operator = (const Peer_wire_client & rhs) = delete;
+         Peer_wire_client & operator = (Peer_wire_client && rhs) = delete;
+         ~Peer_wire_client() override;
 
          constexpr std::int64_t downloaded_byte_count() const noexcept;
          constexpr std::int64_t uploaded_byte_count() const noexcept;
@@ -73,16 +78,16 @@ private:
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
          void on_unchoke_message_received(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
-         void on_bitfield_received(Tcp_socket * socket,const QByteArray & response,std::int32_t payload_size) noexcept;
+         void on_bitfield_received(Tcp_socket * socket) noexcept;
          void on_piece_received(Tcp_socket * socket,const QByteArray & response) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::int32_t allowed_piece_idx) noexcept;
-         void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
+         void on_piece_downloaded(QPointer<Tcp_socket> socket,Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
          void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          void on_socket_connected(Tcp_socket * socket) noexcept;
 
-         static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket);
+         static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket,const QByteArray & response);
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
@@ -95,6 +100,8 @@ private:
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
          static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
+         void write_settings() const noexcept;
+         void read_settings() noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
@@ -108,9 +115,12 @@ private:
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
-         QList<std::int64_t> torrent_file_sizes_;
+         QString dl_path_;
+         QBitArray bitfield_;
+         QList<std::int64_t> file_sizes_;
          QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
+         QSet<std::int32_t> allowed_fast_pieces;
          QTimer acquire_piece_timer_;
          bencode::Metadata & torrent_metadata_;
          Download_tracker * const tracker_ = nullptr;
@@ -124,10 +134,12 @@ private:
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
          QList<Piece> pieces_;
-         QBitArray bitfield_;
 };
 
-[[nodiscard]]
+inline Peer_wire_client::~Peer_wire_client() {
+         write_settings();
+}
+
 constexpr std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
          return dled_byte_cnt_;
 }

@@ -35,8 +35,18 @@ public:
                   Verification
          };
 
+         enum class Download_Type {
+                  Url,
+                  Torrent
+         };
+
          Download_tracker(const QString & dl_path,QUrl url,QWidget * parent = nullptr);
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
+         Download_tracker(const Download_tracker & rhs) = delete;
+         Download_tracker(Download_tracker && rhs) = delete;
+         Download_tracker & operator = (const Download_tracker & rhs) = delete;
+         Download_tracker & operator = (Download_tracker && rhs) = delete;
+         ~Download_tracker() override;
 
          constexpr Error error() const noexcept;
          constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
@@ -59,8 +69,8 @@ signals:
          void download_paused() const;
          void download_resumed() const;
 private:
-         explicit Download_tracker(const QString & dl_path,QWidget * parent = nullptr);
-
+         Download_tracker(const QString & dl_path,Download_Type dl_type,QWidget * parent = nullptr);
+         
          void setup_layout() noexcept;
          void configure_default_connections() noexcept;
          void setup_file_status_layout() noexcept;
@@ -68,7 +78,10 @@ private:
          void setup_state_stack() noexcept;
          void update_error_line() noexcept;
          void update_download_speed() noexcept;
+         void write_settings() const noexcept;
+         void read_settings() noexcept;
          ///
+         QString dl_path_;
          QVBoxLayout central_layout_{this};
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
@@ -88,7 +101,7 @@ private:
          QLabel package_name_buddy_{"Name:"};
          QLabel package_name_label_;
          QLabel dl_path_buddy_{"Path:"};
-         QLabel dl_path_label;
+         QLabel dl_path_label_;
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel ul_quantity_label_{"0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};
@@ -110,6 +123,7 @@ private:
          std::int64_t restored_byte_cnt_ = 0;
          State state_{State::Download};
          Error error_{Error::Null};
+         Download_Type dl_type_;
 };
 
 [[nodiscard]]
@@ -136,7 +150,10 @@ inline void Download_tracker::upload_progress_update(const std::int64_t uled_byt
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
 }
 
-[[nodiscard]]
+inline Download_tracker::~Download_tracker(){
+         write_settings();
+}
+
 constexpr Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
@@ -145,48 +162,8 @@ constexpr void Download_tracker::set_restored_byte_count(const std::int64_t rest
          restored_byte_cnt_ = restored_byte_cnt;
 }
 
-inline void Download_tracker::set_state(const State state) noexcept {
-         state_ = state;
-
-         if(state_ == State::Download){
-                  refresh_timer_.start(std::chrono::seconds(1));
-                  state_stack_.setCurrentWidget(&dl_progress_bar_);
-         }else{
-                  assert(state_ == State::Verification);
-                  state_stack_.setCurrentWidget(&verify_progress_bar_);
-         }
-}
-
 inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&state_stack_);
          central_layout_.addLayout(&network_stat_layout_);
-}
-
-inline void Download_tracker::update_download_speed() noexcept {
-         assert(dled_byte_cnt_ >= restored_byte_cnt_);
-         assert(get_elapsed_seconds() > 0);
-         const auto speed = (dled_byte_cnt_ - restored_byte_cnt_) / get_elapsed_seconds();
-         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Conversion_Format::Speed);
-         dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
-}
-
-inline void Download_tracker::setup_state_stack() noexcept {
-         state_stack_.addWidget(&dl_progress_bar_);
-         state_stack_.addWidget(&verify_progress_bar_);
-         state_stack_.addWidget(&finish_line_);
-
-         dl_progress_bar_.setMinimum(0);
-         dl_progress_bar_.setValue(0);
-         
-         finish_line_.setAlignment(Qt::AlignCenter);
-         assert(state_stack_.currentWidget() == &dl_progress_bar_);
-}
-
-inline void Download_tracker::verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept {
-         assert(total_asset_cnt);
-         assert(state_ == State::Verification);
-         verify_progress_bar_.setValue(verified_asset_cnt);
-         verify_progress_bar_.setMaximum(total_asset_cnt);
-         verify_progress_bar_.setFormat("Verifying " + QString::number(util::conversion::convert_to_percentile(verified_asset_cnt,total_asset_cnt)) + "%");
 }

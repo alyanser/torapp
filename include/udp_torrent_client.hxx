@@ -76,7 +76,7 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          : QObject(parent)
          , torrent_metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
-         , peer_client_(torrent_metadata_,{std::move(resources.file_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
+         , peer_client_(torrent_metadata_,{std::move(resources.dl_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
 {
          configure_default_connections();
