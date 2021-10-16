@@ -6,14 +6,15 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
+#include <algorithm>
 
 class Tcp_socket : public QTcpSocket {
          Q_OBJECT
 public:
          explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
 
-         void reset_disconnect_timer() noexcept;
          std::optional<std::pair<std::int32_t,QByteArray>> receive_packet() noexcept;
+         void reset_disconnect_timer() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
          void on_invalid_peer_reply() noexcept;
@@ -21,13 +22,14 @@ public:
          QBitArray peer_bitfield;
          QByteArray peer_id;
          QSet<std::int32_t> pending_pieces;
-         QSet<std::int32_t> fast_pieces;
+         QSet<std::int32_t> peer_allowed_fast_set;
+         QSet<std::int32_t> allowed_fast_set;
          bool handshake_done = false;
          bool am_choking = true;
          bool peer_choked = true;
          bool am_interested = false;
          bool peer_interested = false;
-         bool fast_ext_enabled = false;
+         bool fast_extension_enabled = false;
 signals:
          void got_choked() const;
          void request_rejected() const;
@@ -41,7 +43,7 @@ private:
          std::int8_t peer_error_cnt_ = 0;
 };
 
-inline Tcp_socket::Tcp_socket(const  QUrl peer_url,QObject * const parent) 
+inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent)
          : QTcpSocket(parent)
          , peer_url_(peer_url)
 {
@@ -111,9 +113,9 @@ inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_pac
 }
 
 inline void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
+         assert(!packet.isEmpty());
 
          if(state() == SocketState::ConnectedState){
-                  assert(!packet.isEmpty());
                   write(QByteArray::fromHex(packet));
          }
 }
@@ -141,5 +143,5 @@ inline void Tcp_socket::configure_default_connections() noexcept {
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
-         disconnect_timer_.start(std::chrono::minutes(5));
+         disconnect_timer_.start(std::chrono::minutes(2));
 }

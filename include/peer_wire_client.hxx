@@ -68,10 +68,10 @@ private:
          std::int32_t get_piece_size(std::int32_t piece_idx) const noexcept;
 
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
-         static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t offset) noexcept;
+         static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
-         QByteArray craft_request_message(std::int32_t piece_idx,std::int32_t offset) const noexcept;
-         QByteArray craft_cancel_message(std::int32_t piece_idx,std::int32_t offset) const noexcept;
+         QByteArray craft_request_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
+         QByteArray craft_cancel_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
          static QByteArray craft_allowed_fast_message(std::int32_t piece_idx) noexcept;
          QByteArray craft_handshake_message() const noexcept;
          static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
@@ -96,15 +96,18 @@ private:
          static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & reply);
          void extract_peer_reply(const QByteArray & peer_reply) const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
-         Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset = 0) const noexcept;
+         Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t piece_offset = 0) const noexcept;
          qsizetype get_file_size(qsizetype file_idx) const noexcept;
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
-         std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
-         static bool is_valid_reply(Tcp_socket * socket,const QByteArray & reply,Message_Id received_msg_id) noexcept;
          void write_settings() const noexcept;
          void read_settings() noexcept;
+
+         static bool is_valid_reply(Tcp_socket * socket,const QByteArray & reply,Message_Id received_msg_id) noexcept;
+         static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
+         std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
+         void clear_piece(std::int32_t piece_idx) noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
@@ -122,7 +125,6 @@ private:
          QBitArray bitfield_;
          QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
-         QSet<std::int32_t> allowed_fast_pieces;
          QTimer acquire_piece_timer_;
          bencode::Metadata & torrent_metadata_;
          Download_tracker * const tracker_ = nullptr;
