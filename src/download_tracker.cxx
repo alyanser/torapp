@@ -206,11 +206,15 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
+                  assert(refresh_timer_.isActive());
+                  refresh_timer_.stop();
                   state_button_stack_.setCurrentWidget(&resume_button_);
                   emit download_paused();
          });
 
          connect(&resume_button_,&QPushButton::clicked,this,[this]{
+                  assert(!refresh_timer_.isActive());
+                  refresh_timer_.start();
                   state_button_stack_.setCurrentWidget(&pause_button_);
                   emit download_resumed();
          });
@@ -237,9 +241,9 @@ void Download_tracker::configure_default_connections() noexcept {
                   constexpr std::string_view question_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   
-                  const auto response_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+                  const auto reply_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
-                  if(response_button == QMessageBox::StandardButton::Yes){
+                  if(reply_button == QMessageBox::StandardButton::Yes){
                            emit download_dropped();
                            emit request_satisfied();
                   }

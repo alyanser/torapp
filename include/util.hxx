@@ -64,10 +64,10 @@ numeric_type convert_to_percentile(const numeric_type dividend,const numeric_typ
 
 template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
 [[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num,const qsizetype raw_size = static_cast<qsizetype>(sizeof(numeric_type))) noexcept {
-         const auto req_hex_size = raw_size * 2;
+QByteArray convert_to_hex(const numeric_type num) noexcept {
          constexpr auto hex_base = 16;
          const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<numeric_type>>(num),hex_base);
+         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(numeric_type)) * 2;
          assert(req_hex_size - hex_fmt.size() >= 0);
          return QByteArray(req_hex_size - hex_fmt.size(),'0') + hex_fmt;
 }
@@ -108,12 +108,12 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
          if(offset + byte_cnt > raw_data.size()){
-                  __builtin_unreachable();
                   throw std::out_of_range("extraction out of bounds");
          }
 
          const auto hex_fmt = raw_data.sliced(offset,byte_cnt).toHex();
          constexpr auto hex_base = 16;
+         
          bool conversion_success = true;
          const auto result = static_cast<result_type>(hex_fmt.toULongLong(&conversion_success,hex_base));
 

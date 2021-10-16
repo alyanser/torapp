@@ -65,8 +65,8 @@ inline Main_window::~Main_window() {
 inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
-         const auto response_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
-         response_button == QMessageBox::Yes ? event->accept() : event->ignore();
+         const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
+         reply_button == QMessageBox::Yes ? event->accept() : event->ignore();
 }
 
 inline void Main_window::setup_menu_bar() noexcept {
@@ -164,9 +164,11 @@ void Main_window::restore_downloads() noexcept {
          for(const auto & dl_group : settings.childGroups()){
                   settings.beginGroup(dl_group);
 
+                  constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
+
                   const auto dl_metadata = [&settings]{
 
-                           if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
+                           if constexpr (is_url_download){
                                     return qvariant_cast<QUrl>(settings.value("download_metadata"));
                            }else{
                                     return qvariant_cast<QByteArray>(settings.value("download_metadata"));
@@ -177,22 +179,21 @@ void Main_window::restore_downloads() noexcept {
 
                   if(dl_metadata.isEmpty() || path.isEmpty()){
                            constexpr std::string_view error_title("Settings modified");
-                           constexpr std::string_view error_body("Torapp settings were modified. Downloads could not be recovered(if any).");
+                           constexpr std::string_view error_body("Torapp config file was modified. Downloads (if any) could not be recovered");
                            QMessageBox::critical(this,error_title.data(),error_body.data());
                            return;
                   }
 
                   QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata)]{
 
-                           if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
+                           if constexpr (is_url_download){
                                     initiate_download(path,dl_metadata);
                            }else{
                                     const auto torrent_metadata = [&path,&dl_metadata]() -> std::optional<bencode::Metadata> {
+                                             const auto compl_file_content = dl_metadata.toStdString();
 
                                              try{
-                                                      const auto compl_file_content = dl_metadata.toStdString();
                                                       return bencode::extract_metadata(bencode::parse_content(compl_file_content,path.toStdString()),compl_file_content);
-
                                              }catch(const std::exception & exception){
                                                       qDebug() << exception.what();
                                                       return {};

@@ -16,6 +16,7 @@ public:
          std::optional<std::pair<std::int32_t,QByteArray>> receive_packet() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
+         void on_invalid_peer_reply() noexcept;
          ///
          QBitArray peer_bitfield;
          QByteArray peer_id;
@@ -37,6 +38,7 @@ private:
          std::pair<std::optional<std::int32_t>,QByteArray> buffer_;
          QTimer disconnect_timer_;
          QUrl peer_url_;
+         std::int8_t peer_error_cnt_ = 0;
 };
 
 inline Tcp_socket::Tcp_socket(const  QUrl peer_url,QObject * const parent) 
@@ -113,14 +115,19 @@ inline void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
          if(state() == SocketState::ConnectedState){
                   assert(!packet.isEmpty());
                   write(QByteArray::fromHex(packet));
-         }else{
-                  qDebug() << "Tried to send packet in disconnected state";
          }
 }
 
 [[nodiscard]]
 inline QUrl Tcp_socket::peer_url() const noexcept {
          return peer_url_;
+}
+
+inline void Tcp_socket::on_invalid_peer_reply() noexcept {
+         
+         if(constexpr auto peer_error_threshold = 5;++peer_error_cnt_ > peer_error_threshold){
+                  abort();
+         }
 }
 
 inline void Tcp_socket::configure_default_connections() noexcept {

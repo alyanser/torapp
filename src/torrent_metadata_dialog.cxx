@@ -91,9 +91,9 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                            constexpr std::string_view query_title("Already exists");
                            constexpr std::string_view query_body("Directory already exists. Do you wish to replace it?");
 
-                           const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
+                           const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
-                           if(response_button == QMessageBox::No){
+                           if(reply_button == QMessageBox::No){
                                     return;
                            }
                   }

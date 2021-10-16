@@ -3,8 +3,8 @@
 #include "util.hxx"
 
 #include <QStackedWidget>
-#include <QFormLayout>
 #include <QProgressBar>
+#include <QFormLayout>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>

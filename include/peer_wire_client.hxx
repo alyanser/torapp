@@ -50,6 +50,7 @@ signals:
          void piece_verified(std::int32_t piece_idx) const;
          void existing_pieces_verified() const;
          void download_paused() const;
+         void download_finished() const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;
@@ -79,7 +80,7 @@ private:
          void on_unchoke_message_received(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
          void on_bitfield_received(Tcp_socket * socket) noexcept;
-         void on_piece_received(Tcp_socket * socket,const QByteArray & response) noexcept;
+         void on_piece_received(Tcp_socket * socket,const QByteArray & reply) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::int32_t allowed_piece_idx) noexcept;
          void on_piece_downloaded(QPointer<Tcp_socket> socket,Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
          void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
@@ -87,19 +88,20 @@ private:
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          void on_socket_connected(Tcp_socket * socket) noexcept;
 
-         static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_response(Tcp_socket * socket,const QByteArray & response);
+         static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply);
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
-         static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & response);
-         void extract_peer_response(const QByteArray & peer_response) const noexcept;
+         static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & reply);
+         void extract_peer_reply(const QByteArray & peer_reply) const noexcept;
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t offset = 0) const noexcept;
+         qsizetype get_file_size(qsizetype file_idx) const noexcept;
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
-         static bool is_valid_response(Tcp_socket * socket,const QByteArray & response,Message_Id received_msg_id) noexcept;
+         static bool is_valid_reply(Tcp_socket * socket,const QByteArray & reply,Message_Id received_msg_id) noexcept;
          void write_settings() const noexcept;
          void read_settings() noexcept;
          ///
@@ -111,13 +113,12 @@ private:
          constexpr static std::string_view have_all_msg{"000000010E"};
          constexpr static std::string_view have_none_msg{"000000010F"};
          constexpr static auto max_block_size = 1 << 14;
-         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bit
+         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bitw
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
          QString dl_path_;
          QBitArray bitfield_;
-         QList<std::int64_t> file_sizes_;
          QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
          QSet<std::int32_t> allowed_fast_pieces;
@@ -140,6 +141,7 @@ inline Peer_wire_client::~Peer_wire_client() {
          write_settings();
 }
 
+[[nodiscard]]
 constexpr std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
          return dled_byte_cnt_;
 }
@@ -160,4 +162,10 @@ inline std::int32_t Peer_wire_client::get_piece_size(const std::int32_t piece_id
          const auto result = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % piece_size_ ? total_byte_cnt_ % piece_size_ : piece_size_;
          assert(result > 0 && result <= std::numeric_limits<std::int32_t>::max());
          return static_cast<std::int32_t>(result);
+}
+
+[[nodiscard]]
+inline qsizetype Peer_wire_client::get_file_size(const qsizetype file_idx) const noexcept {
+         assert(static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second) > 0);
+         return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
 }

@@ -117,9 +117,9 @@ void Url_input_dialog::on_input_received() noexcept {
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
 
-                  const auto response_button = QMessageBox::question(this,query_title.data(),query_body.data());
+                  const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data());
 
-                  if(response_button == QMessageBox::No){
+                  if(reply_button == QMessageBox::No){
                            return;
                   }
          }
