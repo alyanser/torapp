@@ -8,7 +8,7 @@
 void Udp_torrent_client::configure_default_connections() noexcept {
 
          connect(this,&Udp_torrent_client::announce_reply_received,[&peer_client_ = peer_client_,&event_ = event_](const Announce_reply & reply){
-                  event_ = Download_Event::Started;
+                  event_ = Event::Started;
                   assert(!reply.peer_urls.empty());
                   peer_client_.connect_to_peers(reply.peer_urls);
          });
@@ -46,6 +46,9 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
                   return convert_to_hex(protocol_constant);
          }();
 
+         constexpr auto connect_request_size = 32;
+         connect_request.reserve(connect_request_size);
+
          connect_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Connect));
 
          connect_request += []{
@@ -53,6 +56,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
                   return convert_to_hex(txn_id);
          }();
 
+         assert(connect_request.size() == connect_request_size);
          return connect_request;
 }
 
@@ -61,6 +65,9 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          using util::conversion::convert_to_hex;
          
          auto announce_request = convert_to_hex(tracker_connection_id);
+         constexpr auto announce_request_size = 196;
+         announce_request.reserve(announce_request_size);
+
          announce_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Announce));
 
          announce_request += []{
@@ -95,6 +102,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
                   return convert_to_hex(default_port);
          }();
 
+         assert(announce_request.size() == announce_request_size);
          return announce_request;
 }
 
@@ -103,6 +111,9 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
          using util::conversion::convert_to_hex;
          
          auto scrape_request = convert_to_hex(tracker_connection_id);
+         const auto scrape_request_size = static_cast<qsizetype>(metadata.pieces.size()) + 32;
+         scrape_request.reserve(scrape_request_size);
+
          scrape_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Scrape));
 
          scrape_request += []{
@@ -111,7 +122,8 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
          }();
 
          scrape_request += QByteArray(metadata.pieces.data(),static_cast<qsizetype>(metadata.pieces.size()));
-         
+
+         assert(scrape_request.size() == scrape_request_size);
          return scrape_request;
 }
 
@@ -138,8 +150,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                                     connect(tracker_,&Download_tracker::download_paused,this,[this,socket = QPointer(socket),connection_id]{
 
                                              {
-                                                      const bool already_stopped = event_ == Download_Event::Stopped;
-                                                      event_ = Download_Event::Stopped;
+                                                      const bool already_stopped = event_ == Event::Stopped;
+                                                      event_ = Event::Stopped;
                                                       
                                                       if(!socket || already_stopped){
                                                                return;
@@ -153,8 +165,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                                     connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{
 
                                              {
-                                                      const bool already_running = event_ == Download_Event::Started;
-                                                      event_ = Download_Event::Started;
+                                                      const bool already_running = event_ == Event::Started;
+                                                      event_ = Event::Started;
 
                                                       if(!socket || already_running){
                                                                return;
@@ -273,8 +285,8 @@ std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_sc
          }();
 
          const auto completed_cnt = [&reply]{
-                  constexpr auto download_cnt_offset = 12;
-                  return util::extract_integer<std::int32_t>(reply,download_cnt_offset);
+                  constexpr auto dl_cnt_offset = 12;
+                  return util::extract_integer<std::int32_t>(reply,dl_cnt_offset);
          }();
 
          const auto leecher_cnt = [&reply]{

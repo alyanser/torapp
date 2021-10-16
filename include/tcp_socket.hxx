@@ -35,7 +35,7 @@ signals:
 private:
          void configure_default_connections() noexcept;
          ///
-         std::pair<std::optional<std::int32_t>,QByteArray> buffer_;
+         std::pair<std::optional<std::int32_t>,QByteArray> receive_buffer_;
          QTimer disconnect_timer_;
          QUrl peer_url_;
          std::int8_t peer_error_cnt_ = 0;
@@ -54,7 +54,7 @@ inline Tcp_socket::Tcp_socket(const  QUrl peer_url,QObject * const parent)
 
 [[nodiscard]]
 inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet() noexcept {
-         auto & msg_size = buffer_.first;
+         auto & msg_size = receive_buffer_.first;
 
          if(!handshake_done && !msg_size){
                   constexpr auto protocol_handshake_msg_size = 68;
@@ -92,7 +92,7 @@ inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_pac
                   return {};
          }
 
-         auto & buffer_data = buffer_.second;
+         auto & buffer_data = receive_buffer_.second;
 
          if(buffer_data.capacity() != *msg_size){
                   buffer_data.reserve(*msg_size);

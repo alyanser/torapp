@@ -87,6 +87,7 @@ private:
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          void on_socket_connected(Tcp_socket * socket) noexcept;
+         void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
 
          static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply);
          void verify_existing_pieces() noexcept;

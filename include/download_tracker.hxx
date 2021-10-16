@@ -121,8 +121,8 @@ private:
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t restored_byte_cnt_ = 0;
-         State state_{State::Download};
-         Error error_{Error::Null};
+         State state_ = State::Download;
+         Error error_ = Error::Null;
          Download_Type dl_type_;
 };
 

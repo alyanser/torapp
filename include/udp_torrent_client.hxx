@@ -19,14 +19,14 @@ public:
                   Error,
          };
 
-         enum class Download_Event {
+         enum class Event {
                   None,
                   Started,
                   Stopped,
                   Completed
          };
 
-         Q_ENUM(Download_Event);
+         Q_ENUM(Event);
 
          struct Swarm_metadata {
                   std::int32_t seed_cnt = 0;
@@ -49,15 +49,17 @@ signals:
          void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
          void error_received(const QByteArray & array) const;
 private:
-         static QByteArray calculate_info_sha1_hash(const bencode::Metadata & torrent_metadata) noexcept;
-         static bool verify_txn_id(const QByteArray & reply,std::int32_t sent_txn_id);
          static QByteArray craft_connect_request() noexcept;
          static QByteArray craft_scrape_request(const bencode::Metadata & metadata,std::int64_t tracker_connection_id) noexcept;
          QByteArray craft_announce_request(std::int64_t tracker_connection_id) const noexcept;
+
          static std::optional<QByteArray> extract_tracker_error(const QByteArray & reply,std::int32_t sent_txn_id);
          static std::optional<std::int64_t> extract_connect_reply(const QByteArray & reply,std::int32_t sent_txn_id);
          static std::optional<Announce_reply> extract_announce_reply(const QByteArray & reply,std::int32_t sent_txn_id);
          static std::optional<Swarm_metadata> extract_scrape_reply(const QByteArray & reply,std::int32_t sent_txn_id);
+
+         static QByteArray calculate_info_sha1_hash(const bencode::Metadata & torrent_metadata) noexcept;
+         static bool verify_txn_id(const QByteArray & reply,std::int32_t sent_txn_id);
          void on_socket_ready_read(Udp_socket * socket);
          void configure_default_connections() noexcept;
          ///
@@ -69,7 +71,7 @@ private:
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
          Download_tracker * const tracker_ = nullptr;
-         Download_Event event_{Download_Event::None};
+         Event event_ = Event::None;
 };
 
 inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
