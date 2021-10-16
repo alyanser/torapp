@@ -114,10 +114,10 @@ private:
          constexpr static std::string_view unchoke_msg{"0000000101"};
          constexpr static std::string_view interested_msg{"0000000102"};
          constexpr static std::string_view uninterested_msg{"0000000103"};
-         constexpr static std::string_view have_all_msg{"000000010E"};
-         constexpr static std::string_view have_none_msg{"000000010F"};
+         constexpr static std::string_view have_all_msg{"000000010e"};
+         constexpr static std::string_view have_none_msg{"000000010f"};
          constexpr static auto max_block_size = 1 << 14;
-         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bitw
+         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bit
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;

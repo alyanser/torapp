@@ -52,7 +52,6 @@ public:
          constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
 
          void set_state(State state) noexcept;
-         std::int32_t get_elapsed_seconds() const noexcept;
          void set_error_and_finish(Error error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt = -1) noexcept;
@@ -81,6 +80,7 @@ private:
          void write_settings() const noexcept;
          void read_settings() noexcept;
          ///
+         constexpr static std::string_view time_elapsed_fmt{" hh:mm:ss"};
          QString dl_path_;
          QVBoxLayout central_layout_{this};
          QHBoxLayout file_stat_layout_;
@@ -105,7 +105,7 @@ private:
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel ul_quantity_label_{"0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};
-         QLabel time_elapsed_label_{time_elapsed_.toString() + " hh::mm::ss"};
+         QLabel time_elapsed_label_{time_elapsed_.toString() + time_elapsed_fmt.data()};
          QLabel dl_speed_label_{"0 byte (s) / sec"};
          QPushButton finish_button_{"Finish"};
          QPushButton cancel_button_{"Cancel"};
@@ -117,20 +117,15 @@ private:
          QPushButton resume_button_{"Resume"};
          QProgressBar dl_progress_bar_;
          QProgressBar verify_progress_bar_;
-         QTimer refresh_timer_;
+         QTimer session_timer_;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t restored_byte_cnt_ = 0;
+         std::chrono::seconds session_time_{};
          State state_ = State::Download;
          Error error_ = Error::Null;
          Download_Type dl_type_;
 };
-
-[[nodiscard]]
-inline std::int32_t Download_tracker::get_elapsed_seconds() const noexcept {
-         assert(time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600 > 0);
-         return 1 + time_elapsed_.second() + time_elapsed_.minute() * 60 + time_elapsed_.hour() * 3600;
-}
 
 inline void Download_tracker::set_error_and_finish(const Error error) noexcept {
          assert(error != Error::Null && error != Error::Custom);

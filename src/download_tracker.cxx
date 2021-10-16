@@ -50,7 +50,6 @@ Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidge
          assert(!dl_path.isEmpty());
          
          package_name_label_.setText(url.fileName());
-         refresh_timer_.start(std::chrono::seconds(1));
 
          connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,url]{
                   emit retry_download(dl_path,url);
@@ -146,7 +145,7 @@ void Download_tracker::set_state(const State state) noexcept {
          state_ = state;
 
          if(state_ == State::Download){
-                  refresh_timer_.start(std::chrono::seconds(1));
+                  session_timer_.start(std::chrono::seconds(1));
                   state_stack_.setCurrentWidget(&dl_progress_bar_);
          }else{
                   assert(state_ == State::Verification);
@@ -156,8 +155,8 @@ void Download_tracker::set_state(const State state) noexcept {
 
 void Download_tracker::update_download_speed() noexcept {
          assert(dled_byte_cnt_ >= restored_byte_cnt_);
-         assert(get_elapsed_seconds() > 0);
-         const auto speed = (dled_byte_cnt_ - restored_byte_cnt_) / get_elapsed_seconds();
+         assert(session_time_.count() >= 0);
+         const auto speed = session_time_.count() ? (dled_byte_cnt_ - restored_byte_cnt_) / session_time_.count() : 0;
          const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Conversion_Format::Speed);
          dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
@@ -196,7 +195,7 @@ void Download_tracker::read_settings() noexcept {
 
          if(settings.contains("time_elapsed")){
                   time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
-                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+                  time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
          }
 }
 
@@ -206,24 +205,28 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
-                  assert(refresh_timer_.isActive());
-                  refresh_timer_.stop();
+                  assert(session_timer_.isActive());
+                  session_timer_.stop();
                   state_button_stack_.setCurrentWidget(&resume_button_);
+
+                  session_time_ = std::chrono::seconds::zero();
+                  update_download_speed();
                   emit download_paused();
          });
 
          connect(&resume_button_,&QPushButton::clicked,this,[this]{
-                  assert(!refresh_timer_.isActive());
-                  refresh_timer_.start();
+                  assert(!session_timer_.isActive());
+                  session_timer_.start();
                   state_button_stack_.setCurrentWidget(&pause_button_);
                   emit download_resumed();
          });
 
          connect(&delete_button_,&QPushButton::clicked,this,[this]{
-                  QMessageBox query_box(QMessageBox::Icon::NoIcon,"Delete file","",QMessageBox::Button::NoButton);
+                  QMessageBox query_box(QMessageBox::Icon::Warning,"Delete file (s)","Choose an action",QMessageBox::Button::NoButton);
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
                   auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
+
                   query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_file_permanently);
@@ -249,15 +252,15 @@ void Download_tracker::configure_default_connections() noexcept {
                   }
          });
 
-         refresh_timer_.callOnTimeout(this,[this]{
+         session_timer_.callOnTimeout(this,[this]{
                   time_elapsed_ = time_elapsed_.addSecs(1);
-                  time_elapsed_label_.setText(time_elapsed_.toString() + " hh:mm::ss");
+                  time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
+                  ++session_time_;
                   update_download_speed();
          });
 }
 
 void Download_tracker::switch_to_finished_state() noexcept {
-         refresh_timer_.stop();
          time_elapsed_buddy_.setText("Time took: ");
          state_stack_.setCurrentWidget(&finish_line_);
          terminate_button_stack_.setCurrentWidget(&finish_button_);

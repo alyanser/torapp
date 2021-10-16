@@ -143,5 +143,5 @@ inline void Tcp_socket::configure_default_connections() noexcept {
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
-         disconnect_timer_.start(std::chrono::minutes(2));
+         disconnect_timer_.start(std::chrono::minutes(10));
 }

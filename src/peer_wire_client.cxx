@@ -493,17 +493,20 @@ void Peer_wire_client::on_piece_request_received(Tcp_socket * const socket,const
                   socket->send_packet(craft_piece_message(piece.sliced(offset,byte_cnt),piece_idx,offset));
          };
 
-         if(const auto & buffered_piece = pieces_[piece_idx].data;!buffered_piece.isEmpty()){
+         if(!pieces_[piece_idx].data.isEmpty()){
                   qDebug() << "Sending piece from the buffer";
-                  assert(verify_piece_hash(buffered_piece,piece_idx));
-                  return send_piece(buffered_piece);
+                  assert(verify_piece_hash(pieces_[piece_idx].data,piece_idx));
+                  return send_piece(pieces_[piece_idx].data);
          }
 
          socket->send_packet(keep_alive_msg.data());
 
          QTimer::singleShot(0,this,[this,socket = QPointer(socket),send_piece,send_reject_message,piece_idx = piece_idx]{
                   assert(bitfield_[piece_idx]);
-                  assert(pieces_[piece_idx].data.isEmpty());
+
+                  if(!pieces_[piece_idx].data.isEmpty()){
+                           return send_piece(pieces_[piece_idx].data);
+                  }
 
                   if(!socket){
                            return;
@@ -751,11 +754,8 @@ QSet<std::int32_t> Peer_wire_client::generate_allowed_fast_set(const std::uint32
 }
 
 void Peer_wire_client::clear_piece(const std::int32_t piece_idx) noexcept {
+         assert(piece_idx >= 0 && piece_idx < total_piece_cnt_);
          auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[piece_idx];
-
-         assert(!piece_data.isEmpty());
-         assert(!received_blocks.isEmpty());
-         assert(!requested_blocks.isEmpty());
 
          piece_data.clear();
          requested_blocks.clear();
@@ -787,19 +787,20 @@ void Peer_wire_client::on_have_message_received(Tcp_socket * const socket,const 
 
          socket->peer_bitfield[peer_have_piece_idx] = true;
 
-         if(!bitfield_[peer_have_piece_idx]){
+         if(bitfield_[peer_have_piece_idx]){
+                  return;
+         }
 
-                  if(socket->fast_extension_enabled && socket->peer_allowed_fast_set.contains(peer_have_piece_idx)){
-                           emit socket->fast_have_msg_received(peer_have_piece_idx);
-                  }else if(!socket->peer_choked){
-                           send_block_requests(socket,peer_have_piece_idx);
-                  }else{
-                           socket->pending_pieces.insert(peer_have_piece_idx);
-                           
-                           if(!socket->am_interested){
-                                    socket->am_interested = true;
-                                    socket->send_packet(interested_msg.data());
-                           }
+         if(socket->fast_extension_enabled && socket->peer_allowed_fast_set.contains(peer_have_piece_idx)){
+                  emit socket->fast_have_msg_received(peer_have_piece_idx);
+         }else if(!socket->peer_choked){
+                  send_block_requests(socket,peer_have_piece_idx);
+         }else{
+                  socket->pending_pieces.insert(peer_have_piece_idx);
+                  
+                  if(!socket->am_interested){
+                           socket->am_interested = true;
+                           socket->send_packet(interested_msg.data());
                   }
          }
 }
