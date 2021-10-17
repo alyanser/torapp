@@ -14,6 +14,7 @@
 #include <QMenuBar>
 #include <QDebug>
 #include <QMenu>
+#include <QTimer>
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -89,7 +90,7 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 
          connect(tracker,qOverload<decltype(dl_path),dl_metadata_type>(&Download_tracker::retry_download),this,&Main_window::initiate_download<dl_metadata_type>);
 
-         connect(tracker,&Download_tracker::download_dropped,this,[this,dl_path]{
+         connect(tracker,&Download_tracker::download_dropped,this,[this,dl_path = dl_path]{
                   remove_dl_from_settings<dl_metadata_type>(dl_path);
          });
 
@@ -153,7 +154,14 @@ void Main_window::remove_dl_from_settings(const QString & file_path) const noexc
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(file_path).replace('/','\x20'));
+
+         for(const auto & child_key : settings.allKeys()){
+                  qDebug() << child_key;
+         }
+
          settings.remove(""); // removes current group and child keys
+         settings.sync();
+         assert(settings.childKeys().isEmpty());
 }
 
 template<typename dl_metadata_type>
@@ -165,7 +173,7 @@ void Main_window::restore_downloads() noexcept {
                   settings.beginGroup(dl_group);
 
                   constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
-
+                  
                   const auto dl_metadata = [&settings]{
 
                            if constexpr (is_url_download){
@@ -179,7 +187,7 @@ void Main_window::restore_downloads() noexcept {
 
                   if(dl_metadata.isEmpty() || path.isEmpty()){
                            constexpr std::string_view error_title("Settings modified");
-                           constexpr std::string_view error_body("Torapp config file was modified. Downloads (if any) could not be recovered");
+                           constexpr std::string_view error_body("Torapp config file was modified. Some downloads (if any) could not be recovered");
                            QMessageBox::critical(this,error_title.data(),error_body.data());
                            return;
                   }
@@ -205,5 +213,7 @@ void Main_window::restore_downloads() noexcept {
                                     }
                            }
                   });
+
+                  settings.endGroup();
          }
 }

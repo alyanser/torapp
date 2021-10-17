@@ -95,7 +95,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          network_form_layout_.addRow("Download Speed",&dl_speed_label_);
          network_form_layout_.addRow("Downloaded",&dl_quantity_label_);
-         network_form_layout_.addRow("Uploaded (Session)",&ul_quantity_label_);
+         network_form_layout_.addRow("Uploaded",&ul_quantity_label_);
 
          network_stat_layout_.addWidget(&delete_button_);
          network_stat_layout_.addWidget(&state_button_stack_);
@@ -181,7 +181,7 @@ void Download_tracker::verification_progress_update(std::int32_t verified_asset_
          verify_progress_bar_.setFormat("Verifying " + QString::number(util::conversion::convert_to_percentile(verified_asset_cnt,total_asset_cnt)) + "%");
 }
 
-void Download_tracker::write_settings() const noexcept {
+void Download_tracker::update_settings() const noexcept {
          QSettings settings;
          settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
          settings.beginGroup(QString(dl_path_).replace('/','\x20'));
@@ -193,15 +193,14 @@ void Download_tracker::read_settings() noexcept {
          settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
          settings.beginGroup(QString(dl_path_).replace('/','\x20'));
 
-         if(settings.contains("time_elapsed")){
-                  time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
-                  time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
-         }
+         time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
+         time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
 }
 
 void Download_tracker::configure_default_connections() noexcept {
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::download_dropped);
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
+         connect(this,&Download_tracker::download_dropped,this,&Download_tracker::request_satisfied);
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
@@ -247,8 +246,8 @@ void Download_tracker::configure_default_connections() noexcept {
                   const auto reply_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
 
                   if(reply_button == QMessageBox::StandardButton::Yes){
+                           session_timer_.stop();
                            emit download_dropped();
-                           emit request_satisfied();
                   }
          });
 
@@ -257,6 +256,10 @@ void Download_tracker::configure_default_connections() noexcept {
                   time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
                   ++session_time_;
                   update_download_speed();
+
+                  QTimer::singleShot(0,this,[this]{
+                           update_settings();
+                  });
          });
 }
 

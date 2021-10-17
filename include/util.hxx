@@ -19,20 +19,20 @@ enum class Conversion_Format {
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Conversion_Format format) noexcept {
-         constexpr byte_type kb_byte_cnt = 1024;
-         constexpr byte_type mb_byte_cnt = kb_byte_cnt * 1024;
-         constexpr byte_type gb_byte_cnt = mb_byte_cnt * 1024;
+         constexpr auto kb_byte_cnt = 1024;
+         constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
+         constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
 
          if(byte_cnt >= gb_byte_cnt){
-                  return {byte_cnt / gb_byte_cnt,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
+                  return {static_cast<double>(byte_cnt) / gb_byte_cnt,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
          }
 
          if(byte_cnt >= mb_byte_cnt){
-                  return {byte_cnt / mb_byte_cnt,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
+                  return {static_cast<double>(byte_cnt) / mb_byte_cnt,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
          }
 
          if(byte_cnt >= kb_byte_cnt){
-                  return {byte_cnt / kb_byte_cnt,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
+                  return {static_cast<double>(byte_cnt) / kb_byte_cnt,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
          }
 
          return {byte_cnt,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};

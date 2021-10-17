@@ -42,11 +42,6 @@ public:
 
          Download_tracker(const QString & dl_path,QUrl url,QWidget * parent = nullptr);
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
-         Download_tracker(const Download_tracker & rhs) = delete;
-         Download_tracker(Download_tracker && rhs) = delete;
-         Download_tracker & operator = (const Download_tracker & rhs) = delete;
-         Download_tracker & operator = (Download_tracker && rhs) = delete;
-         ~Download_tracker() override;
 
          constexpr Error error() const noexcept;
          constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
@@ -56,7 +51,7 @@ public:
          void set_error_and_finish(const QString & custom_error) noexcept;
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt = -1) noexcept;
          void verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept;
-         void upload_progress_update(std::int64_t uled_byte_cnt) noexcept;
+         void set_upload_byte_count(std::int64_t uled_byte_cnt) noexcept;
          void switch_to_finished_state() noexcept;
 signals:
          void retry_download(const QString & file_path,const QUrl & url) const;
@@ -77,7 +72,7 @@ private:
          void setup_state_stack() noexcept;
          void update_error_line() noexcept;
          void update_download_speed() noexcept;
-         void write_settings() const noexcept;
+         void update_settings() const noexcept;
          void read_settings() noexcept;
          ///
          constexpr static std::string_view time_elapsed_fmt{" hh:mm:ss"};
@@ -140,13 +135,9 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
          switch_to_finished_state();
 }
 
-inline void Download_tracker::upload_progress_update(const std::int64_t uled_byte_cnt) noexcept {
+inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
          const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Conversion_Format::Memory);
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
-}
-
-inline Download_tracker::~Download_tracker(){
-         write_settings();
 }
 
 constexpr Download_tracker::Error Download_tracker::error() const noexcept {

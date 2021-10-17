@@ -73,7 +73,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   tracker->download_progress_update(dled_byte_cnt,total_byte_cnt);
          });
 
-         connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::upload_progress_update);
+         connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::set_upload_byte_count);
 
          connect(network_reply,&QNetworkReply::redirected,&QNetworkReply::redirectAllowed);
 }

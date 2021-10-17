@@ -13,16 +13,14 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   peer_client_.connect_to_peers(reply.peer_urls);
          });
 
+         connect(&peer_client_,&Peer_wire_client::existing_pieces_verified,this,&Udp_torrent_client::send_connect_request);
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
-         connect(&peer_client_,&Peer_wire_client::existing_pieces_verified,this,&Udp_torrent_client::send_connect_request,Qt::SingleShotConnection);
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {
-         const auto & tracker_urls = torrent_metadata_.announce_url_list;
+         assert(!torrent_metadata_.announce_url_list.empty());
 
-         assert(!tracker_urls.empty());
-
-         for(const auto & tracker_url : tracker_urls){
+         for(const auto & tracker_url : torrent_metadata_.announce_url_list){
                   auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
                   
                   connect(socket,&Udp_socket::readyRead,this,[this,socket]{
@@ -265,7 +263,7 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
                   }
-
+                  
                   return ret_peer_urls;
          }();
 

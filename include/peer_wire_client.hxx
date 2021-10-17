@@ -35,11 +35,6 @@ public:
          Q_ENUM(Message_Id);
 
          Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
-         Peer_wire_client(const Peer_wire_client & rhs) = delete;
-         Peer_wire_client(Peer_wire_client && rhs) = delete;
-         Peer_wire_client & operator = (const Peer_wire_client & rhs) = delete;
-         Peer_wire_client & operator = (Peer_wire_client && rhs) = delete;
-         ~Peer_wire_client() override;
 
          constexpr std::int64_t downloaded_byte_count() const noexcept;
          constexpr std::int64_t uploaded_byte_count() const noexcept;
@@ -101,7 +96,7 @@ private:
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
-         void write_settings() const noexcept;
+         void update_settings() const noexcept;
          void read_settings() noexcept;
 
          static bool is_valid_reply(Tcp_socket * socket,const QByteArray & reply,Message_Id received_msg_id) noexcept;
@@ -127,6 +122,7 @@ private:
          QSet<QUrl> active_peers_;
          QTimer acquire_piece_timer_;
          bencode::Metadata & torrent_metadata_;
+         QTimer settings_timer_;
          Download_tracker * const tracker_ = nullptr;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
@@ -140,10 +136,6 @@ private:
          QList<Piece> pieces_;
 };
 
-inline Peer_wire_client::~Peer_wire_client() {
-         write_settings();
-}
-
 [[nodiscard]]
 constexpr std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
          return dled_byte_cnt_;
@@ -156,6 +148,7 @@ constexpr std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
 
 [[nodiscard]]
 constexpr std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
+         assert(total_byte_cnt_ - dled_byte_cnt_ > 0);
          return total_byte_cnt_ - dled_byte_cnt_;
 }
 
