@@ -37,7 +37,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
 
                   if(!QDesktopServices::openUrl(dl_path)){
                            constexpr std::string_view message_title("Could not open file");
-                           constexpr std::string_view message_body("Downloaded file could not be opened");
+                           constexpr std::string_view message_body("Downloaded file (s) could not be opened");
                            QMessageBox::critical(this,message_title.data(),message_body.data());
                   }
          });
@@ -181,7 +181,7 @@ void Download_tracker::verification_progress_update(std::int32_t verified_asset_
          verify_progress_bar_.setFormat("Verifying " + QString::number(util::conversion::convert_to_percentile(verified_asset_cnt,total_asset_cnt)) + "%");
 }
 
-void Download_tracker::update_settings() const noexcept {
+void Download_tracker::write_settings() const noexcept {
          QSettings settings;
          settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
          settings.beginGroup(QString(dl_path_).replace('/','\x20'));
@@ -258,7 +258,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   update_download_speed();
 
                   QTimer::singleShot(0,this,[this]{
-                           update_settings();
+                           write_settings();
                   });
          });
 }
@@ -268,7 +268,7 @@ void Download_tracker::switch_to_finished_state() noexcept {
          state_stack_.setCurrentWidget(&finish_line_);
          terminate_button_stack_.setCurrentWidget(&finish_button_);
          
-         if(static_cast<bool>(error_)){
+         if(error_ == Error::Null){
                   initiate_button_stack_.setCurrentWidget(&retry_button_);
          }else{
                   assert(!delete_button_.isEnabled());

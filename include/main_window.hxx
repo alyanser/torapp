@@ -154,14 +154,9 @@ void Main_window::remove_dl_from_settings(const QString & file_path) const noexc
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(file_path).replace('/','\x20'));
-
-         for(const auto & child_key : settings.allKeys()){
-                  qDebug() << child_key;
-         }
-
          settings.remove(""); // removes current group and child keys
-         settings.sync();
          assert(settings.childKeys().isEmpty());
+         settings.sync();
 }
 
 template<typename dl_metadata_type>

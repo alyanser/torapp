@@ -157,7 +157,6 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                                              }
 
                                              socket->announce_request = craft_announce_request(*connection_id);
-                                             socket->send_request(socket->announce_request);
                                     });
 
                                     connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{

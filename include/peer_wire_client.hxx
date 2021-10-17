@@ -6,7 +6,6 @@
 #include <QBitArray>
 #include <QObject>
 #include <QTimer>
-#include <QDebug>
 #include <QSet>
 #include <random>
 
@@ -48,7 +47,7 @@ signals:
          void download_finished() const;
 private:
          struct Piece {
-                  QList<std::int8_t> requested_blocks;
+                  QList<std::int8_t> requested_block_cnts;
                   QBitArray received_blocks;
                   QByteArray data;
                   std::int32_t received_block_cnt = 0;
@@ -72,7 +71,7 @@ private:
          static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
 
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
-         void on_unchoke_message_received(Tcp_socket * socket) noexcept;
+         void send_pending_request(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
          void on_bitfield_received(Tcp_socket * socket) noexcept;
          void on_piece_received(Tcp_socket * socket,const QByteArray & reply) noexcept;
@@ -96,7 +95,7 @@ private:
 
          bool write_to_disk(const QByteArray & received_piece,std::int32_t received_piece_idx) noexcept;
          std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
-         void update_settings() const noexcept;
+         void write_settings() const noexcept;
          void read_settings() noexcept;
 
          static bool is_valid_reply(Tcp_socket * socket,const QByteArray & reply,Message_Id received_msg_id) noexcept;
@@ -120,7 +119,6 @@ private:
          QBitArray bitfield_;
          QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
-         QTimer acquire_piece_timer_;
          bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
          Download_tracker * const tracker_ = nullptr;

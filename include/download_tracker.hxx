@@ -72,7 +72,7 @@ private:
          void setup_state_stack() noexcept;
          void update_error_line() noexcept;
          void update_download_speed() noexcept;
-         void update_settings() const noexcept;
+         void write_settings() const noexcept;
          void read_settings() noexcept;
          ///
          constexpr static std::string_view time_elapsed_fmt{" hh:mm:ss"};
