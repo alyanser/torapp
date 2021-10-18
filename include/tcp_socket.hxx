@@ -21,7 +21,6 @@ public:
          ///
          QBitArray peer_bitfield;
          QByteArray peer_id;
-         QSet<std::int32_t> pending_pieces;
          QSet<std::int32_t> peer_allowed_fast_set;
          QSet<std::int32_t> allowed_fast_set;
          bool handshake_done = false;
@@ -33,7 +32,6 @@ public:
 signals:
          void got_choked() const;
          void request_rejected() const;
-         void fast_have_msg_received(std::int32_t peer_have_piece_idx) const;
 private:
          void configure_default_connections() noexcept;
          ///

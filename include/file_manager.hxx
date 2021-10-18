@@ -60,7 +60,6 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
 
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
          assert(!file_path.isEmpty());
-
          auto file_handle = std::make_unique<QFile>(file_path,this);
 
          if(!file_handle->open(QFile::ReadWrite)){

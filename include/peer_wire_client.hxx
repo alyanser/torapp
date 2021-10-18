@@ -48,7 +48,7 @@ signals:
          void send_requests();
 private:
          struct Piece {
-                  QList<std::int8_t> requested_block_cnts;
+                  QList<std::int8_t> requested_block_cnts_;
                   QBitArray received_blocks;
                   QByteArray data;
                   std::int32_t received_block_cnt = 0;
@@ -72,12 +72,11 @@ private:
          static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
 
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
-         void send_pending_request(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
          void on_bitfield_received(Tcp_socket * socket) noexcept;
          void on_piece_received(Tcp_socket * socket,const QByteArray & reply) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::int32_t allowed_piece_idx) noexcept;
-         void on_piece_downloaded(QPointer<Tcp_socket> socket,Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
+         void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
          void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
@@ -103,7 +102,8 @@ private:
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
          void clear_piece(std::int32_t piece_idx) noexcept;
-         void update_target_piece() noexcept;
+         std::int32_t get_min_frequency_piece_idx() noexcept;
+         bool is_valid_piece_index(std::int32_t piece_idx) const noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
@@ -157,7 +157,7 @@ constexpr std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
 
 [[nodiscard]]
 inline std::int32_t Peer_wire_client::get_piece_size(const std::int32_t piece_idx) const noexcept {
-         assert(piece_idx >= 0 && piece_idx < total_piece_cnt_);
+         assert(is_valid_piece_index(piece_idx));
          const auto result = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % piece_size_ ? total_byte_cnt_ % piece_size_ : piece_size_;
          assert(result > 0 && result <= std::numeric_limits<std::int32_t>::max());
          return static_cast<std::int32_t>(result);
@@ -169,8 +169,7 @@ inline qsizetype Peer_wire_client::get_file_size(const qsizetype file_idx) const
          return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
 }
 
-inline  void Peer_wire_client::update_target_piece() noexcept {
-         const auto min_ele_itr =  std::min_element(peer_additive_bitfield_.begin(),peer_additive_bitfield_.end() - spare_bit_cnt_);
-         cur_target_piece_idx_ = static_cast<std::int32_t>(std::distance(peer_additive_bitfield_.begin(),min_ele_itr));
-         assert(cur_target_piece_idx_ >= 0 && cur_target_piece_idx_ < total_piece_cnt_);
+[[nodiscard]]
+inline bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx) const noexcept {
+         return piece_idx >= 0 && piece_idx < total_piece_cnt_;
 }
