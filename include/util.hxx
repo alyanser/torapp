@@ -11,31 +11,31 @@ namespace util {
 
 namespace conversion {
 
-enum class Conversion_Format { 
+enum class Format { 
          Speed,
          Memory
 };
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
-constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Conversion_Format format) noexcept {
+constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Format format) noexcept {
          constexpr auto kb_byte_cnt = 1024;
          constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
          constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
 
          if(byte_cnt >= gb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / gb_byte_cnt,format == Conversion_Format::Speed ? "gb (s) /sec" : "gb (s)"};
+                  return {static_cast<double>(byte_cnt) / gb_byte_cnt,format == Format::Speed ? "gb (s) /sec" : "gb (s)"};
          }
 
          if(byte_cnt >= mb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / mb_byte_cnt,format == Conversion_Format::Speed ? "mb (s) / sec" : "mb (s)"};
+                  return {static_cast<double>(byte_cnt) / mb_byte_cnt,format == Format::Speed ? "mb (s) / sec" : "mb (s)"};
          }
 
          if(byte_cnt >= kb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / kb_byte_cnt,format == Conversion_Format::Speed ? "kb (s) / sec" : "kb (s)"};
+                  return {static_cast<double>(byte_cnt) / kb_byte_cnt,format == Format::Speed ? "kb (s) / sec" : "kb (s)"};
          }
 
-         return {byte_cnt,format == Conversion_Format::Speed ? "byte (s) / sec" : "byte (s)"};
+         return {byte_cnt,format == Format::Speed ? "byte (s) / sec" : "byte (s)"};
 }
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
@@ -45,10 +45,10 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
          double converted_total_byte_cnt = 0;
 
          if(constexpr auto unknown_bound = -1;total_byte_cnt != unknown_bound){
-                  std::tie(converted_total_byte_cnt,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt),Conversion_Format::Memory);
+                  std::tie(converted_total_byte_cnt,total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt),Format::Memory);
          }
 
-         const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),Conversion_Format::Memory);
+         const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),Format::Memory);
 
          auto converted_str = QString("%1 %2 / %3 %4").arg(converted_received_byte_cnt).arg(received_bytes_postfix.data());
          converted_str = converted_str.arg(total_bytes_postfix == "inf" ? "" : QString::number(converted_total_byte_cnt)).arg(total_bytes_postfix.data());

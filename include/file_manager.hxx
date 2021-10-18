@@ -28,38 +28,32 @@ public:
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
          assert(!torrent_metadata.file_info.empty());
          assert(!dir_path.isEmpty());
-
+         
          QDir dir(dir_path);
 
          if(!dir.mkpath(dir.path())){
                   return {File_Error::Permissions,{}};
          }
 
-         QList<QFile *> file_handles;
-
-         auto remove_file_handles = [&file_handles,&dir]{
-
-                  for(auto * const invalid_file_handle : file_handles){
-                           invalid_file_handle->deleteLater();
-                  }
-
-                  dir.removeRecursively();
-         };
+         std::vector<std::unique_ptr<QFile>> temp_file_handles;
 
          for(const auto & [torrent_file_path,torrent_file_size] : torrent_metadata.file_info){
                   QFileInfo file_info(torrent_file_path.data());
 
                   dir.mkpath(file_info.absolutePath());
 
-                  auto * const file_handle = file_handles.emplace_back(new QFile(dir.path() + '/' + file_info.fileName(),this));
+                  auto & file_handle = temp_file_handles.emplace_back(std::make_unique<QFile>(dir.path() + '/' + file_info.fileName(),this));
 
                   if(!file_handle->open(QFile::ReadWrite)){
-                           remove_file_handles();
                            return {File_Error::Permissions,{}};
                   }
          }
 
-         assert(!file_handles.empty());
+         QList<QFile*> file_handles(static_cast<qsizetype>(temp_file_handles.size()));
+
+         std::transform(temp_file_handles.begin(),temp_file_handles.end(),file_handles.begin(),[](auto & file_handle){
+                  return file_handle.release();
+         });
 
          return {File_Error::Null,std::move(file_handles)};
 }
@@ -67,12 +61,11 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
 inline File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
          assert(!file_path.isEmpty());
 
-         auto * const file_handle = new QFile(file_path,this);
+         auto file_handle = std::make_unique<QFile>(file_path,this);
 
          if(!file_handle->open(QFile::ReadWrite)){
-                  file_handle->deleteLater();
                   return {File_Error::Permissions,{}};
          }
 
-         return {File_Error::Null,QList{file_handle}};
+         return {File_Error::Null,QList{file_handle.release()}};
 }

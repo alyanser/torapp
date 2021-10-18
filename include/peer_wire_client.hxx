@@ -45,6 +45,7 @@ signals:
          void existing_pieces_verified() const;
          void download_paused() const;
          void download_finished() const;
+         void send_requests();
 private:
          struct Piece {
                   QList<std::int8_t> requested_block_cnts;
@@ -59,8 +60,8 @@ private:
                   std::int32_t total_block_cnt = 0;
          };
 
+         void configure_default_connections() noexcept;
          std::int32_t get_piece_size(std::int32_t piece_idx) const noexcept;
-
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
@@ -102,6 +103,7 @@ private:
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
          void clear_piece(std::int32_t piece_idx) noexcept;
+         void update_target_piece() noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
@@ -121,6 +123,7 @@ private:
          QSet<QUrl> active_peers_;
          bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
+         QTimer request_timer_;
          Download_tracker * const tracker_ = nullptr;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
@@ -131,6 +134,8 @@ private:
          std::int32_t average_block_cnt_ = 0;
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
+         std::int32_t cur_target_piece_idx_ = 0;
+         QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };
 
@@ -162,4 +167,10 @@ inline std::int32_t Peer_wire_client::get_piece_size(const std::int32_t piece_id
 inline qsizetype Peer_wire_client::get_file_size(const qsizetype file_idx) const noexcept {
          assert(static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second) > 0);
          return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
+}
+
+inline  void Peer_wire_client::update_target_piece() noexcept {
+         const auto min_ele_itr =  std::min_element(peer_additive_bitfield_.begin(),peer_additive_bitfield_.end() - spare_bit_cnt_);
+         cur_target_piece_idx_ = static_cast<std::int32_t>(std::distance(peer_additive_bitfield_.begin(),min_ele_itr));
+         assert(cur_target_piece_idx_ >= 0 && cur_target_piece_idx_ < total_piece_cnt_);
 }

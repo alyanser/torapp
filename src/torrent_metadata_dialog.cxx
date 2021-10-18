@@ -27,24 +27,24 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
          path_layout_.addWidget(&path_button_);
 }
 
-void Torrent_metadata_dialog::setup_display(const bencode::Metadata & metadata) noexcept {
-         torrent_name_label_.setText(metadata.name.data());
-         torrent_length_label_.setText(QString::number(metadata.piece_length) + " kbs");
-         comment_label_.setText(metadata.comment.data());
-         created_by_label_.setText(metadata.created_by.data());
-         creation_date_label_.setText(metadata.creation_date.data());
-         comment_label_.setText(metadata.comment.data());
-         encoding_label_.setText(metadata.encoding.data());
+void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_metadata) noexcept {
+         torrent_name_label_.setText(torrent_metadata.name.data());
+         torrent_length_label_.setText(QString::number(torrent_metadata.piece_length) + " kbs");
+         comment_label_.setText(torrent_metadata.comment.data());
+         created_by_label_.setText(torrent_metadata.created_by.data());
+         creation_date_label_.setText(torrent_metadata.creation_date.data());
+         comment_label_.setText(torrent_metadata.comment.data());
+         encoding_label_.setText(torrent_metadata.encoding.data());
 
-         for(const auto & [file_path,file_size_kbs] : metadata.file_info){
-                  constexpr auto conversion_format = util::conversion::Conversion_Format::Memory;
-                  
+         std::for_each(torrent_metadata.file_info.begin(),torrent_metadata.file_info.end(),[this](const auto & file_info){
+                  const auto & [file_path,file_size_kbs] = file_info;
+
                   const auto file_size_byte_cnt = file_size_kbs * 1024;
-                  const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_byte_cnt,conversion_format);
+                  const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_byte_cnt,util::conversion::Format::Memory);
 
                   auto * const file_label = new QLabel(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data(),this);
                   file_layout_.addWidget(file_label);
-         }
+         });
 }
 
 void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path) noexcept {

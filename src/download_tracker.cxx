@@ -157,7 +157,7 @@ void Download_tracker::update_download_speed() noexcept {
          assert(dled_byte_cnt_ >= restored_byte_cnt_);
          assert(session_time_.count() >= 0);
          const auto speed = session_time_.count() ? (dled_byte_cnt_ - restored_byte_cnt_) / session_time_.count() : 0;
-         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Conversion_Format::Speed);
+         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Format::Speed);
          dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
 }
 

@@ -20,7 +20,7 @@ void Udp_torrent_client::configure_default_connections() noexcept {
 void Udp_torrent_client::send_connect_request() noexcept {
          assert(!torrent_metadata_.announce_url_list.empty());
 
-         for(const auto & tracker_url : torrent_metadata_.announce_url_list){
+         std::for_each(torrent_metadata_.announce_url_list.begin(),torrent_metadata_.announce_url_list.end(),[this](const auto & tracker_url){
                   auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
                   
                   connect(socket,&Udp_socket::readyRead,this,[this,socket]{
@@ -32,7 +32,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                                     socket->abort();
                            }
                   });
-         }
+         });
 }
 
 [[nodiscard]]

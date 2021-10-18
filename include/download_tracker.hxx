@@ -136,7 +136,7 @@ inline void Download_tracker::set_error_and_finish(const QString & custom_error)
 }
 
 inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
-         const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Conversion_Format::Memory);
+         const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
 }
 

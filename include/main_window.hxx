@@ -12,9 +12,8 @@
 #include <QSettings>
 #include <QToolBar>
 #include <QMenuBar>
-#include <QDebug>
-#include <QMenu>
 #include <QTimer>
+#include <QMenu>
 
 class Main_window : public QMainWindow {
          Q_OBJECT
@@ -164,7 +163,9 @@ void Main_window::restore_downloads() noexcept {
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
 
-         for(const auto & dl_group : settings.childGroups()){
+         const auto child_groups = settings.childGroups();
+
+         std::for_each(child_groups.begin(),child_groups.end(),[this,&settings](const auto & dl_group){
                   settings.beginGroup(dl_group);
 
                   constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
@@ -210,5 +211,5 @@ void Main_window::restore_downloads() noexcept {
                   });
 
                   settings.endGroup();
-         }
+         });
 }
