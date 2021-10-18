@@ -36,7 +36,7 @@ set(CMAKE_AUTOMOC on)
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
 target_compile_options(${PROJECT_NAME} PRIVATE
-         -Wall -Wextra -pedantic -Wshadow -Wconversion
+         -Wall -Wextra -pedantic -Wshadow
 )
 
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer")

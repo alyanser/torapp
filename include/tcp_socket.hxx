@@ -31,7 +31,6 @@ public:
          bool fast_extension_enabled = false;
 signals:
          void got_choked() const;
-         void request_rejected() const;
 private:
          void configure_default_connections() noexcept;
          ///
@@ -47,8 +46,7 @@ inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent)
 {
          configure_default_connections();
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
-         reset_disconnect_timer();
-
+         
          disconnect_timer_.setSingleShot(true);
 }
 
@@ -115,6 +113,8 @@ inline void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
 
          if(state() == SocketState::ConnectedState){
                   write(QByteArray::fromHex(packet));
+         }else{
+                  qDebug() << "trying to send packet in disconnected state";
          }
 }
 
@@ -126,6 +126,7 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 inline void Tcp_socket::on_invalid_peer_reply() noexcept {
          
          if(constexpr auto peer_error_threshold = 5;++peer_error_cnt_ > peer_error_threshold){
+                  qDebug() << "Peer made too many mistakes. aborting";
                   abort();
          }
 }
@@ -133,6 +134,10 @@ inline void Tcp_socket::on_invalid_peer_reply() noexcept {
 inline void Tcp_socket::configure_default_connections() noexcept {
          connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
          connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
+
+         connect(this,&Tcp_socket::connected,[&disconnect_timer_ = disconnect_timer_]{
+                  disconnect_timer_.start(std::chrono::minutes(2));
+         });
 
          disconnect_timer_.callOnTimeout(this,[this]{
                   qDebug() << "connection timed out" << peer_id;

@@ -112,13 +112,12 @@ void Download_tracker::setup_network_status_layout() noexcept {
          state_button_stack_.addWidget(&resume_button_);
 }
 
-void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
-         received_byte_cnt += restored_byte_cnt_;
+void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
          dled_byte_cnt_ = received_byte_cnt;
          total_byte_cnt_ = total_byte_cnt;
 
          if(state_ == State::Verification){
-                  restored_byte_cnt_ = received_byte_cnt;
+                  restored_byte_cnt_ = dled_byte_cnt_;
          }
 
          assert(received_byte_cnt >= 0);
@@ -133,13 +132,11 @@ void Download_tracker::download_progress_update(std::int64_t received_byte_cnt,c
          }
 
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
-
          dl_quantity_label_.setText(text_fmt);
 
          using util::conversion::convert_to_percentile;
          dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : " " + QString::number(convert_to_percentile(received_byte_cnt,total_byte_cnt)) + "%"));
 }
-
 
 void Download_tracker::set_state(const State state) noexcept {
          state_ = state;
@@ -183,17 +180,20 @@ void Download_tracker::verification_progress_update(std::int32_t verified_asset_
 
 void Download_tracker::write_settings() const noexcept {
          QSettings settings;
-         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
-         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+         begin_setting_groups(settings);
          settings.setValue("time_elapsed",QVariant::fromValue(time_elapsed_));
 }
 
 void Download_tracker::read_settings() noexcept {
          QSettings settings;
-         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
-         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+         begin_setting_groups(settings);
 
          time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
+
+         if(!time_elapsed_.isValid()){
+                  time_elapsed_ = QTime(0,0,0);
+         }
+
          time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
 }
 

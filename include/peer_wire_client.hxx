@@ -13,6 +13,8 @@ class Tcp_socket;
 
 class Peer_wire_client : public QObject {
          Q_OBJECT
+         
+         struct Request_metadata;
 public:
          enum class Message_Id {
                   Choke,
@@ -29,7 +31,7 @@ public:
                   Have_None,
                   Reject_Request,
                   Allowed_Fast
-         }; 
+         };
 
          Q_ENUM(Message_Id);
 
@@ -46,9 +48,10 @@ signals:
          void download_paused() const;
          void download_finished() const;
          void send_requests();
+         void request_rejected(Request_metadata request_metadata) const;
 private:
          struct Piece {
-                  QList<std::int8_t> requested_block_cnts_;
+                  QList<std::int8_t> requested_blocks;
                   QBitArray received_blocks;
                   QByteArray data;
                   std::int32_t received_block_cnt = 0;
@@ -58,6 +61,12 @@ private:
                   std::int32_t piece_size = 0;
                   std::int32_t block_size = 0;
                   std::int32_t total_block_cnt = 0;
+         };
+
+         struct Request_metadata {
+                  std::int32_t piece_index = 0;
+                  std::int32_t piece_offset = 0;
+                  std::int32_t byte_cnt = 0;
          };
 
          void configure_default_connections() noexcept;
@@ -87,8 +96,7 @@ private:
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
-         static std::tuple<std::int32_t,std::int32_t,std::int32_t> extract_piece_metadata(const QByteArray & reply);
-         void extract_peer_reply(const QByteArray & peer_reply) const noexcept;
+         static Request_metadata extract_piece_metadata(const QByteArray & reply);
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata get_piece_info(std::int32_t piece_idx,std::int32_t piece_offset = 0) const noexcept;
          qsizetype get_file_size(qsizetype file_idx) const noexcept;
@@ -102,7 +110,7 @@ private:
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
          std::optional<std::pair<qsizetype,qsizetype>> get_beginning_file_info(std::int32_t piece_idx) const noexcept;
          void clear_piece(std::int32_t piece_idx) noexcept;
-         std::int32_t get_min_frequency_piece_idx() noexcept;
+         std::int32_t get_target_piece_index() noexcept;
          bool is_valid_piece_index(std::int32_t piece_idx) const noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
@@ -134,7 +142,7 @@ private:
          std::int32_t average_block_cnt_ = 0;
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
-         std::int32_t cur_target_piece_idx_ = 0;
+         std::int32_t cur_target_piece_idx_ = -1;
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };

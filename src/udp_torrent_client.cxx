@@ -4,6 +4,7 @@
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
+#include <QPointer>
 
 void Udp_torrent_client::configure_default_connections() noexcept {
 
@@ -261,6 +262,7 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
 
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
+                           assert(url.isValid());
                   }
                   
                   return ret_peer_urls;

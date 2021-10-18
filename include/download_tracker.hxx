@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QSettings>
 #include <QWidget>
 #include <QLabel>
 #include <QTimer>
@@ -74,6 +75,7 @@ private:
          void update_download_speed() noexcept;
          void write_settings() const noexcept;
          void read_settings() noexcept;
+         void begin_setting_groups(QSettings & settings) const noexcept;
          ///
          constexpr static std::string_view time_elapsed_fmt{" hh:mm:ss"};
          QString dl_path_;
@@ -152,4 +154,9 @@ inline void Download_tracker::setup_layout() noexcept {
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&state_stack_);
          central_layout_.addLayout(&network_stat_layout_);
+}
+
+inline void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {
+         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
+         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
 }

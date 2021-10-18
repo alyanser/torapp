@@ -8,7 +8,7 @@ void Udp_socket::configure_default_connections() noexcept {
          connect(this,&Udp_socket::connected,[this]{
                   send_initial_request(connect_request_,State::Connect);
          });
-         
+
          interval_timer_.callOnTimeout(this,[this]{
                   send_request(announce_request);
          });

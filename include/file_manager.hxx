@@ -38,11 +38,10 @@ inline File_manager::handle_return_type File_manager::open_file_handles(const QS
          std::vector<std::unique_ptr<QFile>> temp_file_handles;
 
          for(const auto & [torrent_file_path,torrent_file_size] : torrent_metadata.file_info){
-                  QFileInfo file_info(torrent_file_path.data());
-
+                  QFileInfo file_info(dir,torrent_file_path.data());
                   dir.mkpath(file_info.absolutePath());
 
-                  auto & file_handle = temp_file_handles.emplace_back(std::make_unique<QFile>(dir.path() + '/' + file_info.fileName(),this));
+                  auto & file_handle = temp_file_handles.emplace_back(std::make_unique<QFile>(file_info.absoluteFilePath(),this));
 
                   if(!file_handle->open(QFile::ReadWrite)){
                            return {File_Error::Permissions,{}};
