@@ -140,7 +140,7 @@ private:
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
-         std::int64_t piece_size_ = 0;
+         std::int64_t torrent_piece_size_ = 0;
          std::int32_t total_piece_cnt_ = 0;
          std::int32_t spare_bit_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
@@ -172,9 +172,9 @@ constexpr std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
 [[nodiscard]]
 inline std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) const noexcept {
          assert(is_valid_piece_index(piece_idx));
-         const auto result = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % piece_size_ ? total_byte_cnt_ % piece_size_ : piece_size_;
-         assert(result > 0 && result <= std::numeric_limits<std::int32_t>::max());
-         return static_cast<std::int32_t>(result);
+         const auto piece_size = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % torrent_piece_size_ ? total_byte_cnt_ % torrent_piece_size_ : torrent_piece_size_;
+         assert(piece_size > 0 && piece_size <= torrent_piece_size_);
+         return static_cast<std::int32_t>(piece_size);
 }
 
 [[nodiscard]]
