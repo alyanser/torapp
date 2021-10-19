@@ -180,6 +180,16 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                   on_socket_ready_read(socket);
          });
 
+         connect(socket,&Tcp_socket::ratio_changed,this,[this,socket](const double old_ratio){
+                  additive_ratio_ -= old_ratio;
+                  assert(additive_ratio_ >= 0);
+
+                  additive_ratio_ += socket->ratio();
+
+                  assert(!active_peers_.isEmpty());
+                  tracker_->set_ratio(old_ratio / static_cast<double>(active_peers_.size()));
+         });
+
          connect(this,&Peer_wire_client::download_paused,socket,&Tcp_socket::disconnectFromHost);
 
          connect(this,&Peer_wire_client::piece_verified,socket,[socket](const std::int32_t dled_piece_idx){
@@ -201,8 +211,8 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                            }
                   }
 
-                  [[maybe_unused]] const auto remove_success = active_peers_.remove(socket->peer_url());
-                  assert(remove_success);
+                  assert(active_peers_.contains(socket->peer_url()));
+                  active_peers_.remove(socket->peer_url());
          });
 }
 
@@ -488,7 +498,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
          }
 
          constexpr auto max_duplicate_requests = 5;
-         constexpr auto max_request_cnt = 100;
+         const auto max_request_cnt = piece_info(piece_idx).block_cnt; // ? consider validity
 
          for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){
                   assert(requested_blocks[block_idx] <= max_duplicate_requests);
@@ -496,8 +506,6 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   if(received_blocks[block_idx] || requested_blocks[block_idx] == max_duplicate_requests){
                            continue;
                   }
-
-                  qDebug() << "Sending rqeuest for  block_idx" << block_idx;
 
                   assert(block_idx * max_block_size <= total_byte_cnt_);
                   socket->send_packet(craft_request_message(piece_idx,block_idx * max_block_size));
@@ -549,7 +557,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
          }
 }
 
-void Peer_wire_client::on_piece_request_received(Tcp_socket * const socket,const QByteArray & request) noexcept {
+void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const QByteArray & request) noexcept {
          const auto [requested_piece_idx,requested_offset,requested_byte_cnt] = extract_piece_metadata(request);
 
          auto send_reject_message = [socket,piece_idx = requested_piece_idx,offset = requested_offset,byte_cnt = requested_byte_cnt]{
@@ -564,12 +572,12 @@ void Peer_wire_client::on_piece_request_received(Tcp_socket * const socket,const
                   return send_reject_message();
          }
 
-         if((!socket->peer_interested || socket->am_choking) && !socket->allowed_fast_set.contains(requested_piece_idx)){
+         if(!socket->is_sound_ratio() || ((!socket->peer_interested || socket->am_choking) && !socket->allowed_fast_set.contains(requested_piece_idx))){
                   return send_reject_message();
          }
 
          auto send_piece = [this,socket,piece_idx = requested_piece_idx,offset = requested_offset,byte_cnt = requested_byte_cnt](const QByteArray & piece){
-                  qDebug() << "Sent" << piece_idx;
+                  socket->add_uploaded_bytes(byte_cnt);
                   tracker_->set_upload_byte_count(uled_byte_cnt_ += byte_cnt);
                   socket->send_packet(craft_piece_message(piece.sliced(offset,byte_cnt),piece_idx,offset));
          };
@@ -935,7 +943,7 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
                   return util::extract_integer<std::int32_t>(reply,piece_begin_offset);
          }();
 
-         const auto newly_received_block = [&reply = reply]{
+         const auto received_block = [&reply = reply]{
                   constexpr auto piece_content_offset = 9;
                   return reply.sliced(piece_content_offset);
          }();
@@ -952,6 +960,8 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
                   qDebug() << "Invalid block idx from peer";
                   return socket->on_invalid_peer_reply();
          }
+
+         socket->add_downloaded_bytes(received_block.size());
 
          assert(received_piece_idx < pieces_.size());
          auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[received_piece_idx];
@@ -980,8 +990,8 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
          qDebug() << received_block_cnt << total_block_cnt << received_block_idx;
          assert(received_block_cnt <= total_block_cnt);
 
-         assert(received_offset + newly_received_block.size() <= piece_data.size());
-         std::copy(newly_received_block.begin(),newly_received_block.end(),piece_data.begin() + received_offset);
+         assert(received_offset + received_block.size() <= piece_data.size());
+         std::copy(received_block.begin(),received_block.end(),piece_data.begin() + received_offset);
 
          if(received_block_cnt == total_block_cnt){
 
@@ -1200,7 +1210,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   }
 
                   case Message_Id::Request : {
-                           on_piece_request_received(socket,reply);
+                           on_block_request_received(socket,reply);
                            break;
                   }
 

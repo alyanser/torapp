@@ -96,6 +96,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
          network_form_layout_.addRow("Download Speed",&dl_speed_label_);
          network_form_layout_.addRow("Downloaded",&dl_quantity_label_);
          network_form_layout_.addRow("Uploaded",&ul_quantity_label_);
+         network_form_layout_.addRow("Ratio",&ratio_label_);
 
          network_stat_layout_.addWidget(&delete_button_);
          network_stat_layout_.addWidget(&state_button_stack_);
@@ -256,10 +257,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
                   ++session_time_;
                   update_download_speed();
-
-                  QTimer::singleShot(0,this,[this]{
-                           write_settings();
-                  });
+                  write_settings();
          });
 }
 
@@ -279,6 +277,7 @@ void Download_tracker::switch_to_finished_state() noexcept {
 }
 
 void Download_tracker::update_error_line() noexcept {
+         // ? use static QStrings
 
          switch(error_){
                   

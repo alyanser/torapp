@@ -48,6 +48,7 @@ public:
          constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
 
          void set_state(State state) noexcept;
+         void set_ratio(double ratio) noexcept;
          void set_error_and_finish(Error error) noexcept;
          void set_error_and_finish(const QString & custom_error) noexcept;
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt = -1) noexcept;
@@ -104,6 +105,7 @@ private:
          QLabel time_elapsed_buddy_{"Time elapsed:"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + time_elapsed_fmt.data()};
          QLabel dl_speed_label_{"0 byte (s) / sec"};
+         QLabel ratio_label_{"0"};
          QPushButton finish_button_{"Finish"};
          QPushButton cancel_button_{"Cancel"};
          QPushButton open_button_{"Open"};
@@ -148,6 +150,10 @@ constexpr Download_tracker::Error Download_tracker::error() const noexcept {
 
 constexpr void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
          restored_byte_cnt_ = restored_byte_cnt;
+}
+
+inline void Download_tracker::set_ratio(const double ratio) noexcept {
+         ratio_label_.setText(QString::number(ratio));
 }
 
 inline void Download_tracker::setup_layout() noexcept {

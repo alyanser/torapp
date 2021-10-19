@@ -84,7 +84,7 @@ private:
          void on_block_received(Tcp_socket * socket,const QByteArray & reply) noexcept;
          void on_allowed_fast_received(Tcp_socket * socket,std::int32_t allowed_piece_idx) noexcept;
          void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
-         void on_piece_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
+         void on_block_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          void on_socket_connected(Tcp_socket * socket) noexcept;
@@ -137,6 +137,7 @@ private:
          QTimer settings_timer_;
          QTimer request_timer_;
          Download_tracker * const tracker_ = nullptr;
+         double additive_ratio_ = 0;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
