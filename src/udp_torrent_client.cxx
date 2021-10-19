@@ -148,31 +148,36 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
 
                                     connect(tracker_,&Download_tracker::download_paused,this,[this,socket = QPointer(socket),connection_id]{
 
-                                             {
-                                                      const bool already_stopped = event_ == Event::Stopped;
+                                             if(event_ != Event::Stopped){
                                                       event_ = Event::Stopped;
-                                                      
-                                                      if(!socket || already_stopped){
-                                                               return;
+
+                                                      if(socket){
+                                                               socket->announce_request = craft_announce_request(*connection_id);
                                                       }
                                              }
-
-                                             socket->announce_request = craft_announce_request(*connection_id);
                                     });
 
                                     connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{
 
-                                             {
-                                                      const bool already_running = event_ == Event::Started;
+                                             if(event_ != Event::Started){
                                                       event_ = Event::Started;
 
-                                                      if(!socket || already_running){
-                                                               return;
+                                                      if(socket){
+                                                               socket->announce_request = craft_announce_request(*connection_id);
+                                                               socket->send_request(socket->announce_request);
                                                       }
                                              }
+                                    });
 
-                                             socket->announce_request = craft_announce_request(*connection_id);
-                                             socket->send_request(socket->announce_request);
+                                    connect(&peer_client_,&Peer_wire_client::download_finished,this,[this,socket = QPointer(socket),connection_id]{
+                                             qDebug() << "Downoad finished";
+                                             assert(event_ !=  Event::Completed);
+                                             event_ = Event::Completed;
+
+                                             if(socket){
+                                                      socket->announce_request = craft_announce_request(*connection_id);
+                                                      socket->send_request(socket->announce_request);
+                                             }
                                     });
 
                                     break;

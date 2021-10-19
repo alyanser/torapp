@@ -4,7 +4,6 @@ project(torapp CXX)
 
 set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 set(SOURCES
          src/main.cxx
@@ -39,11 +38,12 @@ target_compile_options(${PROJECT_NAME} PRIVATE
          -Wall -Wextra -pedantic -Wshadow
 )
 
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fsanitize=undefined,address -fno-omit-frame-pointer")
+target_include_directories(${PROJECT_NAME}
+         PRIVATE "include"
+)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-         "include"
-         SYSTEM "ext"
+target_include_directories(${PROJECT_NAME} SYSTEM
+         PRIVATE "ext"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)
@@ -54,7 +54,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_precompile_headers(${PROJECT_NAME} PRIVATE
-         [["bencode_parser.hxx"]]
+         [["string"]]
          [["QApplication"]]
          [["QMainWindow"]]
          [["QWidget"]]
@@ -78,4 +78,5 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QFileInfo"]]
          [["QCryptographicHash"]]
          [["QMessageBox"]]
+         [["bencode_parser.hxx"]]
 )
