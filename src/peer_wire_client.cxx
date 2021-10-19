@@ -568,6 +568,7 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
                   }
          };
 
+
          if(!is_valid_piece_index(requested_piece_idx) || requested_offset + requested_byte_cnt > piece_size(requested_piece_idx) || !bitfield_[requested_piece_idx]){
                   return send_reject_message();
          }
@@ -611,7 +612,6 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
                                     clear_piece(piece_idx);
                            });
                   }else{
-                           qDebug() << "read from the disk failed";
                            send_reject_message();
                   }
          });
@@ -715,7 +715,6 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
          for(qsizetype file_handle_idx = beg_file_handle_idx;resultant_piece.size() < requested_piece_size;++file_handle_idx){
 
                   if(file_handle_idx == file_handles_.size()){
-                           qDebug() << "Reached at the ending without writing enough bytes";
                            return {};
                   }
 

@@ -84,6 +84,12 @@ void Network_manager::download(util::Download_resources resources,const bencode:
                   ++download_cnt_;
                   [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
          }else{
-                  qDebug() << "unrecognized protocol : " << protocol;
+                  emit resources.tracker->download_dropped();
+
+                  std::for_each(resources.file_handles.begin(),resources.file_handles.end(),[](auto * const file_handle){
+                           file_handle->deleteLater();
+                  });
+
+                  QMessageBox::critical(nullptr,"No support","Torapp doesn't support TCP trackers yet");
          }
 }

@@ -136,8 +136,8 @@ inline std::string extract_any(const std::any & value,const std::int64_t value_t
          auto extract_inner_list = [](auto && list){
                   std::string list_content;
                   
-                  for(const auto & value : list){
-                           list_content += extract_any(value,static_cast<std::int64_t>(value.type().hash_code()));
+                  for(const auto & val : list){
+                           list_content += extract_any(val,static_cast<std::int64_t>(val.type().hash_code()));
                   }
                   
                   return list_content;
