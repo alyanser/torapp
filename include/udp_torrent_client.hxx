@@ -19,6 +19,8 @@ public:
                   Error,
          };
 
+         Q_ENUM(Action_Code);
+
          enum class Event {
                   None,
                   Started,
@@ -50,7 +52,7 @@ signals:
          void error_received(const QByteArray & array) const;
 private:
          static QByteArray craft_connect_request() noexcept;
-         static QByteArray craft_scrape_request(const bencode::Metadata & metadata,std::int64_t tracker_connection_id) noexcept;
+         QByteArray craft_scrape_request(std::int64_t tracker_connection_id) const noexcept;
          QByteArray craft_announce_request(std::int64_t tracker_connection_id) const noexcept;
 
          static std::optional<QByteArray> extract_tracker_error(const QByteArray & reply,std::int32_t sent_txn_id);
@@ -71,6 +73,7 @@ private:
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
          Download_tracker * const tracker_ = nullptr;
+         qsizetype tracker_url_idx_ = 0;
          Event event_ = Event::None;
 };
 
@@ -81,11 +84,16 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          , peer_client_(torrent_metadata_,{std::move(resources.dl_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
 {
+         assert(id.size() == 40);
          configure_default_connections();
 
-         if(torrent_metadata_.announce_url_list.empty()){
+         {
                   assert(!torrent_metadata_.announce_url.empty());
-                  torrent_metadata_.announce_url_list.emplace_back(torrent_metadata_.announce_url);
+                  auto & tracker_urls = torrent_metadata_.announce_url_list;
+
+                  if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
+                           tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
+                  }
          }
 }
 

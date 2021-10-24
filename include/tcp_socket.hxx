@@ -18,10 +18,9 @@ public:
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
          void on_invalid_peer_reply() noexcept;
-         constexpr bool is_sound_ratio() const noexcept;
+         constexpr bool is_good_ratio() const noexcept;
          constexpr void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
          constexpr void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
-         constexpr double ratio() const noexcept;
          ///
          QBitArray peer_bitfield;
          QByteArray peer_id;
@@ -35,15 +34,12 @@ public:
          bool fast_extension_enabled = false;
 signals:
          void got_choked() const;
-         void ratio_changed(double old_ratio) const;
 private:
          void configure_default_connections() noexcept;
-         constexpr void update_ratio() noexcept;
          ///
          std::pair<std::optional<std::int32_t>,QByteArray> receive_buffer_;
          QTimer disconnect_timer_;
          QUrl peer_url_;
-         double ratio_ = 0;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
          std::int8_t peer_error_cnt_ = 0;
@@ -141,27 +137,21 @@ inline void Tcp_socket::on_invalid_peer_reply() noexcept {
 }
 
 [[nodiscard]]
-constexpr bool Tcp_socket::is_sound_ratio() const noexcept {
+constexpr bool Tcp_socket::is_good_ratio() const noexcept {
          constexpr auto min_ratio = 0.5;
-         constexpr auto uled_byte_threshold = 1048576; // 1 mb
-         return ratio_ >= min_ratio ? true : uled_byte_cnt_ < uled_byte_threshold;
+         // todo: make the threshold = piece_size
+         constexpr auto uled_byte_threshold = 2097152; // 1 mb
+         return static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio ? true : uled_byte_cnt_ <= uled_byte_threshold;
 }
 
 constexpr void Tcp_socket::add_uploaded_bytes(const std::int64_t uled_byte_cnt) noexcept {
          assert(uled_byte_cnt > 0);
          uled_byte_cnt_ += uled_byte_cnt;
-         update_ratio();
 }
 
 constexpr void Tcp_socket::add_downloaded_bytes(const std::int64_t dled_byte_cnt) noexcept {
          assert(dled_byte_cnt > 0);
          dled_byte_cnt_ += dled_byte_cnt;
-         update_ratio();
-}
-
-[[nodiscard]]
-constexpr double Tcp_socket::ratio() const noexcept {
-         return ratio_;
 }
 
 inline void Tcp_socket::configure_default_connections() noexcept {
@@ -176,15 +166,6 @@ inline void Tcp_socket::configure_default_connections() noexcept {
                   qDebug() << "connection timed out" << peer_id;
                   state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
          });
-}
-
-constexpr void Tcp_socket::update_ratio() noexcept {
-         assert(uled_byte_cnt_ >= 0);
-         assert(dled_byte_cnt_ >= 0);
-
-         const auto old_ratio = ratio_;
-         ratio_ = static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_ ? uled_byte_cnt_ : 1);
-         emit ratio_changed(old_ratio);
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {

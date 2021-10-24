@@ -112,6 +112,7 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          }
 
          const auto hex_fmt = raw_data.sliced(offset,byte_cnt).toHex();
+         assert(hex_fmt.front() != '-');
          constexpr auto hex_base = 16;
          
          bool conversion_success = true;

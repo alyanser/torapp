@@ -84,7 +84,6 @@ private:
          QHBoxLayout file_stat_layout_;
          QHBoxLayout network_stat_layout_;
          QHBoxLayout package_name_layout_;
-         QHBoxLayout dl_path_layout_;
          QHBoxLayout dl_quanitity_layout_;
          QHBoxLayout ul_quantity_layout_;
          QHBoxLayout time_elapsed_layout_;
@@ -98,8 +97,6 @@ private:
          QLineEdit finish_line_;
          QLabel package_name_buddy_{"Name:"};
          QLabel package_name_label_;
-         QLabel dl_path_buddy_{"Path:"};
-         QLabel dl_path_label_;
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel ul_quantity_label_{"0 byte (s)"};
          QLabel time_elapsed_buddy_{"Time elapsed:"};

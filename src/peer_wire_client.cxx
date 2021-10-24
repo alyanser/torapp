@@ -42,7 +42,11 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
 void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
-         connect(&request_timer_,&QTimer::timeout,this,&Peer_wire_client::send_requests);
+
+         connect(&refresh_timer_,&QTimer::timeout,this,[this]{
+                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) : 0);
+                  send_requests();
+         });
 
          connect(this,&Peer_wire_client::existing_pieces_verified,[&setting_timer_ = settings_timer_]{
                   setting_timer_.start(std::chrono::seconds(1));
@@ -64,7 +68,7 @@ void Peer_wire_client::on_piece_verified(std::int32_t verified_piece_idx) noexce
          if(dled_piece_cnt_ == total_piece_cnt_){
                   assert(!remaining_byte_count());
                   tracker_->set_error_and_finish("Download finished");
-                  request_timer_.stop();
+                  refresh_timer_.stop();
                   emit download_finished();
          }
 }
@@ -157,7 +161,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    request_timer_.start(std::chrono::seconds(5));
+                                    refresh_timer_.start(std::chrono::seconds(5));
                            }
                            
                            emit existing_pieces_verified();
@@ -178,16 +182,6 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
 
          connect(socket,&Tcp_socket::readyRead,this,[this,socket]{
                   on_socket_ready_read(socket);
-         });
-
-         connect(socket,&Tcp_socket::ratio_changed,this,[this,socket](const double old_ratio){
-                  additive_ratio_ -= old_ratio;
-                  assert(additive_ratio_ >= 0);
-
-                  additive_ratio_ += socket->ratio();
-
-                  assert(!active_peers_.isEmpty());
-                  tracker_->set_ratio(old_ratio / static_cast<double>(active_peers_.size()));
          });
 
          connect(this,&Peer_wire_client::download_paused,socket,&Tcp_socket::disconnectFromHost);
@@ -236,21 +230,26 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
 
 void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) noexcept {
 
+         auto recall_if_unread = [this,socket = QPointer(socket)]{
+
+                  if(socket && socket->bytesAvailable()){
+
+                           QTimer::singleShot(0,this,[this,socket]{
+
+                                    if(socket){
+                                             assert(socket->bytesAvailable());
+                                             on_socket_ready_read(socket);
+                                    }
+                           });
+                  }
+         };
+
          try {
                   communicate_with_peer(socket);
+                  recall_if_unread();
          }catch(const std::exception & exception){
                   qDebug() << exception.what();
                   return socket->abort();
-         }
-
-         if(socket->bytesAvailable()){
-
-                  QTimer::singleShot(0,this,[this,socket = QPointer(socket)]{
-                           
-                           if(socket){
-                                    on_socket_ready_read(socket);
-                           }
-                  });
          }
 }
 
@@ -573,14 +572,18 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
                   return send_reject_message();
          }
 
-         if(!socket->is_sound_ratio() || ((!socket->peer_interested || socket->am_choking) && !socket->allowed_fast_set.contains(requested_piece_idx))){
+         if((!socket->is_good_ratio() || (!socket->peer_interested || socket->am_choking)) && !socket->allowed_fast_set.contains(requested_piece_idx)){
                   return send_reject_message();
          }
 
-         auto send_piece = [this,socket,piece_idx = requested_piece_idx,offset = requested_offset,byte_cnt = requested_byte_cnt](const QByteArray & piece){
-                  socket->add_uploaded_bytes(byte_cnt);
-                  tracker_->set_upload_byte_count(uled_byte_cnt_ += byte_cnt);
-                  socket->send_packet(craft_piece_message(piece.sliced(offset,byte_cnt),piece_idx,offset));
+         auto send_piece = [this,socket,piece_idx = requested_piece_idx,offset = requested_offset,requested_byte_cnt = requested_byte_cnt](const QByteArray & piece){
+                  assert(piece.size() == requested_byte_cnt);
+                  session_uled_byte_cnt_ += requested_byte_cnt;
+                  
+                  socket->add_uploaded_bytes(requested_byte_cnt);
+                  tracker_->set_upload_byte_count(uled_byte_cnt_ += requested_byte_cnt);
+
+                  socket->send_packet(craft_piece_message(piece.sliced(offset,requested_byte_cnt),piece_idx,offset));
          };
 
          if(!pieces_[requested_piece_idx].data.isEmpty()){
@@ -603,8 +606,8 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
                   }
 
                   if(auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
-                           send_piece(*piece);
                            pieces_[piece_idx].data = std::move(*piece);
+                           send_piece(pieces_[piece_idx].data);
 
                            constexpr std::chrono::seconds piece_cleanup_timeout(30);
 
@@ -914,6 +917,7 @@ void Peer_wire_client::on_piece_downloaded(Piece & dled_piece,const std::int32_t
                   qDebug() << "new target piece" << *cur_target_piece_idx_;
 
                   emit piece_verified(dled_piece_idx);
+                  session_dled_byte_cnt_ += piece_size(dled_piece_idx);
 
                   if(dled_piece_cnt_ < total_piece_cnt_){
                            cur_target_piece_idx_ = target_piece_index();
@@ -1081,7 +1085,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
 
                   if(!remaining_byte_count()){
                            qDebug() << "Download already finished";
-                           request_timer_.stop();
+                           refresh_timer_.stop();
                            return;
                   }
 
@@ -1256,7 +1260,5 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   default : {
                            __builtin_unreachable();
                   }
-
-                  // ? something is wrong here
          }
 }

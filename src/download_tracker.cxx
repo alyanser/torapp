@@ -19,7 +19,6 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
          dl_progress_bar_.setTextVisible(true);
-         dl_path_label_.setText(dl_path_);
 
          read_settings();
 
@@ -70,17 +69,12 @@ Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata tor
 
 void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
-         file_stat_layout_.addLayout(&dl_path_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
 
          package_name_layout_.addWidget(&package_name_buddy_);
          package_name_layout_.addWidget(&package_name_label_);
          package_name_buddy_.setBuddy(&package_name_label_);
-
-         dl_path_layout_.addWidget(&dl_path_buddy_);
-         dl_path_layout_.addWidget(&dl_path_label_);
-         dl_path_layout_.addWidget(&open_dir_button_);
-         dl_path_buddy_.setBuddy(&dl_path_label_);
+         package_name_layout_.addWidget(&open_dir_button_);
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);

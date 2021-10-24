@@ -21,19 +21,40 @@ void Udp_torrent_client::configure_default_connections() noexcept {
 
 void Udp_torrent_client::send_connect_request() noexcept {
          assert(!torrent_metadata_.announce_url_list.empty());
+         assert(tracker_url_idx_ <= static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
 
-         std::for_each(torrent_metadata_.announce_url_list.begin(),torrent_metadata_.announce_url_list.end(),[this](const auto & tracker_url){
-                  auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
-                  
-                  connect(socket,&Udp_socket::readyRead,this,[this,socket]{
+         if(tracker_url_idx_ == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
+                  tracker_url_idx_ = 0;
+         }
 
-                           try {
-                                    on_socket_ready_read(socket);
-                           }catch(const std::exception & exception){
-                                    qDebug() << exception.what();
-                                    socket->abort();
+         const auto & tracker_url = torrent_metadata_.announce_url_list[tracker_url_idx_];
+         qDebug() << tracker_url.data();
+         assert(QUrl(tracker_url.data()).isValid());
+         auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
+         
+         connect(socket,&Udp_socket::readyRead,this,[this,socket]{
+
+                  auto recall_if_unread = [this,socket = QPointer(socket)]{
+
+                           if(socket && socket->bytesAvailable()){
+
+                                    QTimer::singleShot(0,this,[this,socket]{
+
+                                             if(socket){
+                                                      assert(socket->bytesAvailable());
+                                                      on_socket_ready_read(socket);
+                                             }
+                                    });
                            }
-                  });
+                  };
+
+                  try {
+                           on_socket_ready_read(socket);
+                           recall_if_unread();
+                  }catch(const std::exception & exception){
+                           qDebug() << exception.what();
+                           socket->abort();
+                  }
          });
 }
 
@@ -42,7 +63,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          using util::conversion::convert_to_hex;
 
          auto connect_request = []{
-                  constexpr auto protocol_constant = 0x41727101980;
+                  constexpr std::int64_t protocol_constant = 0x41727101980;
                   return convert_to_hex(protocol_constant);
          }();
 
@@ -77,13 +98,15 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
 
          announce_request += info_sha1_hash_;
          announce_request += id;
+
          announce_request += convert_to_hex(peer_client_.downloaded_byte_count());
          announce_request += convert_to_hex(peer_client_.remaining_byte_count());
          announce_request += convert_to_hex(peer_client_.uploaded_byte_count());
+
          announce_request += convert_to_hex(static_cast<std::int32_t>(event_));
 
          announce_request += []{
-                  constexpr auto default_ip_address = 0;
+                  constexpr std::int32_t default_ip_address = 0;
                   return convert_to_hex(default_ip_address);
          }();
 
@@ -93,12 +116,12 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          }();
 
          announce_request += []{
-                  constexpr auto default_num_want = -1;
+                  constexpr std::int32_t default_num_want = -1;
                   return convert_to_hex(default_num_want);
          }();
 
          announce_request += []{
-                  constexpr std::uint16_t default_port = 6889;
+                  constexpr std::uint16_t default_port = 55667;
                   return convert_to_hex(default_port);
          }();
 
@@ -107,11 +130,11 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
 }
 
 [[nodiscard]]
-QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & metadata,const std::int64_t tracker_connection_id) noexcept {
+QByteArray Udp_torrent_client::craft_scrape_request(const std::int64_t tracker_connection_id) const noexcept {
          using util::conversion::convert_to_hex;
          
          auto scrape_request = convert_to_hex(tracker_connection_id);
-         const auto scrape_request_size = static_cast<qsizetype>(metadata.pieces.size()) + 32;
+         const auto scrape_request_size = info_sha1_hash_.size() + 32;
          scrape_request.reserve(scrape_request_size);
 
          scrape_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Scrape));
@@ -121,113 +144,10 @@ QByteArray Udp_torrent_client::craft_scrape_request(const bencode::Metadata & me
                   return convert_to_hex(txn_id);
          }();
 
-         scrape_request += QByteArray(metadata.pieces.data(),static_cast<qsizetype>(metadata.pieces.size()));
+         scrape_request += info_sha1_hash_;
 
          assert(scrape_request.size() == scrape_request_size);
          return scrape_request;
-}
-
-void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
-
-         while(socket->hasPendingDatagrams()){
-                  const auto reply = socket->receiveDatagram().data();
-                  const auto tracker_action = static_cast<Action_Code>(util::extract_integer<std::int32_t>(reply,0));
-
-                  switch(tracker_action){
-
-                           case Action_Code::Connect : {
-                                    const auto connection_id = extract_connect_reply(reply,socket->txn_id);
-
-                                    if(!connection_id){
-                                             qDebug() << "Invalid connect reply";
-                                             return socket->abort();
-                                    }
-
-                                    socket->announce_request = craft_announce_request(*connection_id);
-                                    socket->scrape_request = craft_scrape_request(torrent_metadata_,*connection_id);
-                                    socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
-
-                                    connect(tracker_,&Download_tracker::download_paused,this,[this,socket = QPointer(socket),connection_id]{
-
-                                             if(event_ != Event::Stopped){
-                                                      event_ = Event::Stopped;
-
-                                                      if(socket){
-                                                               socket->announce_request = craft_announce_request(*connection_id);
-                                                      }
-                                             }
-                                    });
-
-                                    connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{
-
-                                             if(event_ != Event::Started){
-                                                      event_ = Event::Started;
-
-                                                      if(socket){
-                                                               socket->announce_request = craft_announce_request(*connection_id);
-                                                               socket->send_request(socket->announce_request);
-                                                      }
-                                             }
-                                    });
-
-                                    connect(&peer_client_,&Peer_wire_client::download_finished,this,[this,socket = QPointer(socket),connection_id]{
-                                             qDebug() << "Downoad finished";
-                                             assert(event_ !=  Event::Completed);
-                                             event_ = Event::Completed;
-
-                                             if(socket){
-                                                      socket->announce_request = craft_announce_request(*connection_id);
-                                                      socket->send_request(socket->announce_request);
-                                             }
-                                    });
-
-                                    break;
-                           }
-
-                           case Action_Code::Announce : {
-
-                                    if(const auto announce_reply = extract_announce_reply(reply,socket->txn_id)){
-                                             socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
-                                             emit announce_reply_received(*announce_reply);
-                                    }else{
-                                             qInfo() << "Invalid announce resposne";
-                                             return socket->abort();
-                                    }
-
-                                    break;
-                           }
-
-                           case Action_Code::Scrape : {
-
-                                    if(const auto scrape_reply = extract_scrape_reply(reply,socket->txn_id)){
-                                             emit swarm_metadata_received(*scrape_reply);
-                                    }else{
-                                             qDebug() << "Invalid scrape reply";
-                                             return socket->abort();
-                                    }
-
-                                    break;
-                           }
-
-                           case Action_Code::Error : {
-
-                                    if(const auto tracker_error = extract_tracker_error(reply,socket->txn_id)){
-                                             emit error_received(*tracker_error);
-                                    }else{
-                                             qDebug() << "tracker can't be send the error reply without errors";
-                                             return socket->abort();
-                                    }
-                                    
-                                    break;
-                           }
-
-                           default : {
-                                    return socket->abort();
-                           }
-                  }
-         }
-
-         assert(!socket->bytesAvailable());
 }
 
 [[nodiscard]]
@@ -300,4 +220,108 @@ std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_sc
          }();
 
          return Swarm_metadata{seed_cnt,completed_cnt,leecher_cnt};
+}
+
+void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
+         assert(socket->hasPendingDatagrams());
+
+         // todo: validate the response size and use transactions
+         const auto reply = socket->receiveDatagram().data();
+         const auto tracker_action = static_cast<Action_Code>(util::extract_integer<std::int32_t>(reply,0));
+
+         qDebug() << reply.size() << tracker_action;
+
+         switch(tracker_action){
+
+                  case Action_Code::Connect : {
+                           const auto connection_id = extract_connect_reply(reply,socket->txn_id);
+
+                           if(!connection_id){
+                                    qDebug() << "Invalid connect reply";
+                                    return socket->abort();
+                           }
+
+                           socket->announce_request = craft_announce_request(*connection_id);
+                           socket->scrape_request = craft_scrape_request(*connection_id);
+                           socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
+
+                           connect(tracker_,&Download_tracker::download_paused,this,[this,socket = QPointer(socket),connection_id]{
+
+                                    if(event_ != Event::Stopped){
+                                             event_ = Event::Stopped;
+
+                                             if(socket){
+                                                      socket->announce_request = craft_announce_request(*connection_id);
+                                             }
+                                    }
+                           });
+
+                           connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{
+
+                                    if(event_ != Event::Started){
+                                             event_ = Event::Started;
+
+                                             if(socket){
+                                                      socket->announce_request = craft_announce_request(*connection_id);
+                                                      socket->send_request(socket->announce_request);
+                                             }
+                                    }
+                           });
+
+                           connect(&peer_client_,&Peer_wire_client::download_finished,this,[this,socket = QPointer(socket),connection_id]{
+                                    qDebug() << "Downoad finished";
+                                    assert(event_ !=  Event::Completed);
+                                    event_ = Event::Completed;
+
+                                    if(socket){
+                                             socket->announce_request = craft_announce_request(*connection_id);
+                                             socket->send_request(socket->announce_request);
+                                    }
+                           });
+
+                           break;
+                  }
+
+                  case Action_Code::Announce : {
+
+                           if(const auto announce_reply = extract_announce_reply(reply,socket->txn_id)){
+                                    socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
+                                    emit announce_reply_received(*announce_reply);
+                           }else{
+                                    qInfo() << "Invalid announce resposne";
+                                    return socket->abort();
+                           }
+
+                           break;
+                  }
+
+                  case Action_Code::Scrape : {
+
+                           if(const auto scrape_reply = extract_scrape_reply(reply,socket->txn_id)){
+                                    qDebug() << scrape_reply->completed_cnt << scrape_reply->leecher_cnt << scrape_reply->seed_cnt;
+                                    emit swarm_metadata_received(*scrape_reply);
+                           }else{
+                                    qDebug() << "Invalid scrape reply";
+                                    return socket->abort();
+                           }
+
+                           break;
+                  }
+
+                  case Action_Code::Error : {
+
+                           if(const auto tracker_error = extract_tracker_error(reply,socket->txn_id)){
+                                    emit error_received(*tracker_error);
+                           }else{
+                                    qDebug() << "tracker can't be send the error reply without errors";
+                                    return socket->abort();
+                           }
+                           
+                           break;
+                  }
+
+                  default : {
+                           return socket->abort();
+                  }
+         }
 }

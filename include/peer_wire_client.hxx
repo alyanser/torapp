@@ -135,11 +135,12 @@ private:
          QSet<QUrl> active_peers_;
          bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
-         QTimer request_timer_;
+         QTimer refresh_timer_;
          Download_tracker * const tracker_ = nullptr;
-         double additive_ratio_ = 0;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
+         std::int64_t session_dled_byte_cnt_ = 0;
+         std::int64_t session_uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t torrent_piece_size_ = 0;
          std::int32_t total_piece_cnt_ = 0;
