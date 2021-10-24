@@ -78,6 +78,7 @@ inline void Udp_socket::send_request(const QByteArray & request) noexcept {
 }
 
 inline void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
+         assert(connection_id_valid_);
          assert(!hex_packet.isEmpty());
 
          const auto raw_packet = QByteArray::fromHex(hex_packet);

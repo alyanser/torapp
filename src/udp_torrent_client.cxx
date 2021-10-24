@@ -40,8 +40,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
 
                                     QTimer::singleShot(0,this,[this,socket]{
 
-                                             if(socket){
-                                                      assert(socket->bytesAvailable());
+                                             if(socket && socket->bytesAvailable()){
                                                       on_socket_ready_read(socket);
                                              }
                                     });
@@ -50,11 +49,12 @@ void Udp_torrent_client::send_connect_request() noexcept {
 
                   try {
                            on_socket_ready_read(socket);
-                           recall_if_unread();
                   }catch(const std::exception & exception){
                            qDebug() << exception.what();
-                           socket->abort();
+                           return socket->abort();
                   }
+
+                  recall_if_unread();
          });
 }
 
@@ -121,7 +121,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          }();
 
          announce_request += []{
-                  constexpr std::uint16_t default_port = 55667;
+                  constexpr std::uint16_t default_port = 12345;
                   return convert_to_hex(default_port);
          }();
 
@@ -134,7 +134,7 @@ QByteArray Udp_torrent_client::craft_scrape_request(const std::int64_t tracker_c
          using util::conversion::convert_to_hex;
          
          auto scrape_request = convert_to_hex(tracker_connection_id);
-         const auto scrape_request_size = info_sha1_hash_.size() + 32;
+         const auto scrape_request_size = 72;
          scrape_request.reserve(scrape_request_size);
 
          scrape_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Scrape));

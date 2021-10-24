@@ -54,7 +54,7 @@ void Udp_socket::reset_time_specs() noexcept {
          connection_timer_.start(get_timeout());
          connection_id_valid_ = true;
 
-         constexpr std::chrono::minutes protocol_validity_timeout {1};
+         constexpr std::chrono::minutes protocol_validity_timeout(1);
 
          QTimer::singleShot(protocol_validity_timeout,this,[&connection_id_valid_ = connection_id_valid_]{
                   connection_id_valid_ = false;

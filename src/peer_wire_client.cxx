@@ -233,11 +233,11 @@ void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) noexcept 
          auto recall_if_unread = [this,socket = QPointer(socket)]{
 
                   if(socket && socket->bytesAvailable()){
+                           // todo: considre removing the outer check
 
                            QTimer::singleShot(0,this,[this,socket]{
 
-                                    if(socket){
-                                             assert(socket->bytesAvailable());
+                                    if(socket && socket->bytesAvailable()){
                                              on_socket_ready_read(socket);
                                     }
                            });

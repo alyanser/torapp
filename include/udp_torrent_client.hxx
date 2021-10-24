@@ -66,8 +66,8 @@ private:
          void configure_default_connections() noexcept;
          ///
          inline static std::mt19937 random_generator{std::random_device{}()};
-         inline static std::uniform_int_distribution<std::int32_t> random_id_range{0,std::numeric_limits<std::int32_t>::max()};
-         inline const static auto id = QByteArray("-TA1234-ABC134ZXClli").toHex();
+         inline static std::uniform_int_distribution<std::int32_t> random_id_range;
+         inline const static auto id = QByteArray("-TA1234-ABC134ZXCLLZ").toHex();
 
          bencode::Metadata torrent_metadata_;
          QByteArray info_sha1_hash_;
@@ -84,7 +84,6 @@ inline Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata
          , peer_client_(torrent_metadata_,{std::move(resources.dl_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
 {
-         assert(id.size() == 40);
          configure_default_connections();
 
          {

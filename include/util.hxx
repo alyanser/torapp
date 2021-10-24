@@ -65,10 +65,17 @@ numeric_type convert_to_percentile(const numeric_type dividend,const numeric_typ
 template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
 [[nodiscard]]
 QByteArray convert_to_hex(const numeric_type num) noexcept {
+         using unsigned_type = std::make_unsigned_t<numeric_type>;
+
          constexpr auto hex_base = 16;
-         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<numeric_type>>(num),hex_base);
-         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(numeric_type)) * 2;
+         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(num),hex_base);
+
+         assert(!hex_fmt.isEmpty());
+
+         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
          assert(req_hex_size - hex_fmt.size() >= 0);
+         assert(hex_fmt.front() != '-');
+         
          return QByteArray(req_hex_size - hex_fmt.size(),'0') + hex_fmt;
 }
 
