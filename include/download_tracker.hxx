@@ -64,6 +64,7 @@ signals:
          void download_dropped() const;
          void download_paused() const;
          void download_resumed() const;
+         void properties_button_clicked() const;
 private:
          Download_tracker(const QString & dl_path,Download_Type dl_type,QWidget * parent = nullptr);
          
@@ -111,6 +112,7 @@ private:
          QPushButton open_dir_button_{"Open in directory"};
          QPushButton pause_button_{"Pause"};
          QPushButton resume_button_{"Resume"};
+         QPushButton properties_button_{"Properties"};
          QProgressBar dl_progress_bar_;
          QProgressBar verify_progress_bar_;
          QTimer session_timer_;

@@ -70,11 +70,12 @@ Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata tor
 void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
+         file_stat_layout_.addWidget(&open_dir_button_);
+         file_stat_layout_.addWidget(&properties_button_);
 
          package_name_layout_.addWidget(&package_name_buddy_);
          package_name_layout_.addWidget(&package_name_label_);
          package_name_buddy_.setBuddy(&package_name_label_);
-         package_name_layout_.addWidget(&open_dir_button_);
 
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
@@ -197,6 +198,7 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
          connect(this,&Download_tracker::download_dropped,this,&Download_tracker::request_satisfied);
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+         connect(&properties_button_,&QPushButton::clicked,this,&Download_tracker::properties_button_clicked);
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
                   assert(session_timer_.isActive());

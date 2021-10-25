@@ -28,8 +28,6 @@ void Udp_torrent_client::send_connect_request() noexcept {
          }
 
          const auto & tracker_url = torrent_metadata_.announce_url_list[tracker_url_idx_];
-         qDebug() << tracker_url.data();
-         assert(QUrl(tracker_url.data()).isValid());
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
          
          connect(socket,&Udp_socket::readyRead,this,[this,socket]{
@@ -41,20 +39,25 @@ void Udp_torrent_client::send_connect_request() noexcept {
                                     QTimer::singleShot(0,this,[this,socket]{
 
                                              if(socket && socket->bytesAvailable()){
-                                                      on_socket_ready_read(socket);
+                                                      communicate_with_tracker(socket);
                                              }
                                     });
                            }
                   };
 
                   try {
-                           on_socket_ready_read(socket);
+                           communicate_with_tracker(socket);
                   }catch(const std::exception & exception){
                            qDebug() << exception.what();
                            return socket->abort();
                   }
 
                   recall_if_unread();
+         });
+
+         connect(socket,&Udp_socket::connection_timed_out,this,[this]{
+                  ++tracker_url_idx_;
+                  send_connect_request();
          });
 }
 
@@ -78,6 +81,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          }();
 
          assert(connect_request.size() == connect_request_size);
+         qDebug() << connect_request;
          return connect_request;
 }
 
@@ -121,7 +125,9 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          }();
 
          announce_request += []{
-                  constexpr std::uint16_t default_port = 12345;
+                  // todo: consider the range
+                  static std::uniform_int_distribution<std::uint16_t> port_dist(10'000);
+                  const auto default_port = port_dist(random_generator);
                   return convert_to_hex(default_port);
          }();
 
@@ -222,7 +228,7 @@ std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_sc
          return Swarm_metadata{seed_cnt,completed_cnt,leecher_cnt};
 }
 
-void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
+void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
          assert(socket->hasPendingDatagrams());
 
          // todo: validate the response size and use transactions
@@ -245,38 +251,27 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket){
                            socket->scrape_request = craft_scrape_request(*connection_id);
                            socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
 
-                           connect(tracker_,&Download_tracker::download_paused,this,[this,socket = QPointer(socket),connection_id]{
+                           auto update_event_and_request = [this,socket = QPointer(socket),connection_id](const auto new_event){
 
-                                    if(event_ != Event::Stopped){
-                                             event_ = Event::Stopped;
+                                    if(event_ != new_event){
+                                             event_ = new_event;
 
                                              if(socket){
                                                       socket->announce_request = craft_announce_request(*connection_id);
                                              }
                                     }
+                           };
+
+                           connect(tracker_,&Download_tracker::download_paused,this,[update_event_and_request]{
+                                    update_event_and_request(Event::Stopped);
                            });
 
-                           connect(tracker_,&Download_tracker::download_resumed,this,[this,socket = QPointer(socket),connection_id]{
-
-                                    if(event_ != Event::Started){
-                                             event_ = Event::Started;
-
-                                             if(socket){
-                                                      socket->announce_request = craft_announce_request(*connection_id);
-                                                      socket->send_request(socket->announce_request);
-                                             }
-                                    }
+                           connect(tracker_,&Download_tracker::download_resumed,this,[update_event_and_request]{
+                                    update_event_and_request(Event::Started);
                            });
 
-                           connect(&peer_client_,&Peer_wire_client::download_finished,this,[this,socket = QPointer(socket),connection_id]{
-                                    qDebug() << "Downoad finished";
-                                    assert(event_ !=  Event::Completed);
-                                    event_ = Event::Completed;
-
-                                    if(socket){
-                                             socket->announce_request = craft_announce_request(*connection_id);
-                                             socket->send_request(socket->announce_request);
-                                    }
+                           connect(&peer_client_,&Peer_wire_client::download_finished,this,[update_event_and_request]{
+                                    update_event_and_request(Event::Completed);
                            });
 
                            break;

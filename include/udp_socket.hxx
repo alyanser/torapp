@@ -26,6 +26,8 @@ public :
          QByteArray announce_request;
          QByteArray scrape_request;
          std::int32_t txn_id = 0;
+signals:
+         void connection_timed_out() const;
 private:
          constexpr std::chrono::seconds get_timeout() const noexcept;
          void configure_default_connections() noexcept;
@@ -45,6 +47,7 @@ inline Udp_socket::Udp_socket(const QUrl url,QByteArray connect_request,QObject 
          : QUdpSocket(parent)
          , connect_request_(std::move(connect_request))
 {
+         assert(url.isValid());
          assert(!connect_request_.isEmpty());
          configure_default_connections();
          connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
@@ -78,10 +81,11 @@ inline void Udp_socket::send_request(const QByteArray & request) noexcept {
 }
 
 inline void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
-         assert(connection_id_valid_);
+         assert(state_ != State::Connect || connection_id_valid_);
          assert(!hex_packet.isEmpty());
 
          const auto raw_packet = QByteArray::fromHex(hex_packet);
+         qDebug() << "resending request to tracker";
          write(raw_packet);
 
          constexpr auto txn_id_offset = 12;

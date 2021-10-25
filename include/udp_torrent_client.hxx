@@ -62,7 +62,7 @@ private:
 
          static QByteArray calculate_info_sha1_hash(const bencode::Metadata & torrent_metadata) noexcept;
          static bool verify_txn_id(const QByteArray & reply,std::int32_t sent_txn_id);
-         void on_socket_ready_read(Udp_socket * socket);
+         void communicate_with_tracker(Udp_socket * socket);
          void configure_default_connections() noexcept;
          ///
          inline static std::mt19937 random_generator{std::random_device{}()};

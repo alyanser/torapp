@@ -1,6 +1,6 @@
 #include "peer_wire_client.hxx"
-#include "tcp_socket.hxx"
 #include "download_tracker.hxx"
+#include "tcp_socket.hxx"
 
 #include <QCryptographicHash>
 #include <QMessageBox>
@@ -9,7 +9,8 @@
 #include <QFile>
 
 Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash)
-         : id_(std::move(id))
+         : properties_displayer_(torrent_metadata)
+         , id_(std::move(id))
          , info_sha1_hash_(std::move(info_sha1_hash))
          , handshake_msg_(craft_handshake_message())
          , dl_path_(std::move(resources.dl_path))
@@ -42,6 +43,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
 void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
+         connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::show);
 
          connect(&refresh_timer_,&QTimer::timeout,this,[this]{
                   tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) : 0);
@@ -103,7 +105,7 @@ Peer_wire_client::Piece_metadata Peer_wire_client::piece_info(const std::int32_t
 }
 
 [[nodiscard]]
-std::int32_t Peer_wire_client::target_piece_index() noexcept {
+std::int32_t Peer_wire_client::target_piece_index() const noexcept {
          assert(remaining_byte_count());
          assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
          assert(!peer_additive_bitfield_.isEmpty());
@@ -496,7 +498,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   received_blocks.fill(false);
          }
 
-         constexpr auto max_duplicate_requests = 5;
+         constexpr auto max_duplicate_requests = 2;
          const auto max_request_cnt = piece_info(piece_idx).block_cnt; // ? consider validity
 
          for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){
@@ -512,9 +514,10 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   ++request_sent_cnt;
                   ++requested_blocks[block_idx];
 
-                  auto dec_connection = connect(socket,&Tcp_socket::disconnected,this,[&requested_blocks = requested_blocks,block_idx]{
+                  // ! fix the issue of multiple decrements from same peer
 
-                           if(!requested_blocks.empty()){
+                  const auto dec_connection = connect(socket,&Tcp_socket::disconnected,this,[&requested_blocks = requested_blocks,block_idx]{
+                           if(!requested_blocks.empty() && requested_blocks[block_idx]){
                                     assert(requested_blocks[block_idx]);
                                     --requested_blocks[block_idx];
                            }
@@ -566,7 +569,6 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
                            socket->send_packet(craft_reject_message(piece_idx,offset,byte_cnt));
                   }
          };
-
 
          if(!is_valid_piece_index(requested_piece_idx) || requested_offset + requested_byte_cnt > piece_size(requested_piece_idx) || !bitfield_[requested_piece_idx]){
                   return send_reject_message();

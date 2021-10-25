@@ -15,6 +15,7 @@ set(SOURCES
          src/udp_torrent_client.cxx
          src/peer_wire_client.cxx
          src/udp_socket.cxx
+         src/torrent_properties_displayer.cxx
 )
 
 set(MOC_INCLUDES
@@ -28,6 +29,7 @@ set(MOC_INCLUDES
          include/udp_socket.hxx
          include/tcp_socket.hxx
          include/file_manager.hxx
+         include/torrent_properties_displayer.hxx
 )
 
 set(CMAKE_AUTOMOC on)

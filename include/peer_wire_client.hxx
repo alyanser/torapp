@@ -1,6 +1,7 @@
 #pragma once
 
 #include "util.hxx"
+#include "torrent_properties_displayer.hxx"
 
 #include <bencode_parser.hxx>
 #include <QBitArray>
@@ -110,7 +111,7 @@ private:
          bool is_valid_piece_index(std::int32_t piece_idx) const noexcept;
 
          std::optional<std::pair<qsizetype,qsizetype>> beginning_file_handle_info(std::int32_t piece_idx) const noexcept;
-         std::int32_t target_piece_index() noexcept;
+         std::int32_t target_piece_index() const noexcept;
          std::int32_t piece_size(std::int32_t piece_idx) const noexcept;
 
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
@@ -126,6 +127,7 @@ private:
          constexpr static std::string_view have_none_msg{"000000010f"};
          constexpr static auto max_block_size = 1 << 14;
          constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bit
+         Torrent_properties_displayer properties_displayer_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;

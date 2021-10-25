@@ -488,9 +488,10 @@ inline std::vector<std::string> extract_announce_list(const list & parsed_list) 
          announce_list.reserve(parsed_list.size());
 
          for(const auto & nested_list : parsed_list){
-                  const auto announce_value = std::any_cast<bencode::list>(nested_list);
-                  assert(announce_value.size() == 1);
-                  announce_list.emplace_back(std::any_cast<std::string>(*announce_value.begin()));
+
+                  for(const auto & announce_value : std::any_cast<list>(nested_list)){
+                           announce_list.emplace_back(std::any_cast<std::string>(announce_value));
+                  }
          }
 
          return announce_list;
