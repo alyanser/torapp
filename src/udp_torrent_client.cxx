@@ -27,7 +27,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                   tracker_url_idx_ = 0;
          }
 
-         const auto & tracker_url = torrent_metadata_.announce_url_list[tracker_url_idx_];
+         const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx_)];
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
          
          connect(socket,&Udp_socket::readyRead,this,[this,socket]{

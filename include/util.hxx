@@ -56,10 +56,11 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
          return converted_str;
 }
 
+template<typename numeric_type_x,typename numeric_type_y,typename = std::enable_if_t<std::is_arithmetic_v<std::common_type_t<numeric_type_x,numeric_type_y>>>>
 [[nodiscard]]
-constexpr std::int8_t convert_to_percentile(const double dividend,const double divisor) noexcept {
+constexpr std::int8_t convert_to_percentile(const numeric_type_x dividend,const numeric_type_y divisor) noexcept {
          assert(divisor);
-         return static_cast<std::int8_t>(dividend / divisor * 100);
+         return static_cast<std::int8_t>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100);
 }
 
 template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
@@ -68,7 +69,7 @@ QByteArray convert_to_hex(const numeric_type num) noexcept {
          using unsigned_type = std::make_unsigned_t<numeric_type>;
 
          constexpr auto hex_base = 16;
-         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(num),hex_base);
+         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
 
          assert(!hex_fmt.isEmpty());
 
