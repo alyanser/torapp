@@ -36,6 +36,14 @@ public:
 
          Q_ENUM(Message_Id);
 
+         enum State {
+                  Verification,
+                  Leecher,
+                  Seed
+         };
+
+         Q_ENUM(State);
+
          Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
 
          constexpr std::int64_t downloaded_byte_count() const noexcept;
@@ -126,14 +134,14 @@ private:
          constexpr static std::string_view have_all_msg{"000000010e"};
          constexpr static std::string_view have_none_msg{"000000010f"};
          constexpr static auto max_block_size = 1 << 14;
-         constexpr static std::string_view reserved_bytes{"0000000000000004"}; // fast extension bit
+         constexpr static std::string_view reserved_bytes{"0000000000000004"};
+         QList<std::pair<QFile *,std::int64_t>> file_handles_;
          Torrent_properties_displayer properties_displayer_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
          QString dl_path_;
          QBitArray bitfield_;
-         QList<QFile *> file_handles_;
          QSet<QUrl> active_peers_;
          bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
@@ -151,6 +159,7 @@ private:
          std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
          std::optional<std::int32_t> cur_target_piece_idx_;
+         State state_ = State::Verification;
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };

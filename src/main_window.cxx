@@ -32,7 +32,7 @@ void Main_window::setup_sort_menu() noexcept {
          const auto sort_actions = sort_action_group_.actions();
          assert(!sort_actions.empty());
 
-         std::for_each(sort_actions.begin(),sort_actions.end(),[](auto * const sort_action){
+         std::for_each(sort_actions.cbegin(),sort_actions.cend(),[](auto * const sort_action){
                   sort_action->setCheckable(true);
          });
 

@@ -86,7 +86,7 @@ void Network_manager::download(util::Download_resources resources,const bencode:
          }else{
                   emit resources.tracker->download_dropped();
 
-                  std::for_each(resources.file_handles.begin(),resources.file_handles.end(),[](auto * const file_handle){
+                  std::for_each(resources.file_handles.cbegin(),resources.file_handles.cend(),[](auto * const file_handle){
                            file_handle->deleteLater();
                   });
 

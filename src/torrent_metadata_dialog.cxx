@@ -36,7 +36,7 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
          comment_label_.setText(torrent_metadata.comment.data());
          encoding_label_.setText(torrent_metadata.encoding.data());
 
-         std::for_each(torrent_metadata.file_info.begin(),torrent_metadata.file_info.end(),[this](const auto & file_info){
+         std::for_each(torrent_metadata.file_info.cbegin(),torrent_metadata.file_info.cend(),[this](const auto & file_info){
                   const auto & [file_path,file_size_kbs] = file_info;
 
                   const auto file_size_byte_cnt = file_size_kbs * 1024;

@@ -14,7 +14,6 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          , info_sha1_hash_(std::move(info_sha1_hash))
          , handshake_msg_(craft_handshake_message())
          , dl_path_(std::move(resources.dl_path))
-         , file_handles_(std::move(resources.file_handles))
          , torrent_metadata_(torrent_metadata)
          , tracker_(resources.tracker)
          , total_byte_cnt_(torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size)
@@ -28,13 +27,15 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
-         assert(file_handles_.size() == static_cast<qsizetype>(torrent_metadata_.file_info.size()));
 
-         std::for_each(file_handles_.begin(),file_handles_.end(),[this](auto * const file_handle){
-                  assert(file_handle->parent()); // main_window::file_manager_
+         std::for_each(resources.file_handles.cbegin(),resources.file_handles.cend(),[this](auto * const resources_file_handle){
+                  auto * const file_handle  = file_handles_.emplace_back(resources_file_handle,0).first;
+                  assert(file_handle->parent()); //main_window::file_manager_
                   file_handle->setParent(this);
          });
-         
+
+         resources.file_handles.clear();
+
          configure_default_connections();
          read_settings();
          verify_existing_pieces();
@@ -44,14 +45,30 @@ void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::show);
+         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::enable_properties_button);
 
-         connect(&refresh_timer_,&QTimer::timeout,this,[this]{
-                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) : 0);
-                  send_requests();
+         connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,state_ = state_]{
+
+                  if(state_ != State::Leecher){
+                           return;
+                  }
+
+                  qDebug() << "Updating file handles info";
+
+                  for(qsizetype file_idx = 0;file_idx < file_handles_.size();++file_idx){
+                           const auto file_dled_byte_cnt = file_handles_[file_idx].second;
+                           properties_displayer_.update_file_info(file_idx,file_dled_byte_cnt);
+                  }
          });
 
-         connect(this,&Peer_wire_client::existing_pieces_verified,[&setting_timer_ = settings_timer_]{
-                  setting_timer_.start(std::chrono::seconds(1));
+         connect(this,&Peer_wire_client::existing_pieces_verified,[this]{
+                  properties_displayer_.setup_file_info_widget(torrent_metadata_,file_handles_);
+                  settings_timer_.start(std::chrono::seconds(1));
+         });
+
+         refresh_timer_.callOnTimeout(this,[this]{
+                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) : 0);
+                  send_requests();
          });
 }
 
@@ -71,6 +88,7 @@ void Peer_wire_client::on_piece_verified(std::int32_t verified_piece_idx) noexce
                   assert(!remaining_byte_count());
                   tracker_->set_error_and_finish("Download finished");
                   refresh_timer_.stop();
+                  state_ = State::Seed;
                   emit download_finished();
          }
 }
@@ -163,9 +181,10 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(5));
+                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky fix later
+                                    state_ = State::Leecher;
                            }
-                           
+
                            emit existing_pieces_verified();
                   }
          };
@@ -216,7 +235,7 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
          assert(!peer_urls.isEmpty());
          qDebug() << "peers sent from the tracker" << peer_urls.size();
 
-         std::for_each(peer_urls.begin(),peer_urls.end(),[this](const auto & peer_url){
+         std::for_each(peer_urls.cbegin(),peer_urls.cend(),[this](const auto & peer_url){
 
                   if(!active_peers_.contains(peer_url)){
                            active_peers_.insert(peer_url);
@@ -670,7 +689,7 @@ bool Peer_wire_client::write_to_disk(const QByteArray & received_piece,const std
          for(std::int64_t written_byte_cnt = 0,file_handle_idx = beg_file_handle_idx;written_byte_cnt < received_piece.size();++file_handle_idx){
                   assert(file_handle_idx < file_handles_.size());
 
-                  auto * const file_handle = file_handles_[file_handle_idx];
+                  auto & [file_handle,file_dled_byte_cnt] = file_handles_[file_handle_idx];
                   file_handle->seek(written_byte_cnt ? 0 : beg_file_offset);
 
                   const auto to_write_byte_cnt = std::min(received_piece.size() - written_byte_cnt,written_byte_cnt ? file_size(file_handle_idx) : beg_file_byte_cnt);
@@ -679,6 +698,7 @@ bool Peer_wire_client::write_to_disk(const QByteArray & received_piece,const std
                   assert(file_handle->pos() + to_write_byte_cnt <= file_size(file_handle_idx));
 
                   const auto newly_written_byte_cnt = file_handle->write(received_piece.sliced(written_byte_cnt,to_write_byte_cnt));
+                  file_dled_byte_cnt += newly_written_byte_cnt;
                   assert(file_handle->pos() <= file_size(file_handle_idx));
 
                   if(newly_written_byte_cnt != to_write_byte_cnt){
@@ -723,7 +743,7 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
                            return {};
                   }
 
-                  auto * const file_handle = file_handles_[file_handle_idx];
+                  auto & [file_handle,file_dled_byte_cnt] = file_handles_[file_handle_idx];
                   file_handle->seek(resultant_piece.size() ? 0 : beg_file_offset);
 
                   const auto to_read_byte_cnt = std::min(resultant_piece.size() ? file_size(file_handle_idx) : beg_file_byte_cnt,requested_piece_size - resultant_piece.size());
@@ -731,8 +751,13 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
 
                   const auto newly_read_bytes = file_handle->read(to_read_byte_cnt);
 
+
                   if(newly_read_bytes.size() != to_read_byte_cnt){
                            return {};
+                  }
+
+                  if(state_ == State::Verification){
+                           file_dled_byte_cnt += newly_read_bytes.size();
                   }
                   
                   resultant_piece += newly_read_bytes;
@@ -916,7 +941,6 @@ void Peer_wire_client::on_piece_downloaded(Piece & dled_piece,const std::int32_t
 
          if(verify_piece_hash(dled_piece.data,dled_piece_idx) && write_to_disk(dled_piece.data,dled_piece_idx)){
                   qDebug() << "piece successfully downloaded" << dled_piece_idx;
-                  qDebug() << "new target piece" << *cur_target_piece_idx_;
 
                   emit piece_verified(dled_piece_idx);
                   session_dled_byte_cnt_ += piece_size(dled_piece_idx);
@@ -1117,7 +1141,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
 
                            socket->allowed_fast_set = generate_allowed_fast_set(socket->peerAddress().toIPv4Address(),total_piece_cnt_);
 
-                           std::for_each(socket->allowed_fast_set.begin(),socket->allowed_fast_set.end(),[socket](const auto fast_piece_idx){
+                           std::for_each(socket->allowed_fast_set.cbegin(),socket->allowed_fast_set.cend(),[socket](const auto fast_piece_idx){
                                     socket->send_packet(craft_allowed_fast_message(fast_piece_idx));
                            });
                   });
