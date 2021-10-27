@@ -79,8 +79,6 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
          std::for_each(peer_urls.cbegin(),peer_urls.cend(),[this](const auto & peer_url){
 
                   if(!active_peers_.contains(peer_url)){
-                           active_peers_.insert(peer_url);
-                           
                            auto * const socket = new Tcp_socket(peer_url,this);
 
                            connect(socket,&Tcp_socket::connected,this,[this,socket]{
@@ -182,9 +180,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
 
                   if(piece_idx < total_piece_cnt_){
 
-                           //! add back with the option
-
-                           // if(bitfield_[piece_idx]){
+                           if(bitfield_[piece_idx]){
                                     
                                     if(const auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
                                              emit piece_verified(piece_idx);
@@ -192,7 +188,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                              qDebug() << piece_idx << "was changed on the disk";
                                              bitfield_[piece_idx] = false;
                                     }
-                           // }
+                           }
 
                            QTimer::singleShot(0,this,[verify_piece_callback,piece_idx]{
                                     verify_piece_callback(verify_piece_callback,piece_idx + 1);
@@ -201,7 +197,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky fix later
+                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky. fix later
                                     state_ = State::Leecher;
                            }
 
@@ -234,8 +230,13 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
          connect(socket,&Tcp_socket::disconnected,this,[this,socket]{
                   
                   if(socket->handshake_done){
-                           assert(active_connection_cnt_);
-                           --active_connection_cnt_;
+                           
+                           {
+                                    const auto peer_idx = active_peers_.indexOf(socket->peer_url());
+                                    assert(peer_idx != -1);
+                                    properties_displayer_.remove_peer(static_cast<std::int32_t>(peer_idx));
+                                    active_peers_.remove(peer_idx);
+                           }
 
                            assert(!bitfield_.isEmpty());
                            assert(socket->peer_bitfield.size() == bitfield_.size());
@@ -245,9 +246,6 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                                     assert(peer_additive_bitfield_[piece_idx] >= 0);
                            }
                   }
-
-                  assert(active_peers_.contains(socket->peer_url()));
-                  active_peers_.remove(socket->peer_url());
          });
 }
 
@@ -1100,11 +1098,10 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
                   return socket->abort();
          }
 
-         ++active_connection_cnt_;
-
          socket->peer_id = std::move(peer_id);
          socket->peer_bitfield = QBitArray(bitfield_.size(),false); // ? consider removing and handle cases later on
          socket->handshake_done = true;
+         active_peers_.emplace_back(socket->peer_url());
          properties_displayer_.add_peer(socket);
 
          connect(this,&Peer_wire_client::send_requests,socket,[this,socket]{
@@ -1197,7 +1194,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   return socket->abort();
          }
 
-         qDebug() << received_msg_id << active_connection_cnt_;
+         qDebug() << received_msg_id << active_peers_.size();
 
          switch(received_msg_id){
 

@@ -136,13 +136,13 @@ private:
          constexpr static auto max_block_size = 1 << 14;
          constexpr static std::string_view reserved_bytes{"0000000000000004"};
          QList<std::pair<QFile *,std::int64_t>> file_handles_;
+         QList<QUrl> active_peers_;
          Torrent_properties_displayer properties_displayer_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
          QString dl_path_;
          QBitArray bitfield_;
-         QSet<QUrl> active_peers_;
          bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
          QTimer refresh_timer_;
@@ -156,10 +156,10 @@ private:
          std::int32_t total_piece_cnt_ = 0;
          std::int32_t spare_bit_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
-         std::int32_t active_connection_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
          std::optional<std::int32_t> cur_target_piece_idx_;
          State state_ = State::Verification;
+
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };

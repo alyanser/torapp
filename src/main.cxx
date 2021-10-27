@@ -9,6 +9,7 @@ int main(int argc,char ** argv){
          QApplication::setApplicationName("Torapp");
          
          Main_window window;
-
+         QObject::connect(&window,&Main_window::closed,&app,&QApplication::quit);
+         
          return QApplication::exec();
 }

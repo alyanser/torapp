@@ -27,6 +27,8 @@ public:
 
          template<typename dl_metadata_type>
          void initiate_download(const QString & path,dl_metadata_type && dl_metadata) noexcept;
+signals:
+         void closed() const;
 protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
@@ -66,7 +68,7 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
          const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
-         reply_button == QMessageBox::Yes ? event->accept() : event->ignore();
+         reply_button == QMessageBox::Yes ? emit closed(),event->accept() : event->ignore();
 }
 
 inline void Main_window::setup_menu_bar() noexcept {
