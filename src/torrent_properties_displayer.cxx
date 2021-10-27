@@ -7,15 +7,17 @@
 #include <QProgressBar>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QHeaderView>
 #include <QLabel>
 #include <QFile>
 
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
          : QTabWidget(parent)
 {
-         setMinimumSize({100,100}); // totally well-thought numbers
+         setMinimumSize(200,200);
          setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
 
+         setUsesScrollButtons(false);
          addTab(&general_info_tab_,"General");
          addTab(&file_info_tab_,"Files");
          addTab(&peer_table_,"Peers");
@@ -25,6 +27,9 @@ Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metada
 }
 
 void Torrent_properties_displayer::setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept {
+         general_info_layout_.setAlignment(Qt::AlignCenter);
+         general_info_layout_.setSpacing(10);
+
          general_info_layout_.addRow("Name:",new QLabel(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data()));
          general_info_layout_.addRow("Created By:",new QLabel(torrent_metadata.created_by.empty() ? "N/A" : torrent_metadata.created_by.data()));
          general_info_layout_.addRow("Creation Date:",new QLabel(torrent_metadata.creation_date.empty() ? "N/A" : torrent_metadata.creation_date.data()));
@@ -32,10 +37,17 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          general_info_layout_.addRow("Encoding:",new QLabel(torrent_metadata.encoding.empty() ? "N/A" : torrent_metadata.encoding.data()));
          general_info_layout_.addRow("Md5-Sum:",new QLabel(torrent_metadata.md5sum.empty() ? "N/A" : torrent_metadata.md5sum.data()));
          general_info_layout_.addRow("Piece Size:",new QLabel(QString::number(torrent_metadata.piece_length) + " bytes"));
-         // todo: add progress bars
+         // todo: figure the progress bar for pieces
+}
+
+void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
+         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
+         peer_table_.removeRow(peer_row_idx);
 }
 
 void Torrent_properties_displayer::setup_peer_table() noexcept {
+         peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
+
          const QList<QString> peer_table_headings {"Peer Id","Downloaded","Uploaded","Download Speed"};
          peer_table_.setColumnCount(static_cast<std::int32_t>(peer_table_headings.size()));
          peer_table_.setHorizontalHeaderLabels(peer_table_headings);
@@ -179,11 +191,4 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
          peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
          peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
          peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
-
-         assert(dled_byte_cnt_label->parent());
-}
-
-void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
-         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
-         peer_table_.removeRow(peer_row_idx);
 }

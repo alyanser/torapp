@@ -3,9 +3,6 @@
 #include <QTableWidget>
 #include <QFormLayout>
 #include <QTabWidget>
-#include <QWidget>
-
-class QFile;
 
 namespace bencode {
          struct Metadata;

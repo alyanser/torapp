@@ -16,6 +16,7 @@ set(SOURCES
          src/peer_wire_client.cxx
          src/udp_socket.cxx
          src/torrent_properties_displayer.cxx
+         src/tcp_socket.cxx
 )
 
 set(MOC_INCLUDES

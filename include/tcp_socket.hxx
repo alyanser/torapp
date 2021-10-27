@@ -2,25 +2,23 @@
 
 #include "util.hxx"
 
-#include <QHostAddress>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
-#include <algorithm>
 
 class Tcp_socket : public QTcpSocket {
          Q_OBJECT
 public:
          explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
 
-         std::optional<std::pair<std::int32_t,QByteArray>> receive_packet() noexcept;
+         constexpr bool is_good_ratio() const noexcept;
+         constexpr std::int64_t downloaded_byte_count() const noexcept;
+         constexpr std::int64_t uploaded_byte_count() const noexcept;
+         std::optional<QByteArray> receive_packet() noexcept;
          void reset_disconnect_timer() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
          void on_invalid_peer_reply() noexcept;
-         constexpr bool is_good_ratio() const noexcept;
-         constexpr std::int64_t downloaded_byte_count() const noexcept;
-         constexpr std::int64_t uploaded_byte_count() const noexcept;
          void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
          void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
          ///
@@ -48,84 +46,6 @@ private:
          std::int64_t uled_byte_cnt_ = 0;
          std::int8_t peer_error_cnt_ = 0;
 };
-
-inline Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent)
-         : QTcpSocket(parent)
-         , peer_url_(peer_url)
-{
-         configure_default_connections();
-         connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
-         
-         disconnect_timer_.setSingleShot(true);
-}
-
-[[nodiscard]]
-inline std::optional<std::pair<std::int32_t,QByteArray>> Tcp_socket::receive_packet() noexcept {
-         auto & msg_size = receive_buffer_.first;
-
-         if(!handshake_done && !msg_size){
-                  constexpr auto protocol_handshake_msg_size = 68;
-                  msg_size = protocol_handshake_msg_size;
-         }
-
-         if(!msg_size){
-                  constexpr auto len_byte_cnt = 4;
-
-                  if(bytesAvailable() < len_byte_cnt){
-                           return {};
-                  }
-
-                  startTransaction();
-                  const auto size_buffer = read(len_byte_cnt);
-                  assert(size_buffer.size() == len_byte_cnt);
-
-                  try{
-                           msg_size = util::extract_integer<std::int32_t>(size_buffer,0);
-                  }catch(const std::exception & exception){
-                           qDebug() << exception.what();
-                           rollbackTransaction();
-                           assert(!msg_size);
-                           return {};
-                  }
-                  
-                  commitTransaction();
-         }
-
-         assert(msg_size);
-
-         if(!*msg_size){ // keep alive packet
-                  qDebug() << "Keep alive packet";
-                  msg_size.reset();
-                  return {};
-         }
-
-         auto & buffer_data = receive_buffer_.second;
-
-         if(buffer_data.capacity() != *msg_size){
-                  buffer_data.reserve(*msg_size);
-         }
-
-         assert(buffer_data.size() < *msg_size);
-
-         if(buffer_data += read(*msg_size - buffer_data.size());buffer_data.size() == *msg_size){
-                  assert(buffer_data.size());
-                  const auto packet_size = *msg_size;
-                  msg_size.reset();
-                  return std::make_pair(packet_size,std::move(buffer_data));
-         }
-
-         return {};
-}
-
-inline void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
-         assert(!packet.isEmpty());
-
-         if(state() == SocketState::ConnectedState){
-                  write(QByteArray::fromHex(packet));
-         }else{
-                  qDebug() << "trying to send packet in disconnected state";
-         }
-}
 
 [[nodiscard]]
 inline QUrl Tcp_socket::peer_url() const noexcept {
@@ -168,20 +88,6 @@ inline void Tcp_socket::add_downloaded_bytes(const std::int64_t dled_byte_cnt) n
          assert(dled_byte_cnt > 0);
          dled_byte_cnt_ += dled_byte_cnt;
          emit downloaded_byte_count_changed(dled_byte_cnt_);
-}
-
-inline void Tcp_socket::configure_default_connections() noexcept {
-         connect(this,&Tcp_socket::disconnected,this,&Tcp_socket::deleteLater);
-         connect(this,&Tcp_socket::readyRead,this,&Tcp_socket::reset_disconnect_timer);
-
-         connect(this,&Tcp_socket::connected,[&disconnect_timer_ = disconnect_timer_]{
-                  disconnect_timer_.start(std::chrono::minutes(2));
-         });
-
-         disconnect_timer_.callOnTimeout(this,[this]{
-                  qDebug() << "connection timed out" << peer_id;
-                  state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
-         });
 }
 
 inline void Tcp_socket::reset_disconnect_timer() noexcept {
