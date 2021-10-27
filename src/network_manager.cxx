@@ -4,6 +4,7 @@
 
 #include <QNetworkReply>
 #include <QNetworkProxy>
+#include <QMessageBox>
 #include <QPointer>
 #include <QTimer>
 #include <QFile>

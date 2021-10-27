@@ -19,8 +19,10 @@ public:
          QUrl peer_url() const noexcept;
          void on_invalid_peer_reply() noexcept;
          constexpr bool is_good_ratio() const noexcept;
-         constexpr void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
-         constexpr void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
+         constexpr std::int64_t downloaded_byte_count() const noexcept;
+         constexpr std::int64_t uploaded_byte_count() const noexcept;
+         void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
+         void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
          ///
          QBitArray peer_bitfield;
          QByteArray peer_id;
@@ -34,6 +36,8 @@ public:
          bool fast_extension_enabled = false;
 signals:
          void got_choked() const;
+         void uploaded_byte_count_changed(std::int64_t uled_byte_cnt) const;
+         void downloaded_byte_count_changed(std::int64_t uled_byte_cnt) const;
 private:
          void configure_default_connections() noexcept;
          ///
@@ -144,14 +148,26 @@ constexpr bool Tcp_socket::is_good_ratio() const noexcept {
          return static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio ? true : uled_byte_cnt_ <= uled_byte_threshold;
 }
 
-constexpr void Tcp_socket::add_uploaded_bytes(const std::int64_t uled_byte_cnt) noexcept {
-         assert(uled_byte_cnt > 0);
-         uled_byte_cnt_ += uled_byte_cnt;
+[[nodiscard]]
+constexpr std::int64_t Tcp_socket::downloaded_byte_count() const noexcept {
+         return dled_byte_cnt_;
 }
 
-constexpr void Tcp_socket::add_downloaded_bytes(const std::int64_t dled_byte_cnt) noexcept {
+[[nodiscard]]
+constexpr std::int64_t Tcp_socket::uploaded_byte_count() const noexcept {
+         return uled_byte_cnt_;
+}
+
+inline void Tcp_socket::add_uploaded_bytes(const std::int64_t uled_byte_cnt) noexcept {
+         assert(uled_byte_cnt > 0);
+         uled_byte_cnt_ += uled_byte_cnt;
+         emit uploaded_byte_count_changed(uled_byte_cnt);
+}
+
+inline void Tcp_socket::add_downloaded_bytes(const std::int64_t dled_byte_cnt) noexcept {
          assert(dled_byte_cnt > 0);
          dled_byte_cnt_ += dled_byte_cnt;
+         emit downloaded_byte_count_changed(dled_byte_cnt_);
 }
 
 inline void Tcp_socket::configure_default_connections() noexcept {

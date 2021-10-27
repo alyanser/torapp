@@ -81,11 +81,11 @@ private:
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
+         static QByteArray craft_allowed_fast_message(std::int32_t piece_idx) noexcept;
+         static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
+         QByteArray craft_handshake_message() const noexcept;
          QByteArray craft_request_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
          QByteArray craft_cancel_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
-         static QByteArray craft_allowed_fast_message(std::int32_t piece_idx) noexcept;
-         QByteArray craft_handshake_message() const noexcept;
-         static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
 
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
