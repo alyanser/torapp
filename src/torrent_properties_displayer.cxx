@@ -11,88 +11,17 @@
 #include <QFile>
 
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
-         : QWidget(parent)
+         : QTabWidget(parent)
 {
+         setMinimumSize({100,100}); // totally well-thought numbers
          setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
-         setup_tab_widget();
+
+         addTab(&general_info_tab_,"General");
+         addTab(&file_info_tab_,"Files");
+         addTab(&peer_table_,"Peers");
+         
          setup_general_info_widget(torrent_metadata);
          setup_peer_table();
-}
-
-void Torrent_properties_displayer::setup_tab_widget() noexcept {
-         tab_widget_.addTab(&general_info_tab_,"General");
-         tab_widget_.addTab(&file_info_tab_,"Files");
-         tab_widget_.addTab(&peer_table_,"Peers");
-}
-
-void Torrent_properties_displayer::add_peer(Tcp_socket * const socket) noexcept {
-         assert(peer_table_.columnCount() == 4);
-
-         peer_table_.setRowCount((peer_table_.rowCount() + 1));
-         const auto row_idx = peer_table_.rowCount() - 1;
-
-         auto get_cell_label_text = [](const auto byte_cnt,const auto conversion_fmt){
-                  const auto [converted_byte_cnt,suffix] = util::conversion::stringify_bytes(byte_cnt,conversion_fmt);
-                  return QString::number(converted_byte_cnt) + ' ' + suffix.data();
-         };
-
-         auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{
-                  auto * const dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
-                  dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
-                  
-                  connect(socket,&Tcp_socket::downloaded_byte_count_changed,dled_byte_cnt_label,[=](const auto dled_byte_cnt){
-                           dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt,util::conversion::Format::Memory));
-                  });
-
-                  return dled_byte_cnt_label;
-         }();
-
-         auto * const uled_byte_cnt_label = [socket,get_cell_label_text]{
-                  auto * const uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
-                  uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
-
-                  connect(socket,&Tcp_socket::uploaded_byte_count_changed,uled_byte_cnt_label,[=](const auto uled_byte_cnt){
-                           uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt,util::conversion::Format::Memory));
-                  });
-
-                  return uled_byte_cnt_label;
-         }();
-
-         auto * const dl_speed_label = [get_cell_label_text,socket]{
-                  auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
-                  dl_speed_label->setAlignment(Qt::AlignCenter);
-
-                  {
-                           auto * const speed_refresh_timer = new QTimer(socket);
-                           speed_refresh_timer->setInterval(std::chrono::seconds(1));
-
-                           speed_refresh_timer->callOnTimeout(socket,[=,seconds_elapsed = 0LL]() mutable {
-                                    dl_speed_label->setText(get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed,util::conversion::Format::Speed));
-                           });
-
-                           speed_refresh_timer->start();
-                  }
-
-                  return dl_speed_label;
-         }();
-
-         auto * const peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
-                  auto * const peer_id_label = new QLabel(peer_id);
-                  peer_id_label->setAlignment(Qt::AlignCenter);
-                  return peer_id_label;
-         }();
-
-         constexpr auto peer_id_col_idx = 0;
-         constexpr auto dled_byte_col_idx = 1;
-         constexpr auto uled_byte_col_idx = 2;
-         constexpr auto dl_speed_col_idx = 3;
-
-         peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
-         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
-
-         assert(dled_byte_cnt_label->parent());
 }
 
 void Torrent_properties_displayer::setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept {
@@ -123,11 +52,11 @@ QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file
          file_layout->addWidget(file_dl_progress_bar);
          file_layout->addWidget(open_button);
 
-         file_dl_progress_bar->setMaximum(static_cast<std::int32_t>(total_file_size));
-         open_button->setEnabled(false);
-
          assert(file_dl_progress_bar->parent());
          assert(open_button->parent());
+
+         file_dl_progress_bar->setMaximum(static_cast<std::int32_t>(total_file_size));
+         open_button->setEnabled(false);
 
          connect(file_dl_progress_bar,&QProgressBar::valueChanged,open_button,[file_dl_progress_bar,open_button](const auto new_value){
                   assert(util::conversion::convert_to_percentile(new_value,file_dl_progress_bar->maximum()) <= 100);
@@ -177,9 +106,79 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx,con
          }();
 
          assert(file_dl_progress_bar);
+         assert(file_dl_progress_bar->maximum() > 0);
 
-         assert(file_dl_progress_bar->maximum());
          file_dl_progress_bar->setValue(static_cast<std::int32_t>(file_dled_byte_cnt));
-         assert(file_dl_progress_bar->maximum());
          file_dl_progress_bar->setFormat(QString("Downloaded: %1%").arg(util::conversion::convert_to_percentile(file_dled_byte_cnt,file_dl_progress_bar->maximum())));
+}
+
+void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noexcept {
+         assert(socket->state() == Tcp_socket::SocketState::ConnectedState);
+         assert(peer_table_.columnCount() == 4);
+
+         peer_table_.setRowCount((peer_table_.rowCount() + 1));
+         const auto row_idx = peer_table_.rowCount() - 1;
+
+         auto get_cell_label_text = [](const auto byte_cnt,const auto conversion_fmt){
+                  const auto [converted_byte_cnt,suffix] = util::conversion::stringify_bytes(byte_cnt,conversion_fmt);
+                  return QString::number(converted_byte_cnt) + ' ' + suffix.data();
+         };
+
+         auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{
+                  auto * const dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
+                  dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
+                  
+                  connect(socket,&Tcp_socket::downloaded_byte_count_changed,dled_byte_cnt_label,[=](const auto dled_byte_cnt){
+                           dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt,util::conversion::Format::Memory));
+                  });
+
+                  return dled_byte_cnt_label;
+         }();
+
+         auto * const uled_byte_cnt_label = [socket,get_cell_label_text]{
+                  auto * const uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
+                  uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
+
+                  connect(socket,&Tcp_socket::uploaded_byte_count_changed,uled_byte_cnt_label,[=](const auto uled_byte_cnt){
+                           uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt,util::conversion::Format::Memory));
+                  });
+
+                  return uled_byte_cnt_label;
+         }();
+
+         auto * const dl_speed_label = [get_cell_label_text,socket]{
+                  auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
+                  dl_speed_label->setAlignment(Qt::AlignCenter);
+
+                  {
+                           auto * const speed_refresh_timer = new QTimer(dl_speed_label);
+                           speed_refresh_timer->setInterval(std::chrono::seconds(1));
+
+                           speed_refresh_timer->callOnTimeout(socket,[=,seconds_elapsed = 0LL]() mutable {
+                                    dl_speed_label->setText(get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed,util::conversion::Format::Speed));
+                           });
+
+                           speed_refresh_timer->start();
+                  }
+
+                  return dl_speed_label;
+         }();
+
+         auto * const peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
+                  auto * const peer_id_label = new QLabel(peer_id);
+                  peer_id_label->setAlignment(Qt::AlignCenter);
+                  return peer_id_label;
+         }();
+
+         constexpr auto peer_id_col_idx = 0;
+         constexpr auto dled_byte_col_idx = 1;
+         constexpr auto uled_byte_col_idx = 2;
+         constexpr auto dl_speed_col_idx = 3;
+
+         peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
+         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
+
+         assert(dled_byte_cnt_label->parent());
 }

@@ -13,21 +13,19 @@ namespace bencode {
 
 class Tcp_socket;
 
-class Torrent_properties_displayer : public QWidget {
+class Torrent_properties_displayer : public QTabWidget {
          Q_OBJECT
 public:
          explicit Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * parent = nullptr);
          
-         void add_peer(Tcp_socket * socket) noexcept;
+         void add_peer(const Tcp_socket * socket) noexcept;
          void update_file_info(qsizetype file_idx,std::int64_t dled_byte_cnt) noexcept;
          void setup_file_info_widget(const bencode::Metadata & torrent_metadata,const QList<std::pair<QFile *,std::int64_t>> & file_handles) noexcept;
 private:
-         void setup_tab_widget() noexcept;
          void setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept;
          void setup_peer_table() noexcept;
          QWidget * get_new_file_widget(const QString & file_path,std::int64_t total_file_size) noexcept;
          ///
-         QTabWidget tab_widget_{this};
          QWidget general_info_tab_;
          QWidget file_info_tab_;
          QTableWidget peer_table_;

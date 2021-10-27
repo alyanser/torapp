@@ -19,6 +19,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
          properties_button_.setEnabled(false);
+         pause_button_.setEnabled(false);
          dl_progress_bar_.setTextVisible(true);
 
          read_settings();

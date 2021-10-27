@@ -66,7 +66,7 @@ signals:
          void download_resumed() const;
          void properties_button_clicked() const;
 public slots:
-         void enable_properties_button() noexcept;
+         void enable_relevant_butons() noexcept;
 private:
          Download_tracker(const QString & dl_path,Download_Type dl_type,QWidget * parent = nullptr);
          
@@ -157,8 +157,11 @@ inline void Download_tracker::set_ratio(const double ratio) noexcept {
          ratio_label_.setText(QString::number(ratio));
 }
 
-inline void Download_tracker::enable_properties_button() noexcept {
+inline void Download_tracker::enable_relevant_butons() noexcept {
+         assert(!properties_button_.isEnabled());
+         assert(!pause_button_.isEnabled());
          properties_button_.setEnabled(true);
+         pause_button_.setEnabled(true);
 }
 
 inline void Download_tracker::setup_layout() noexcept {

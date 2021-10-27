@@ -23,7 +23,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          , average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(torrent_piece_size_) / max_block_size)))
          , peer_additive_bitfield_(total_piece_cnt_ + spare_bit_cnt_,0)
          , pieces_(total_piece_cnt_)
-{
+{        
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
@@ -45,7 +45,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::show);
-         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::enable_properties_button);
+         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::enable_relevant_butons);
 
          connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,state_ = state_]{
 
@@ -1105,8 +1105,6 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
          socket->peer_id = std::move(peer_id);
          socket->peer_bitfield = QBitArray(bitfield_.size(),false); // ? consider removing and handle cases later on
          socket->handshake_done = true;
-
-         // todo: parse the id
          properties_displayer_.add_peer(socket);
 
          connect(this,&Peer_wire_client::send_requests,socket,[this,socket]{
