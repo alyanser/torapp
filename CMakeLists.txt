@@ -31,9 +31,12 @@ set(MOC_INCLUDES
          include/tcp_socket.hxx
          include/file_manager.hxx
          include/torrent_properties_displayer.hxx
+         src/resources.qrc
 )
 
+
 set(CMAKE_AUTOMOC on)
+set(CMAKE_AUTORCC on)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
@@ -52,29 +55,29 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Widgets
 )
 
-target_precompile_headers(${PROJECT_NAME} PRIVATE 
-         [["QApplication"]]
-         [["QMainWindow"]]
-         [["QWidget"]]
-         [["QNetworkAccessManager"]]
-         [["QDebug"]]
-         [["QString"]]
-         [["QObject"]]
-         [["QGridLayout"]]
-         [["QAbstractSocket"]]
-         [["QUdpSocket"]]
-         [["QTimer"]]
-         [["QTime"]]
-         [["QByteArray"]]
-         [["QBitArray"]]
-         [["QTcpSocket"]]
-         [["QUdpSocket"]]
-         [["QAbstractSocket"]]
-         [["QPointer"]]
-         [["QFile"]]
-         [["QSettings"]]
-         [["QFileInfo"]]
-         [["QCryptographicHash"]]
-         [["QMessageBox"]]
-         [["bencode_parser.hxx"]]
-)
+# target_precompile_headers(${PROJECT_NAME} PRIVATE 
+#          [["QApplication"]]
+#          [["QMainWindow"]]
+#          [["QWidget"]]
+#          [["QNetworkAccessManager"]]
+#          [["QDebug"]]
+#          [["QString"]]
+#          [["QObject"]]
+#          [["QGridLayout"]]
+#          [["QAbstractSocket"]]
+#          [["QUdpSocket"]]
+#          [["QTimer"]]
+#          [["QTime"]]
+#          [["QByteArray"]]
+#          [["QBitArray"]]
+#          [["QTcpSocket"]]
+#          [["QUdpSocket"]]
+#          [["QAbstractSocket"]]
+#          [["QPointer"]]
+#          [["QFile"]]
+#          [["QSettings"]]
+#          [["QFileInfo"]]
+#          [["QCryptographicHash"]]
+#          [["QMessageBox"]]
+#          [["bencode_parser.hxx"]]
+# )

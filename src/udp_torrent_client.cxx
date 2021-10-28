@@ -39,6 +39,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
                                     QTimer::singleShot(0,this,[this,socket]{
 
                                              if(socket && socket->bytesAvailable()){
+                                                      assert(socket->hasPendingDatagrams());
                                                       communicate_with_tracker(socket);
                                              }
                                     });

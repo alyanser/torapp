@@ -9,6 +9,7 @@ namespace bencode {
 }
 
 class Tcp_socket;
+class QFile;
 
 class Torrent_properties_displayer : public QTabWidget {
          Q_OBJECT
