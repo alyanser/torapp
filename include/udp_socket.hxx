@@ -79,15 +79,3 @@ inline void Udp_socket::send_request(const QByteArray & request) noexcept {
                   send_packet(request);
          }
 }
-
-inline void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
-         assert(state_ != State::Connect || connection_id_valid_);
-         assert(!hex_packet.isEmpty());
-
-         const auto raw_packet = QByteArray::fromHex(hex_packet);
-         qDebug() << "resending request to tracker";
-         write(raw_packet);
-
-         constexpr auto txn_id_offset = 12;
-         txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
-}

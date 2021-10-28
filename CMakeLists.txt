@@ -37,12 +37,12 @@ set(CMAKE_AUTOMOC on)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
 
-target_include_directories(${PROJECT_NAME}
-         PRIVATE "include"
+target_include_directories(${PROJECT_NAME} PRIVATE
+         "include"
 )
 
-target_include_directories(${PROJECT_NAME} SYSTEM
-         PRIVATE "ext"
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
+         "ext"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)

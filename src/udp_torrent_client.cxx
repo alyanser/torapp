@@ -283,7 +283,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                                     socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
                                     emit announce_reply_received(*announce_reply);
                            }else{
-                                    qInfo() << "Invalid announce resposne";
+                                    qDebug() << "Invalid announce resposne";
                                     return socket->abort();
                            }
 

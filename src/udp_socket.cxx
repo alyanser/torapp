@@ -61,3 +61,18 @@ void Udp_socket::reset_time_specs() noexcept {
                   connection_id_valid_ = false;
          });
 }
+
+void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
+         assert(!hex_packet.isEmpty());
+
+         if(state_ != State::Connect && !connection_id_valid_){
+                  return;
+         }
+
+         const auto raw_packet = QByteArray::fromHex(hex_packet);
+         qDebug() << "resending request to tracker";
+         write(raw_packet);
+
+         constexpr auto txn_id_offset = 12;
+         txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
+}

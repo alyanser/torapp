@@ -14,7 +14,7 @@
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
          : QTabWidget(parent)
 {
-         setMinimumSize(200,200);
+         setMinimumSize(200,200); // totally well-thought numbers
          setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
 
          setUsesScrollButtons(false);
@@ -129,7 +129,6 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
          assert(peer_table_.columnCount() == 4);
 
          peer_table_.setRowCount((peer_table_.rowCount() + 1));
-         const auto row_idx = peer_table_.rowCount() - 1;
 
          auto get_cell_label_text = [](const auto byte_cnt,const auto conversion_fmt){
                   const auto [converted_byte_cnt,suffix] = util::conversion::stringify_bytes(byte_cnt,conversion_fmt);
@@ -182,10 +181,12 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return peer_id_label;
          }();
 
+
          constexpr auto peer_id_col_idx = 0;
          constexpr auto dled_byte_col_idx = 1;
          constexpr auto uled_byte_col_idx = 2;
          constexpr auto dl_speed_col_idx = 3;
+         const auto row_idx = peer_table_.rowCount() - 1;
 
          peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
          peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
