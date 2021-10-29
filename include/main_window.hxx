@@ -5,6 +5,7 @@
 #include "download_tracker.hxx"
 #include "file_manager.hxx"
 
+#include <bencode_parser.hxx>
 #include <QActionGroup>
 #include <QCloseEvent>
 #include <QMessageBox>
@@ -68,7 +69,7 @@ inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
          constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
          const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
-         reply_button == QMessageBox::Yes ? emit closed(),event->accept() : event->ignore();
+         reply_button == QMessageBox::Yes ? event->accept(),emit closed() : event->ignore();
 }
 
 inline void Main_window::setup_menu_bar() noexcept {
@@ -157,7 +158,6 @@ void Main_window::remove_dl_from_settings(const QString & file_path) const noexc
          settings.beginGroup(QString(file_path).replace('/','\x20'));
          settings.remove(""); // removes current group and child keys
          assert(settings.childKeys().isEmpty());
-         settings.sync();
 }
 
 template<typename dl_metadata_type>

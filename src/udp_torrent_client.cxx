@@ -7,6 +7,25 @@
 #include <QNetworkDatagram>
 #include <QPointer>
 
+Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
+         : QObject(parent)
+         , torrent_metadata_(std::move(torrent_metadata))
+         , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
+         , peer_client_(torrent_metadata_,{std::move(resources.dl_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
+         , tracker_(resources.tracker)
+{
+         configure_default_connections();
+
+         {
+                  assert(!torrent_metadata_.announce_url.empty());
+                  auto & tracker_urls = torrent_metadata_.announce_url_list;
+
+                  if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
+                           tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
+                  }
+         }
+}
+
 void Udp_torrent_client::configure_default_connections() noexcept {
 
          connect(this,&Udp_torrent_client::announce_reply_received,[&peer_client_ = peer_client_,&event_ = event_](const Announce_reply & reply){

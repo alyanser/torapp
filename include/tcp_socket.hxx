@@ -11,9 +11,9 @@ class Tcp_socket : public QTcpSocket {
 public:
          explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
 
-         constexpr bool is_good_ratio() const noexcept;
-         constexpr std::int64_t downloaded_byte_count() const noexcept;
-         constexpr std::int64_t uploaded_byte_count() const noexcept;
+         bool is_good_ratio() const noexcept;
+         std::int64_t downloaded_byte_count() const noexcept;
+         std::int64_t uploaded_byte_count() const noexcept;
          std::optional<QByteArray> receive_packet() noexcept;
          void reset_disconnect_timer() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
@@ -61,7 +61,7 @@ inline void Tcp_socket::on_invalid_peer_reply() noexcept {
 }
 
 [[nodiscard]]
-constexpr bool Tcp_socket::is_good_ratio() const noexcept {
+inline bool Tcp_socket::is_good_ratio() const noexcept {
          constexpr auto min_ratio = 0.25;
          // todo: make the threshold == piece_size
          constexpr auto uled_byte_threshold = 2097152; // 1 mb
@@ -70,12 +70,12 @@ constexpr bool Tcp_socket::is_good_ratio() const noexcept {
 }
 
 [[nodiscard]]
-constexpr std::int64_t Tcp_socket::downloaded_byte_count() const noexcept {
+inline std::int64_t Tcp_socket::downloaded_byte_count() const noexcept {
          return dled_byte_cnt_;
 }
 
 [[nodiscard]]
-constexpr std::int64_t Tcp_socket::uploaded_byte_count() const noexcept {
+inline std::int64_t Tcp_socket::uploaded_byte_count() const noexcept {
          return uled_byte_cnt_;
 }
 

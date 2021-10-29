@@ -99,6 +99,7 @@ inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
          constexpr auto bits_in_byte = 8;
          assert(bits.size() % bits_in_byte == 0);
+
          QByteArray bytes(bits.size() / bits_in_byte,'\x00');
 
          for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
@@ -116,14 +117,15 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
          if(offset + byte_cnt > raw_data.size()){
-                  throw std::out_of_range("extraction out of bounds");
+                  throw std::out_of_range("extraction out of bounds ");
          }
 
          const auto hex_fmt = raw_data.sliced(offset,byte_cnt).toHex();
          assert(hex_fmt.front() != '-');
+
          constexpr auto hex_base = 16;
-         
          bool conversion_success = true;
+         
          const auto result = static_cast<result_type>(hex_fmt.toULongLong(&conversion_success,hex_base));
 
          if(!conversion_success){

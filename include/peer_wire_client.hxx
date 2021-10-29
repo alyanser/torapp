@@ -46,9 +46,9 @@ public:
 
          Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
 
-         constexpr std::int64_t downloaded_byte_count() const noexcept;
-         constexpr std::int64_t uploaded_byte_count() const noexcept;
-         constexpr std::int64_t remaining_byte_count() const noexcept;
+         std::int64_t downloaded_byte_count() const noexcept;
+         std::int64_t uploaded_byte_count() const noexcept;
+         std::int64_t remaining_byte_count() const noexcept;
 
          void connect_to_peers(const QList<QUrl> & peer_urls) noexcept;
 signals:
@@ -165,18 +165,18 @@ private:
 };
 
 [[nodiscard]]
-constexpr std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
+inline std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
          assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
          return dled_byte_cnt_;
 }
 
 [[nodiscard]]
-constexpr std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
+inline std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
          return uled_byte_cnt_;
 }
 
 [[nodiscard]]
-constexpr std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
+inline std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
          assert(dled_byte_cnt_ >= 0 &&dled_byte_cnt_ <= total_byte_cnt_);
          assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ <= total_piece_cnt_);
          return total_byte_cnt_ - dled_byte_cnt_;
@@ -191,12 +191,12 @@ inline std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) c
 }
 
 [[nodiscard]]
-inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
-         assert(static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second) > 0);
-         return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
+inline bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx) const noexcept {
+         return piece_idx >= 0 && piece_idx < total_piece_cnt_;
 }
 
 [[nodiscard]]
-inline bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx) const noexcept {
-         return piece_idx >= 0 && piece_idx < total_piece_cnt_;
+inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
+         assert(static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second) > 0);
+         return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
 }

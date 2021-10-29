@@ -29,7 +29,7 @@ public :
 signals:
          void connection_timed_out() const;
 private:
-         constexpr std::chrono::seconds get_timeout() const noexcept;
+         std::chrono::seconds get_timeout() const noexcept;
          void configure_default_connections() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          void reset_time_specs() noexcept;
@@ -64,7 +64,7 @@ inline void Udp_socket::send_initial_request(const QByteArray & request,const St
 }
 
 [[nodiscard]]
-constexpr std::chrono::seconds Udp_socket::get_timeout() const noexcept {
+inline std::chrono::seconds Udp_socket::get_timeout() const noexcept {
          constexpr auto protocol_constant = 15;
          const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
          assert(timeout_seconds <= std::chrono::seconds(3840));

@@ -44,8 +44,8 @@ public:
          Download_tracker(const QString & dl_path,QUrl url,QWidget * parent = nullptr);
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
 
-         constexpr Error error() const noexcept;
-         constexpr void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
+         Error error() const noexcept;
+         void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
 
          void set_state(State state) noexcept;
          void set_ratio(double ratio) noexcept;
@@ -145,11 +145,11 @@ inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
 }
 
-constexpr Download_tracker::Error Download_tracker::error() const noexcept {
+inline Download_tracker::Error Download_tracker::error() const noexcept {
          return error_;
 }
 
-constexpr void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
+inline void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
          restored_byte_cnt_ = restored_byte_cnt;
 }
 

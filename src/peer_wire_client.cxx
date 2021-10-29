@@ -889,7 +889,6 @@ QSet<std::int32_t> Peer_wire_client::generate_allowed_fast_set(const std::uint32
 }
 
 void Peer_wire_client::clear_piece(const std::int32_t piece_idx) noexcept {
-         // todo: only clear when the memory threshold exceeds
          assert(is_valid_piece_index(piece_idx));
          auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[piece_idx];
 
@@ -948,8 +947,9 @@ void Peer_wire_client::on_piece_downloaded(Piece & dled_piece,const std::int32_t
          if(verify_piece_hash(dled_piece.data,dled_piece_idx) && write_to_disk(dled_piece.data,dled_piece_idx)){
                   qDebug() << "piece successfully downloaded" << dled_piece_idx;
 
-                  assert(target_piece_idxes_.contains(dled_piece_idx));
-                  target_piece_idxes_.remove(target_piece_idxes_.indexOf(dled_piece_idx));
+                  if(const auto remove_idx = target_piece_idxes_.indexOf(dled_piece_idx);remove_idx != -1){
+                           target_piece_idxes_.removeAt(remove_idx);
+                  }
 
                   emit piece_verified(dled_piece_idx);
                   session_dled_byte_cnt_ += piece_size(dled_piece_idx);
@@ -1208,6 +1208,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
          }
 
          qDebug() << received_msg_id << active_peers_.size();
+         constexpr auto msg_begin_offset = 1;
 
          switch(received_msg_id){
 
@@ -1245,7 +1246,6 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   }
 
                   case Message_Id::Bitfield : {
-                           constexpr auto msg_begin_offset = 1;
                            socket->peer_bitfield = util::conversion::convert_to_bits(reply->sliced(msg_begin_offset,reply->size() - 1));
                            assert(socket->peer_bitfield.size() == bitfield_.size());
                            on_bitfield_received(socket);
@@ -1286,14 +1286,13 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   }
 
                   case Message_Id::Allowed_Fast : {
-                           constexpr auto msg_offset = 1;
-                           on_allowed_fast_received(socket,util::extract_integer<std::int32_t>(*reply,msg_offset));
+                           on_allowed_fast_received(socket,util::extract_integer<std::int32_t>(*reply,msg_begin_offset));
                            break;
                   }
 
                   case Message_Id::Suggest_Piece : {
-                           constexpr auto msg_offset = 1;
-                           on_suggest_piece_received(socket,util::extract_integer<std::int32_t>(*reply,msg_offset));
+                           on_suggest_piece_received(socket,util::extract_integer<std::int32_t>(*reply,msg_begin_offset));
+                           
                            break;
                   }
 

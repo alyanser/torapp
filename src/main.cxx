@@ -4,21 +4,18 @@
 #include <QFile>
 
 int main(int argc,char ** argv){
-         QApplication app(argc,argv);
-
          QApplication::setOrganizationName("Tast");
          QApplication::setApplicationName("Torapp");
 
-         {
-                  QFile stylesheet_file(":app_stylesheet.qss");
+         QApplication torapp(argc,argv);
 
-                  if(stylesheet_file.open(QFile::ReadOnly)){
-                           app.setStyleSheet(stylesheet_file.readAll());
-                  }
-         }
-         
-         Main_window window;
-         QObject::connect(&window,&Main_window::closed,&app,&QApplication::quit);
+         torapp.setStyleSheet([]{
+                  QFile stylesheet_file(":app_stylesheet.qss");
+                  return stylesheet_file.open(QFile::ReadOnly) ? stylesheet_file.readAll() : "";
+         }());
+
+         Main_window main_window;
+         QObject::connect(&main_window,&Main_window::closed,&torapp,&QApplication::quit);
          
          return QApplication::exec();
 }

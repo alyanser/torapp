@@ -17,6 +17,7 @@ set(SOURCES
          src/udp_socket.cxx
          src/torrent_properties_displayer.cxx
          src/tcp_socket.cxx
+         src/file_manager.cxx
 )
 
 set(MOC_INCLUDES
@@ -55,29 +56,29 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Widgets
 )
 
-# target_precompile_headers(${PROJECT_NAME} PRIVATE 
-#          [["QApplication"]]
-#          [["QMainWindow"]]
-#          [["QWidget"]]
-#          [["QNetworkAccessManager"]]
-#          [["QDebug"]]
-#          [["QString"]]
-#          [["QObject"]]
-#          [["QGridLayout"]]
-#          [["QAbstractSocket"]]
-#          [["QUdpSocket"]]
-#          [["QTimer"]]
-#          [["QTime"]]
-#          [["QByteArray"]]
-#          [["QBitArray"]]
-#          [["QTcpSocket"]]
-#          [["QUdpSocket"]]
-#          [["QAbstractSocket"]]
-#          [["QPointer"]]
-#          [["QFile"]]
-#          [["QSettings"]]
-#          [["QFileInfo"]]
-#          [["QCryptographicHash"]]
-#          [["QMessageBox"]]
-#          [["bencode_parser.hxx"]]
-# )
+target_precompile_headers(${PROJECT_NAME} PRIVATE 
+         [["QApplication"]]
+         [["QMainWindow"]]
+         [["QWidget"]]
+         [["QNetworkAccessManager"]]
+         [["QDebug"]]
+         [["QString"]]
+         [["QObject"]]
+         [["QGridLayout"]]
+         [["QAbstractSocket"]]
+         [["QUdpSocket"]]
+         [["QTimer"]]
+         [["QTime"]]
+         [["QByteArray"]]
+         [["QBitArray"]]
+         [["QTcpSocket"]]
+         [["QUdpSocket"]]
+         [["QAbstractSocket"]]
+         [["QPointer"]]
+         [["QFile"]]
+         [["QSettings"]]
+         [["QFileInfo"]]
+         [["QCryptographicHash"]]
+         [["QMessageBox"]]
+         [["bencode_parser.hxx"]]
+)
