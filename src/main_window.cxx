@@ -59,19 +59,16 @@ void Main_window::read_settings() noexcept {
 }
 
 void Main_window::add_top_actions() noexcept {
-         auto * const search_action = tool_bar_.addAction("Search");
-         auto * const torrent_action = tool_bar_.addAction("Torrent File");
-         auto * const url_action = tool_bar_.addAction("Custom Url");
+         auto * const torrent_action = tool_bar_.addAction("Torrent");
+         auto * const url_action = tool_bar_.addAction("Url");
          auto * const exit_action = new QAction("Exit",&file_menu_);
 
-         file_menu_.addAction(search_action);
          file_menu_.addAction(torrent_action);
          file_menu_.addAction(url_action);
          file_menu_.addAction(exit_action);
 
-         search_action->setToolTip("Search for files");
-         url_action->setToolTip("Download a file from custom url");
          torrent_action->setToolTip("Download a torrent file");
+         url_action->setToolTip("Download a file from custom url");
          exit_action->setToolTip("Exit Torapp");
 
          connect(exit_action,&QAction::triggered,this,&Main_window::close);

@@ -25,18 +25,17 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          read_settings();
 
          connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
-                  assert(dl_path.lastIndexOf('/') != -1);
-                  //! doesn't show the error
-                  if(!QDesktopServices::openUrl(dl_path.sliced(0,dl_path.lastIndexOf('/') + 1))){
+
+                  if(QFileInfo file_info(dl_path);!QDesktopServices::openUrl(file_info.absolutePath())){
                            constexpr std::string_view error_title("Directory open error");
                            constexpr std::string_view error_body("Directory could not be opened");
                            QMessageBox::critical(this,error_title.data(),error_body.data());
                   }
          });
 
-         connect(&open_button_,&QPushButton::clicked,this,[this,dl_path]{
-
-                  if(!QDesktopServices::openUrl(dl_path)){
+         connect(&open_button_,&QPushButton::clicked,this,[this,dl_type,dl_path]{
+                  
+                  if(QFileInfo file_info(dl_path);!QDesktopServices::openUrl(dl_type == Download_Type::Torrent ? file_info.absolutePath() : file_info.absoluteFilePath())){
                            constexpr std::string_view message_title("Could not open file");
                            constexpr std::string_view message_body("Downloaded file (s) could not be opened");
                            QMessageBox::critical(this,message_title.data(),message_body.data());
@@ -61,7 +60,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidge
 Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * const parent) 
          : Download_tracker(dl_path,Download_Type::Torrent,parent)
 {
-         package_name_label_.setText(torrent_metadata.name.data());
+         package_name_label_.setText(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data());
 
          connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,torrent_metadata = std::move(torrent_metadata)]{
                   emit retry_download(dl_path,torrent_metadata);
@@ -263,8 +262,10 @@ void Download_tracker::switch_to_finished_state() noexcept {
          time_elapsed_buddy_.setText("Time took: ");
          state_stack_.setCurrentWidget(&finish_line_);
          terminate_button_stack_.setCurrentWidget(&finish_button_);
+         pause_button_.setEnabled(false);
+         resume_button_.setEnabled(false);
          
-         if(error_ == Error::Null){
+         if(error_ != Error::Null && error_ != Error::Custom){
                   initiate_button_stack_.setCurrentWidget(&retry_button_);
          }else{
                   assert(!delete_button_.isEnabled());

@@ -103,28 +103,6 @@ inline QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Me
 }
 
 [[nodiscard]]
-inline std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & reply,const std::int32_t sent_txn_id){
-
-         if(!verify_txn_id(reply,sent_txn_id)){
-                  return {};
-         }
-
-         constexpr auto error_offset = 8;
-         return reply.sliced(error_offset);
-}
-
-[[nodiscard]]
-inline std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply,const std::int32_t sent_txn_id){
-
-         if(!verify_txn_id(reply,sent_txn_id)){
-                  return {};
-         }
-
-         constexpr auto connection_id_offset = 8;
-         return util::extract_integer<std::int64_t>(reply,connection_id_offset);
-}
-
-[[nodiscard]]
 inline bool Udp_torrent_client::verify_txn_id(const QByteArray & reply,const std::int32_t sent_txn_id){
          constexpr auto txn_id_offset = 4;
          const auto received_txn_id = util::extract_integer<std::int32_t>(reply,txn_id_offset);

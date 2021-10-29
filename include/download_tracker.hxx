@@ -50,7 +50,7 @@ public:
          void set_state(State state) noexcept;
          void set_ratio(double ratio) noexcept;
          void set_error_and_finish(Error error) noexcept;
-         void set_error_and_finish(const QString & custom_error) noexcept;
+         void set_status_and_finish(const QString & status) noexcept;
          void download_progress_update(std::int64_t received_byte_cnt,std::int64_t total_byte_cnt = -1) noexcept;
          void verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept;
          void set_upload_byte_count(std::int64_t uled_byte_cnt) noexcept;
@@ -134,9 +134,9 @@ inline void Download_tracker::set_error_and_finish(const Error error) noexcept {
          switch_to_finished_state();
 }
 
-inline void Download_tracker::set_error_and_finish(const QString & custom_error) noexcept {
+inline void Download_tracker::set_status_and_finish(const QString & status) noexcept {
          error_ = Error::Custom;
-         finish_line_.setText(custom_error);
+         finish_line_.setText(status);
          switch_to_finished_state();
 }
 

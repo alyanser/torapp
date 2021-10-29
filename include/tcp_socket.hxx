@@ -62,10 +62,11 @@ inline void Tcp_socket::on_invalid_peer_reply() noexcept {
 
 [[nodiscard]]
 constexpr bool Tcp_socket::is_good_ratio() const noexcept {
-         constexpr auto min_ratio = 0.5;
-         // todo: make the threshold = piece_size
+         constexpr auto min_ratio = 0.25;
+         // todo: make the threshold == piece_size
          constexpr auto uled_byte_threshold = 2097152; // 1 mb
-         return static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio ? true : uled_byte_cnt_ <= uled_byte_threshold;
+         assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
+         return !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio ? true : uled_byte_cnt_ <= uled_byte_threshold;
 }
 
 [[nodiscard]]

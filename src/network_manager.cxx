@@ -33,7 +33,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                            tracker->switch_to_finished_state();
                   }else{
                            file_handle->remove();
-                           tracker->set_error_and_finish(network_reply->errorString());
+                           tracker->set_status_and_finish(network_reply->errorString());
                   }
 
                   network_reply->deleteLater();
@@ -47,12 +47,12 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                            file_handle->write(network_reply->readAll());
                   }else{
                            file_handle->remove();
-                           tracker->set_error_and_finish(network_reply->errorString());
+                           tracker->set_status_and_finish(network_reply->errorString());
                   }
          });
 
          connect(network_reply,&QNetworkReply::errorOccurred,tracker,[tracker = tracker,network_reply]{
-                  tracker->set_error_and_finish(network_reply->errorString());
+                  tracker->set_status_and_finish(network_reply->errorString());
          });
 
          connect(tracker,&Download_tracker::request_satisfied,this,[file_handle = QPointer(file_handle),network_reply = QPointer(network_reply)]{

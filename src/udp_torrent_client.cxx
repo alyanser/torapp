@@ -82,7 +82,6 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          }();
 
          assert(connect_request.size() == connect_request_size);
-         qDebug() << connect_request;
          return connect_request;
 }
 
@@ -320,4 +319,26 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            return socket->abort();
                   }
          }
+}
+
+[[nodiscard]]
+std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & reply,const std::int32_t sent_txn_id){
+
+         if(!verify_txn_id(reply,sent_txn_id)){
+                  return {};
+         }
+
+         constexpr auto error_offset = 8;
+         return reply.sliced(error_offset);
+}
+
+[[nodiscard]]
+std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply,const std::int32_t sent_txn_id){
+
+         if(!verify_txn_id(reply,sent_txn_id)){
+                  return {};
+         }
+
+         constexpr auto connection_id_offset = 8;
+         return util::extract_integer<std::int64_t>(reply,connection_id_offset);
 }

@@ -119,12 +119,12 @@ private:
          bool is_valid_piece_index(std::int32_t piece_idx) const noexcept;
 
          std::optional<std::pair<qsizetype,qsizetype>> beginning_file_handle_info(std::int32_t piece_idx) const noexcept;
-         std::int32_t target_piece_index() const noexcept;
          std::int32_t piece_size(std::int32_t piece_idx) const noexcept;
 
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
          void clear_piece(std::int32_t piece_idx) noexcept;
          void configure_default_connections() noexcept;
+         void update_target_piece_indexes() noexcept;
          ///
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
@@ -137,6 +137,7 @@ private:
          constexpr static std::string_view reserved_bytes{"0000000000000004"};
          QList<std::pair<QFile *,std::int64_t>> file_handles_;
          QList<QUrl> active_peers_;
+         QList<std::int32_t> target_piece_idxes_;
          Torrent_properties_displayer properties_displayer_;
          QByteArray id_;
          QByteArray info_sha1_hash_;
@@ -157,7 +158,6 @@ private:
          std::int32_t spare_bit_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
-         std::optional<std::int32_t> cur_target_piece_idx_;
          State state_ = State::Verification;
 
          QList<std::int32_t> peer_additive_bitfield_;
