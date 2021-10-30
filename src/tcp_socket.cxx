@@ -54,7 +54,9 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
 
          auto & buffer_data = receive_buffer_.second;
 
-         assert(buffer_data.capacity() <= *msg_size);
+         if((buffer_data.capacity() < *msg_size)){
+                  buffer_data.reserve(*msg_size);
+         }
 
          if(buffer_data.capacity() != *msg_size){
                   buffer_data.reserve(*msg_size);

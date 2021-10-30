@@ -35,11 +35,14 @@ set(MOC_INCLUDES
          src/resources.qrc
 )
 
-
 set(CMAKE_AUTOMOC on)
 set(CMAKE_AUTORCC on)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_INCLUDES})
+
+if (CMAKE_BUILD_TYPE STREQUAL "release")
+         add_compile_definitions(QT_NO_DEBUG_OUTPUT)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
          "include"
@@ -65,20 +68,24 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QString"]]
          [["QObject"]]
          [["QGridLayout"]]
+         [["QHBoxLayout"]]
+         [["QVBoxLayout"]]
          [["QAbstractSocket"]]
+         [["QTableWidget"]]
          [["QUdpSocket"]]
          [["QTimer"]]
          [["QTime"]]
          [["QByteArray"]]
          [["QBitArray"]]
+         [["QAbstractSocket"]]
          [["QTcpSocket"]]
          [["QUdpSocket"]]
-         [["QAbstractSocket"]]
          [["QPointer"]]
          [["QFile"]]
          [["QSettings"]]
          [["QFileInfo"]]
          [["QCryptographicHash"]]
          [["QMessageBox"]]
+         [["QList"]]
          [["bencode_parser.hxx"]]
 )

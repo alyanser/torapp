@@ -14,9 +14,7 @@ Url_input_dialog::Url_input_dialog(QWidget * const parent)
          setup_tab_order();
          configure_default_connections();
 
-         url_line_.setPlaceholderText("eg: https://www.google.com/search?q=hello+there");
          path_line_.setText(default_path_);
-         package_name_line_.setPlaceholderText("leaving this field empty will use the file name from url if any");
 }
 
 void Url_input_dialog::setup_tab_order() noexcept {
@@ -45,6 +43,12 @@ void Url_input_dialog::configure_default_connections() noexcept {
          connect(&url_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
          connect(&package_name_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
          connect(&path_line_,&QLineEdit::returnPressed,this,&Url_input_dialog::on_input_received);
+}
+
+void Url_input_dialog::reset_lines() noexcept {
+         url_line_.clear();
+         package_name_line_.clear();
+         path_line_.setText(default_path_);
 }
 
 void Url_input_dialog::setup_layout() noexcept {

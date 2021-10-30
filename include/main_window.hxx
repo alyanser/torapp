@@ -51,7 +51,7 @@ private:
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          ///
-         QWidget central_widget_;
+         QWidget central_widget_{this};
          QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;
          QMenu file_menu_{"File",menuBar()};
@@ -101,7 +101,7 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
          switch(file_error){
                   
                   case File_manager::File_Error::File_Lock : {
-                           // todo: valid desc later
+                           // todo: valid desc
                            [[fallthrough]];
                   }
 
@@ -167,7 +167,13 @@ void Main_window::restore_downloads() noexcept {
 
          const auto child_groups = settings.childGroups();
 
-         std::for_each(child_groups.cbegin(),child_groups.cend(),[this,&settings](const auto & dl_group){
+         auto display_modified_error = [this]{
+                  constexpr std::string_view error_title("Settings modified");
+                  constexpr std::string_view error_body("Torapp config file was modified. Some downloads (if any) could not be recovered");
+                  QMessageBox::critical(this,error_title.data(),error_body.data());
+         };
+
+         std::for_each(child_groups.cbegin(),child_groups.cend(),[this,&settings,display_modified_error](const auto & dl_group){
                   settings.beginGroup(dl_group);
 
                   constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
@@ -184,16 +190,18 @@ void Main_window::restore_downloads() noexcept {
                   auto path = qvariant_cast<QString>(settings.value("path"));
 
                   if(dl_metadata.isEmpty() || path.isEmpty()){
-                           constexpr std::string_view error_title("Settings modified");
-                           constexpr std::string_view error_body("Torapp config file was modified. Some downloads (if any) could not be recovered");
-                           QMessageBox::critical(this,error_title.data(),error_body.data());
-                           return;
+                           return display_modified_error();
                   }
 
-                  QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata)]{
+                  QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata),display_modified_error]{
 
                            if constexpr (is_url_download){
-                                    initiate_download(path,dl_metadata);
+
+                                    if(dl_metadata.isValid()){
+                                             initiate_download(path,dl_metadata);
+                                    }else{
+                                             display_modified_error();
+                                    }
                            }else{
                                     const auto torrent_metadata = [&path,&dl_metadata]() -> std::optional<bencode::Metadata> {
                                              const auto compl_file_content = dl_metadata.toStdString();
@@ -208,6 +216,8 @@ void Main_window::restore_downloads() noexcept {
 
                                     if(torrent_metadata){
                                              initiate_download(path,*torrent_metadata);
+                                    }else{
+                                             display_modified_error();
                                     }
                            }
                   });

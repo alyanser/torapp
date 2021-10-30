@@ -33,9 +33,3 @@ private:
          QToolButton path_button_;
          QString default_path_ = QDir::currentPath();
 };
-
-inline void Url_input_dialog::reset_lines() noexcept {
-         url_line_.clear();
-         package_name_line_.clear();
-         path_line_.setText(default_path_);
-}

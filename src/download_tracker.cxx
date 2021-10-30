@@ -8,7 +8,7 @@
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
          : QWidget(parent), dl_path_(dl_path),dl_type_(dl_type)
 {
-         setMaximumHeight(200);
+         setMaximumHeight(175);
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
@@ -48,7 +48,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidge
 {
          assert(!url.isEmpty());
          assert(!dl_path.isEmpty());
-         
+
          package_name_label_.setText(url.fileName());
 
          connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,url]{
@@ -256,6 +256,19 @@ void Download_tracker::configure_default_connections() noexcept {
                   update_download_speed();
                   write_settings();
          });
+}
+
+void Download_tracker::enable_completion_relevant_buttons() noexcept {
+         assert(!properties_button_.isEnabled());
+         assert(!pause_button_.isEnabled());
+
+         properties_button_.setEnabled(true);
+
+         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
+         
+         if(dled_byte_cnt_ != total_byte_cnt_){
+                  pause_button_.setEnabled(true);
+         }
 }
 
 void Download_tracker::switch_to_finished_state() noexcept {

@@ -1,10 +1,35 @@
 #include "torrent_metadata_dialog.hxx"
 
+#include <bencode_parser.hxx>
 #include <QStorageInfo>
+#include <QFileDialog>
+#include <QMessageBox>
+
+Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) 
+         : QDialog(parent)
+{
+         setWindowTitle("Add New Torrent");
+         setup_layout();
+         extract_metadata(torrent_file_path);
+         configure_default_connections();
+
+         path_line_.setText(QFileInfo(torrent_file_path).absolutePath() + '/');
+}
+
+void Torrent_metadata_dialog::configure_default_connections() noexcept {
+         connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::reject);
+
+         connect(&path_button_,&QToolButton::clicked,this,[this]{
+
+                  if(const auto selected_directory = QFileDialog::getExistingDirectory(this);!selected_directory.isEmpty()){
+                           path_line_.setText(selected_directory);
+                  }
+         });
+}
 
 void Torrent_metadata_dialog::setup_layout() noexcept {
          central_layout_.addLayout(&central_form_layout_,0,0);
-         
+
          central_form_layout_.setSpacing(10);
          
          central_form_layout_.addRow("Name",&torrent_name_label_);
@@ -53,7 +78,6 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 
                   try{
                            return bencode::extract_metadata(bencode::parse_file(torrent_file_path.toStdString()));
-
                   }catch(const std::exception & exception){
                            qDebug() << exception.what();
                            return {};
@@ -61,8 +85,9 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
          }();
 
          if(!torrent_metadata){
-                  // todo: report to tracker
-                  qDebug() << "Could not parse the given file";
+                  constexpr std::string_view error_header("Could not parse");
+                  constexpr std::string_view error_body("Given torrent file could not be parsed. Try with a different version");
+                  QMessageBox::critical(this,error_header.data(),error_body.data());
                   return;
          }
 
@@ -82,7 +107,6 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   if(dir_path.isEmpty()){
                            constexpr std::string_view error_title("Invalid path");
                            constexpr std::string_view error_body("Path cannot be empty");
-
                            QMessageBox::critical(this,error_title.data(),error_body.data());
                            return;
                   }
@@ -99,18 +123,16 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   {
-                           QStorageInfo storage(path_line_.text());
-                           assert(storage.isValid());
+                           const auto torrent_size = torrent_metadata->single_file ? torrent_metadata->single_file_size : torrent_metadata->multiple_files_size;
+                           assert(torrent_size > 0);
                            
-                           if(storage.bytesFree() < (torrent_metadata->single_file ? torrent_metadata->single_file_size : torrent_metadata->multiple_files_size)){
+                           if(QStorageInfo storage_info(path_line_.text());storage_info.bytesFree() < torrent_size){
                                     constexpr std::string_view error_title("Not enough space");
                                     constexpr std::string_view error_body("Not enough space available in the specified directory. Choose another path and retry");
-
                                     QMessageBox::critical(this,error_title.data(),error_body.data());
                                     return;
                            }
                   }
-
 
                   accept();
                   emit new_request_received(dir_path,*torrent_metadata);

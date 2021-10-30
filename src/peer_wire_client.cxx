@@ -46,7 +46,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::showMaximized);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::raise);
-         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::enable_relevant_butons);
+         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::enable_completion_relevant_buttons);
 
          connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,state_ = state_]{
 
@@ -186,6 +186,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                   tracker_->verification_progress_update(piece_idx,total_piece_cnt_);
 
                   if(piece_idx < total_piece_cnt_){
+                           // todo: let the user decide if only torapp-downloaded pieces should be verified
 
                            if(bitfield_[piece_idx]){
                                     
@@ -204,7 +205,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests. fix later
+                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky: times requests. fix later
                                     state_ = State::Leecher;
                            }
 
@@ -526,7 +527,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   received_blocks.fill(false);
          }
 
-         constexpr auto max_duplicate_requests = 3;
+         constexpr auto max_duplicate_requests = 10;
          const auto max_request_cnt = piece_info(piece_idx).block_cnt; // ? consider validity
 
          for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){
@@ -546,7 +547,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
 
                   const auto dec_connection = connect(socket,&Tcp_socket::disconnected,this,[&requested_blocks = requested_blocks,block_idx]{
 
-                           if(!requested_blocks.empty() && requested_blocks[block_idx]){
+                           if(!requested_blocks.empty()){
                                     assert(requested_blocks[block_idx] > 0);
                                     --requested_blocks[block_idx];
                            }

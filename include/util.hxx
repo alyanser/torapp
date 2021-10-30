@@ -2,6 +2,7 @@
 
 #include <QBigEndianStorageType>
 #include <QBitArray>
+#include <QString>
 #include <QList>
 
 class Download_tracker;
@@ -23,19 +24,21 @@ constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byt
          constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
          constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
 
+         using namespace std::string_view_literals;
+
          if(byte_cnt >= gb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / gb_byte_cnt,conversion_fmt == Format::Speed ? "gb (s) / sec" : "gb (s)"};
+                  return {static_cast<double>(byte_cnt) / gb_byte_cnt,conversion_fmt == Format::Speed ? "gb (s) / sec"sv : "gb (s)"sv};
          }
 
          if(byte_cnt >= mb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / mb_byte_cnt,conversion_fmt == Format::Speed ? "mb (s) / sec" : "mb (s)"};
+                  return {static_cast<double>(byte_cnt) / mb_byte_cnt,conversion_fmt == Format::Speed ? "mb (s) / sec"sv : "mb (s)"sv};
          }
 
          if(byte_cnt >= kb_byte_cnt){
-                  return {static_cast<double>(byte_cnt) / kb_byte_cnt,conversion_fmt == Format::Speed ? "kb (s) / sec" : "kb (s)"};
+                  return {static_cast<double>(byte_cnt) / kb_byte_cnt,conversion_fmt == Format::Speed ? "kb (s) / sec"sv : "kb (s)"sv};
          }
 
-         return {byte_cnt,conversion_fmt == Format::Speed ? "byte (s) / sec" : "byte (s)"};
+         return {byte_cnt,conversion_fmt == Format::Speed ? "byte (s) / sec"sv : "byte (s)"sv};
 }
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>

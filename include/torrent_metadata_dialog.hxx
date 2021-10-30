@@ -2,18 +2,18 @@
 
 #include "util.hxx"
 
-#include <bencode_parser.hxx>
-#include <QMessageBox>
-#include <QFileDialog>
-#include <QToolButton>
-#include <QPushButton>
 #include <QFormLayout>
+#include <QPushButton>
+#include <QToolButton>
 #include <QGridLayout>
-#include <QFileInfo>
+#include <QHBoxLayout>
 #include <QLineEdit>
-#include <QCheckBox>
 #include <QDialog>
 #include <QLabel>
+
+namespace bencode {
+         struct Metadata;
+}
 
 class Torrent_metadata_dialog : public QDialog {
          Q_OBJECT
@@ -45,26 +45,3 @@ private:
          QHBoxLayout path_layout_;
          QHBoxLayout button_layout_;
 };
-
-inline Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) 
-         : QDialog(parent)
-{
-         setWindowTitle("Add New Torrent");
-         setup_layout();
-         extract_metadata(torrent_file_path);
-         configure_default_connections();
-
-         path_line_.setText(QFileInfo(torrent_file_path).absolutePath() + '/');
-         path_line_.setToolTip("Note: Torrent name will be appended to the provided path");
-}
-
-inline void Torrent_metadata_dialog::configure_default_connections() noexcept {
-         connect(&cancel_button_,&QPushButton::clicked,this,&Torrent_metadata_dialog::reject);
-
-         connect(&path_button_,&QToolButton::clicked,this,[this]{
-
-                  if(const auto selected_directory = QFileDialog::getExistingDirectory(this);!selected_directory.isEmpty()){
-                           path_line_.setText(selected_directory);
-                  }
-         });
-}
