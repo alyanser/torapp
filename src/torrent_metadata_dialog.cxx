@@ -14,6 +14,7 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
          configure_default_connections();
 
          path_line_.setText(QFileInfo(torrent_file_path).absolutePath() + '/');
+         file_info_label_.setFrameStyle(QFrame::Shape::Box | QFrame::Shadow::Sunken);
 }
 
 void Torrent_metadata_dialog::configure_default_connections() noexcept {
@@ -33,18 +34,17 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
          central_form_layout_.setSpacing(10);
          
          central_form_layout_.addRow("Name",&torrent_name_label_);
+         central_form_layout_.addRow("Size",&size_label_);
          central_form_layout_.addRow("Created by",&created_by_label_);
          central_form_layout_.addRow("Creation date",&creation_date_label_);
          central_form_layout_.addRow("Announce",&announce_label_);
          central_form_layout_.addRow("Comment",&comment_label_);
          central_form_layout_.addRow("Encoding",&encoding_label_);
-         central_form_layout_.addRow("Size",&torrent_length_label_);
-         central_form_layout_.addRow(&file_form_layout_);
+         central_form_layout_.addRow("Piece length",&piece_length_label_);
          central_form_layout_.addRow("Download directory",&path_layout_);
+         central_form_layout_.addRow("Files",&file_info_label_);
          central_form_layout_.addRow(&button_layout_);
 
-         file_form_layout_.addRow("Files",&file_layout_);
-         
          button_layout_.addWidget(&begin_download_button_);
          button_layout_.addWidget(&cancel_button_);
 
@@ -53,13 +53,29 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
 }
 
 void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_metadata) noexcept {
-         torrent_name_label_.setText(torrent_metadata.name.data());
-         torrent_length_label_.setText(QString::number(torrent_metadata.piece_length) + " kbs");
-         comment_label_.setText(torrent_metadata.comment.data());
-         created_by_label_.setText(torrent_metadata.created_by.data());
-         creation_date_label_.setText(torrent_metadata.creation_date.data());
-         comment_label_.setText(torrent_metadata.comment.data());
-         encoding_label_.setText(torrent_metadata.encoding.data());
+
+         auto set_label_text = [](QLabel & label,const std::string & text){
+                  label.setText(text.empty() ? "N/A" : QByteArray(text.data(),static_cast<qsizetype>(text.size())));
+         };
+
+         set_label_text(torrent_name_label_,torrent_metadata.name);
+         set_label_text(announce_label_,torrent_metadata.announce_url);
+         set_label_text(comment_label_,torrent_metadata.comment);
+         set_label_text(created_by_label_,torrent_metadata.created_by);
+         set_label_text(creation_date_label_,torrent_metadata.creation_date);
+         set_label_text(creation_date_label_,torrent_metadata.creation_date);
+         set_label_text(encoding_label_,torrent_metadata.encoding);
+
+         {
+                  const auto [converted_piece_length,postfix] = util::conversion::stringify_bytes(torrent_metadata.piece_length,util::conversion::Format::Memory);
+                  piece_length_label_.setText(QString::number(converted_piece_length) + ' ' + postfix.data());
+         }
+
+         {
+                  const auto torrent_size = torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size;
+                  const auto [converted_size,postfix] = util::conversion::stringify_bytes(torrent_size,util::conversion::Format::Memory);
+                  size_label_.setText(QString::number(converted_size) + ' ' + postfix.data());
+         }
 
          std::for_each(torrent_metadata.file_info.cbegin(),torrent_metadata.file_info.cend(),[this](const auto & file_info){
                   const auto & [file_path,file_size_kbs] = file_info;
@@ -67,8 +83,8 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
                   const auto file_size_byte_cnt = file_size_kbs * 1024;
                   const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_byte_cnt,util::conversion::Format::Memory);
 
-                  auto * const file_label = new QLabel(QString(file_path.data()) + '\t' + QString::number(converted_size) + postfix.data(),this);
-                  file_layout_.addWidget(file_label);
+                  const auto file_label_text = QString(file_path.data()) + "\t( " + QString::number(converted_size) + ' ' + postfix.data() + " )";
+                  file_info_label_.text().isEmpty() ? file_info_label_.setText(file_label_text) : file_info_label_.setText(file_info_label_.text() + '\n' + file_label_text);
          });
 }
 
