@@ -28,16 +28,25 @@ Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metada
 
 void Torrent_properties_displayer::setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept {
          general_info_layout_.setAlignment(Qt::AlignCenter);
-         general_info_layout_.setSpacing(10);
+         general_info_layout_.setSpacing(15);
 
-         general_info_layout_.addRow("Name:",new QLabel(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data()));
-         general_info_layout_.addRow("Created By:",new QLabel(torrent_metadata.created_by.empty() ? "N/A" : torrent_metadata.created_by.data()));
-         general_info_layout_.addRow("Creation Date:",new QLabel(torrent_metadata.creation_date.empty() ? "N/A" : torrent_metadata.creation_date.data()));
-         general_info_layout_.addRow("Comment:",new QLabel(torrent_metadata.comment.empty() ? "N/A" : torrent_metadata.comment.data()));
-         general_info_layout_.addRow("Encoding:",new QLabel(torrent_metadata.encoding.empty() ? "N/A" : torrent_metadata.encoding.data()));
-         general_info_layout_.addRow("Md5-Sum:",new QLabel(torrent_metadata.md5sum.empty() ? "N/A" : torrent_metadata.md5sum.data()));
-         general_info_layout_.addRow("Piece Size:",new QLabel(QString::number(torrent_metadata.piece_length) + " bytes"));
-         // todo: figure the progress bar for pieces
+
+         auto get_new_label = [&general_info_tab_ = general_info_tab_](const std::string & label_text){
+                  auto * const label = new QLabel(label_text.empty() ? "N/A" : QByteArray(label_text.data(),static_cast<qsizetype>(label_text.size())),&general_info_tab_);
+                  label->setAlignment(Qt::AlignmentFlag::AlignCenter);
+                  label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+                  label->setFrameShape(QFrame::Shape::Panel);
+                  label->setFrameShadow(QFrame::Shadow::Raised);
+                  return label;
+         };
+
+         general_info_layout_.addRow("Name",get_new_label(torrent_metadata.name));
+         general_info_layout_.addRow("Created By",get_new_label(torrent_metadata.created_by));
+         general_info_layout_.addRow("Creation Date",get_new_label(torrent_metadata.creation_date));
+         general_info_layout_.addRow("Comment",get_new_label(torrent_metadata.comment));
+         general_info_layout_.addRow("Encoding",get_new_label(torrent_metadata.encoding));
+         general_info_layout_.addRow("Md5-Sum",get_new_label(torrent_metadata.md5sum));
+         general_info_layout_.addRow("Piece Size:",get_new_label(std::to_string(torrent_metadata.piece_length) + " bytes"));
 }
 
 void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {

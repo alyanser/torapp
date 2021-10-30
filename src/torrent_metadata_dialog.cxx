@@ -14,7 +14,10 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
          configure_default_connections();
 
          path_line_.setText(QFileInfo(torrent_file_path).absolutePath() + '/');
-         file_info_label_.setFrameStyle(QFrame::Shape::Box | QFrame::Shadow::Sunken);
+
+         file_info_label_.setFrameShadow(QFrame::Shadow::Sunken);
+         file_info_label_.setFrameShape(QFrame::Shape::Box);
+         file_info_label_.setLineWidth(3);
 }
 
 void Torrent_metadata_dialog::configure_default_connections() noexcept {
