@@ -87,6 +87,14 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
          });
 }
 
+[[nodiscard]]
+std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) const noexcept {
+         assert(is_valid_piece_index(piece_idx));
+         const auto piece_size = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % torrent_piece_size_ ? total_byte_cnt_ % torrent_piece_size_ : torrent_piece_size_;
+         assert(piece_size > 0 && piece_size <= torrent_piece_size_);
+         return static_cast<std::int32_t>(piece_size);
+}
+
 void Peer_wire_client::on_piece_verified(std::int32_t verified_piece_idx) noexcept {
          assert(is_valid_piece_index(verified_piece_idx));
          assert(!bitfield_.isEmpty());
@@ -101,7 +109,7 @@ void Peer_wire_client::on_piece_verified(std::int32_t verified_piece_idx) noexce
 
          if(dled_piece_cnt_ == total_piece_cnt_){
                   assert(!remaining_byte_count());
-                  tracker_->set_status_and_finish("Download finished");
+                  tracker_->switch_to_finished_state();
                   refresh_timer_.stop();
                   state_ = State::Seed;
                   emit download_finished();
@@ -1108,6 +1116,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
          socket->peer_id = std::move(peer_id);
          socket->peer_bitfield = QBitArray(bitfield_.size(),false); // ? consider removing and handle cases later on
          socket->handshake_done = true;
+
          active_peers_.emplace_back(socket->peer_url());
          properties_displayer_.add_peer(socket);
 
@@ -1170,10 +1179,11 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * socket,const QBy
          }
 
          if(dled_piece_cnt_ == total_piece_cnt_ && socket->fast_extension_enabled){
+                  assert(!remaining_byte_count());
                   return socket->send_packet(have_all_msg.data());
          }
 
-         if(constexpr auto max_have_msgs = 5;dled_piece_cnt_ <= max_have_msgs){
+         if(constexpr auto max_have_msgs = 10;dled_piece_cnt_ <= max_have_msgs){
 
                   for(std::int32_t piece_idx = 0;piece_idx < total_piece_cnt_;++piece_idx){
 
@@ -1208,7 +1218,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   return socket->abort();
          }
 
-         qDebug() << received_msg_id << active_peers_.size();
+         qDebug() << received_msg_id << "Active peers:" << active_peers_.size();
          constexpr auto msg_begin_offset = 1;
 
          switch(received_msg_id){
@@ -1293,7 +1303,6 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
                   case Message_Id::Suggest_Piece : {
                            on_suggest_piece_received(socket,util::extract_integer<std::int32_t>(*reply,msg_begin_offset));
-                           
                            break;
                   }
 

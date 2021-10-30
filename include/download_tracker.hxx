@@ -10,7 +10,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QSettings>
-#include <QWidget>
+#include <QFrame>
 #include <QLabel>
 #include <QTimer>
 #include <QTime>
@@ -19,7 +19,7 @@ namespace bencode {
          struct Metadata;
 }
 
-class Download_tracker : public QWidget {
+class Download_tracker : public QFrame {
          Q_OBJECT
 public:
          enum class Error { 
@@ -69,7 +69,7 @@ public slots:
          void enable_completion_relevant_buttons() noexcept;
 private:
          Download_tracker(const QString & dl_path,Download_Type dl_type,QWidget * parent = nullptr);
-         
+
          void setup_layout() noexcept;
          void configure_default_connections() noexcept;
          void setup_file_status_layout() noexcept;
@@ -98,11 +98,11 @@ private:
          QStackedWidget state_button_stack_;
          QTime time_elapsed_{0,0,0};
          QLineEdit finish_line_;
-         QLabel package_name_buddy_{"Name:"};
+         QLabel package_name_buddy_{"Name"};
          QLabel package_name_label_;
          QLabel dl_quantity_label_{"0 byte (s) / 0 byte (s)"};
          QLabel ul_quantity_label_{"0 byte (s)"};
-         QLabel time_elapsed_buddy_{"Time elapsed:"};
+         QLabel time_elapsed_buddy_{"Time elapsed"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + time_elapsed_fmt.data()};
          QLabel dl_speed_label_{"0 byte (s) / sec"};
          QLabel ratio_label_{"0"};

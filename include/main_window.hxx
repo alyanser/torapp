@@ -67,24 +67,10 @@ inline Main_window::~Main_window() {
          write_settings();
 }
 
-inline void Main_window::closeEvent(QCloseEvent * const event) noexcept {
-         constexpr std::string_view warning_title("Quit");
-         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
-         const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
-         reply_button == QMessageBox::Yes ? event->accept(),emit closed() : event->ignore();
-}
-
 inline void Main_window::setup_menu_bar() noexcept {
          assert(menuBar());
          menuBar()->addMenu(&file_menu_);
          menuBar()->addMenu(&sort_menu_);
-}
-
-inline void Main_window::write_settings() const noexcept {
-         QSettings settings;
-         settings.beginGroup("main_window");
-         settings.setValue("size",size());
-         settings.setValue("pos",pos());
 }
 
 template<typename dl_metadata_type>
@@ -101,13 +87,13 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
          auto [file_error,file_handles] = file_manager_.open_file_handles(dl_path,dl_metadata);
 
          switch(file_error){
-                  
-                  case File_manager::File_Error::File_Lock : {
+
+                  case File_manager::File_Error::Already_Exists : {
                            // todo: valid desc
                            [[fallthrough]];
                   }
 
-                  case File_manager::File_Error::Already_Exists : {
+                  case File_manager::File_Error::File_Lock : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
                            break;
@@ -198,12 +184,7 @@ void Main_window::restore_downloads() noexcept {
                   QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata),display_modified_error]{
 
                            if constexpr (is_url_download){
-
-                                    if(dl_metadata.isValid()){
-                                             initiate_download(path,dl_metadata);
-                                    }else{
-                                             display_modified_error();
-                                    }
+                                    dl_metadata.isValid() ? initiate_download(path,dl_metadata) : display_modified_error();
                            }else{
                                     const auto torrent_metadata = [&path,&dl_metadata]() -> std::optional<bencode::Metadata> {
                                              const auto compl_file_content = dl_metadata.toStdString();
@@ -216,11 +197,7 @@ void Main_window::restore_downloads() noexcept {
                                              }
                                     }();
 
-                                    if(torrent_metadata){
-                                             initiate_download(path,*torrent_metadata);
-                                    }else{
-                                             display_modified_error();
-                                    }
+                                    torrent_metadata ? initiate_download(path,*torrent_metadata) : display_modified_error();
                            }
                   });
 

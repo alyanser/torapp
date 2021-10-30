@@ -43,16 +43,6 @@ private:
          bool connection_id_valid_ = true;
 };
 
-inline Udp_socket::Udp_socket(const QUrl url,QByteArray connect_request,QObject * const parent) 
-         : QUdpSocket(parent)
-         , connect_request_(std::move(connect_request))
-{
-         assert(url.isValid());
-         assert(!connect_request_.isEmpty());
-         configure_default_connections();
-         connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
-}
-
 inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
          interval_timer_.start(interval_timeout);
 }
@@ -67,15 +57,9 @@ inline void Udp_socket::send_initial_request(const QByteArray & request,const St
 inline std::chrono::seconds Udp_socket::get_timeout() const noexcept {
          constexpr auto protocol_constant = 15;
          const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
-         assert(timeout_seconds <= std::chrono::seconds(3840));
          return timeout_seconds;
 }
 
 inline void Udp_socket::send_request(const QByteArray & request) noexcept {
-
-         if(state_ != State::Connect && !connection_id_valid_){
-                  send_initial_request(connect_request_,State::Connect);
-         }else{
-                  send_packet(request);
-         }
+         state_ != State::Connect && !connection_id_valid_ ? send_initial_request(connect_request_,State::Connect) : send_packet(request);
 }

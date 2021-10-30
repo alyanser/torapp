@@ -6,23 +6,34 @@
 #include <QDir>
 
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
-         : QWidget(parent), dl_path_(dl_path),dl_type_(dl_type)
+         : QFrame(parent), dl_path_(dl_path),dl_type_(dl_type)
 {
-         setFixedHeight(200); // todo: figure later
+         setFixedHeight(230); // todo: figure later
+
+         setFrameShadow(QFrame::Shadow::Sunken);
+         setFrameShape(QFrame::Shape::Box);
+         setLineWidth(3);
+
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();
          setup_state_stack();
          update_error_line();
          configure_default_connections();
+         read_settings();
 
+         central_layout_.setSpacing(15);
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
          properties_button_.setEnabled(false);
          pause_button_.setEnabled(false);
          dl_progress_bar_.setTextVisible(true);
-
-         read_settings();
+         package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
+         package_name_label_.setFrameShape(QFrame::Shape::Panel);
+         package_name_label_.setAlignment(Qt::AlignCenter);
+         time_elapsed_label_.setFrameShadow(QFrame::Shadow::Raised);
+         time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
+         time_elapsed_label_.setAlignment(Qt::AlignCenter);
 
          connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
 
@@ -30,6 +41,8 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
                            constexpr std::string_view error_title("Directory open error");
                            constexpr std::string_view error_body("Directory could not be opened");
                            QMessageBox::critical(this,error_title.data(),error_body.data());
+                  }else{
+                           qDebug() << dl_path << "could not be opened";
                   }
          });
 
@@ -39,6 +52,8 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
                            constexpr std::string_view message_title("Could not open file");
                            constexpr std::string_view message_body("Downloaded file (s) could not be opened");
                            QMessageBox::critical(this,message_title.data(),message_body.data());
+                  }else{
+                           qDebug() << dl_path << "could not be opened";
                   }
          });
 }
@@ -230,18 +245,16 @@ void Download_tracker::configure_default_connections() noexcept {
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_file_to_trash);
                   connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::download_dropped);
                   connect(this,&Download_tracker::move_file_to_trash,this,&Download_tracker::download_dropped);
-                  connect(this,&Download_tracker::delete_file_permanently,this,&Download_tracker::request_satisfied);
-                  connect(this,&Download_tracker::move_file_to_trash,&Download_tracker::request_satisfied);
 
                   query_box.exec();
          });
 
          connect(&cancel_button_,&QPushButton::clicked,this,[this]{
-                  constexpr std::string_view question_title("Cancel Download");
-                  constexpr std::string_view question_body("Are you sure you want to cancel the download?");
+                  constexpr std::string_view query_title("Cancel Download");
+                  constexpr std::string_view query_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   
-                  const auto reply_button = QMessageBox::question(this,question_title.data(),question_body.data(),buttons);
+                  const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data(),buttons);
 
                   if(reply_button == QMessageBox::StandardButton::Yes){
                            session_timer_.stop();
@@ -278,28 +291,27 @@ void Download_tracker::switch_to_finished_state() noexcept {
          pause_button_.setEnabled(false);
          resume_button_.setEnabled(false);
          
-         if(error_ != Error::Null && error_ != Error::Custom){
-                  initiate_button_stack_.setCurrentWidget(&retry_button_);
-         }else{
+         if(error_ == Error::Null){
                   assert(!delete_button_.isEnabled());
                   assert(!open_button_.isEnabled());
                   delete_button_.setEnabled(true);
                   open_button_.setEnabled(true);
+         }else{
+                  initiate_button_stack_.setCurrentWidget(&retry_button_);
          }
 }
 
 void Download_tracker::update_error_line() noexcept {
-         // ? use static QStrings
-
+         // ? consider using static QStrings or QStrlingLiteral
          switch(error_){
                   
                   case Error::Null : {
-                           finish_line_.setText("Download completed successfully. Click on open button to view");
+                           finish_line_.setText("Download finished");
                            break;
                   }
 
                   case Error::File_Write : {
-                           finish_line_.setText("Given file could not be opened for writing");
+                           finish_line_.setText("Given path could not be opened for writing");
                            break;
                   }
 
@@ -309,7 +321,7 @@ void Download_tracker::update_error_line() noexcept {
                   }
                   
                   case Error::File_Lock : { 
-                           finish_line_.setText("Given path already exists. Cannot overwire");
+                           finish_line_.setText("Given path already exists");
                            break;
                   }
 
@@ -318,7 +330,7 @@ void Download_tracker::update_error_line() noexcept {
                   }
 
                   default : {
-                           __builtin_unreachable();
+                           // __builtin_unreachable();
                   }
          }
 }

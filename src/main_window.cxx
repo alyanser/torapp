@@ -19,10 +19,25 @@ Main_window::Main_window(){
          add_top_actions();
          read_settings();
 
+         central_layout_.setSpacing(20);
          central_layout_.setAlignment(Qt::AlignTop);
          assert(central_widget_.layout());
          scroll_area_.setWidget(&central_widget_);
          scroll_area_.setWidgetResizable(true);
+}
+
+void Main_window::closeEvent(QCloseEvent * const event) noexcept {
+         constexpr std::string_view warning_title("Quit");
+         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
+         const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
+         reply_button == QMessageBox::Yes ? event->accept(),emit closed() : event->ignore();
+}
+
+void Main_window::write_settings() const noexcept {
+         QSettings settings;
+         settings.beginGroup("main_window");
+         settings.setValue("size",size());
+         settings.setValue("pos",pos());
 }
 
 void Main_window::setup_sort_menu() noexcept {

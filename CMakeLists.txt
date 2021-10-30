@@ -72,6 +72,7 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE
          [["QVBoxLayout"]]
          [["QAbstractSocket"]]
          [["QTableWidget"]]
+         [["QFrame"]]
          [["QUdpSocket"]]
          [["QTimer"]]
          [["QTime"]]

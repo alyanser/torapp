@@ -1,6 +1,16 @@
 #include "udp_socket.hxx"
 #include "util.hxx"
 
+Udp_socket::Udp_socket(const QUrl url,QByteArray connect_request,QObject * const parent) 
+         : QUdpSocket(parent)
+         , connect_request_(std::move(connect_request))
+{
+         assert(url.isValid());
+         assert(!connect_request_.isEmpty());
+         configure_default_connections();
+         connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
+}
+
 void Udp_socket::configure_default_connections() noexcept {
          connect(this,&Udp_socket::disconnected,&Udp_socket::deleteLater);
          connect(this,&Udp_socket::readyRead,&connection_timer_,&QTimer::stop);
@@ -66,13 +76,13 @@ void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          assert(!hex_packet.isEmpty());
 
          if(state_ != State::Connect && !connection_id_valid_){
-                  return;
+                  assert(false && "trying to send packet with invalid connection id");
          }
 
          const auto raw_packet = QByteArray::fromHex(hex_packet);
-         qDebug() << "resending request to tracker";
          write(raw_packet);
 
          constexpr auto txn_id_offset = 12;
+         assert(raw_packet.size() >= txn_id_offset + static_cast<qsizetype>(sizeof(std::int32_t)));
          txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
 }

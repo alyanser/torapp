@@ -72,7 +72,7 @@ private:
          bencode::Metadata torrent_metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
-         Download_tracker * const tracker_ = nullptr;
+         Download_tracker * tracker_ = nullptr;
          qsizetype tracker_url_idx_ = 0;
          Event event_ = Event::None;
 };

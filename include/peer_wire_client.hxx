@@ -1,7 +1,7 @@
 #pragma once
 
-#include "util.hxx"
 #include "torrent_properties_displayer.hxx"
+#include "util.hxx"
 
 #include <bencode_parser.hxx>
 #include <QBitArray>
@@ -177,17 +177,9 @@ inline std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
 
 [[nodiscard]]
 inline std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
-         assert(dled_byte_cnt_ >= 0 &&dled_byte_cnt_ <= total_byte_cnt_);
+         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
          assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ <= total_piece_cnt_);
          return total_byte_cnt_ - dled_byte_cnt_;
-}
-
-[[nodiscard]]
-inline std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) const noexcept {
-         assert(is_valid_piece_index(piece_idx));
-         const auto piece_size = piece_idx == total_piece_cnt_ - 1 && total_byte_cnt_ % torrent_piece_size_ ? total_byte_cnt_ % torrent_piece_size_ : torrent_piece_size_;
-         assert(piece_size > 0 && piece_size <= torrent_piece_size_);
-         return static_cast<std::int32_t>(piece_size);
 }
 
 [[nodiscard]]
