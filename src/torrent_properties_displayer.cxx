@@ -30,13 +30,15 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          general_info_layout_.setAlignment(Qt::AlignCenter);
          general_info_layout_.setSpacing(15);
 
-
          auto get_new_label = [&general_info_tab_ = general_info_tab_](const std::string & label_text){
                   auto * const label = new QLabel(label_text.empty() ? "N/A" : QByteArray(label_text.data(),static_cast<qsizetype>(label_text.size())),&general_info_tab_);
+
                   label->setAlignment(Qt::AlignmentFlag::AlignCenter);
                   label->setTextInteractionFlags(Qt::TextSelectableByMouse);
                   label->setFrameShape(QFrame::Shape::Panel);
                   label->setFrameShadow(QFrame::Shadow::Raised);
+                  label->setCursor(QCursor(Qt::IBeamCursor));
+
                   return label;
          };
 
