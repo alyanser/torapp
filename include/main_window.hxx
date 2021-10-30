@@ -7,6 +7,7 @@
 
 #include <bencode_parser.hxx>
 #include <QActionGroup>
+#include <QScrollArea>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QMainWindow>
@@ -51,7 +52,8 @@ private:
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          ///
-         QWidget central_widget_{this};
+         QScrollArea scroll_area_;
+         QWidget central_widget_;
          QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;
          QMenu file_menu_{"File",menuBar()};

@@ -8,7 +8,7 @@
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
          : QWidget(parent), dl_path_(dl_path),dl_type_(dl_type)
 {
-         setMaximumHeight(200);
+         setFixedHeight(200); // todo: figure later
          setup_layout();
          setup_file_status_layout();
          setup_network_status_layout();

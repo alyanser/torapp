@@ -10,7 +10,7 @@
 
 Main_window::Main_window(){
          setWindowTitle("Torapp");
-         setCentralWidget(&central_widget_);
+         setCentralWidget(&scroll_area_);
          addToolBar(&tool_bar_);
          setMinimumSize({640,480});
 
@@ -20,6 +20,9 @@ Main_window::Main_window(){
          read_settings();
 
          central_layout_.setAlignment(Qt::AlignTop);
+         assert(central_widget_.layout());
+         scroll_area_.setWidget(&central_widget_);
+         scroll_area_.setWidgetResizable(true);
 }
 
 void Main_window::setup_sort_menu() noexcept {
