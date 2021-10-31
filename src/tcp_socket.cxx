@@ -58,11 +58,17 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
                   buffer_data.reserve(*msg_size);
          }
 
-         if(buffer_data.capacity() != *msg_size){
+         if(buffer_data.capacity() < *msg_size){
                   buffer_data.reserve(*msg_size);
          }
 
-         assert(buffer_data.size() < *msg_size); // ! fails
+         // assert(buffer_data.size() < *msg_size); // ! fails
+
+         if(buffer_data.size() >= *msg_size){
+                  qDebug() << "weird";
+                  abort();
+                  return {};
+         }
 
          if(buffer_data += read(*msg_size - buffer_data.size());buffer_data.size() == *msg_size){
                   assert(!buffer_data.isEmpty());

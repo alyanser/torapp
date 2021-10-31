@@ -21,10 +21,10 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
 
          auto make_label_text_selectable = [](const QList<std::reference_wrapper<QLabel>> & labels){
 
-                  for(QLabel & label : labels){
+                  std::for_each(labels.cbegin(),labels.cend(),[](QLabel & label){
                            label.setTextInteractionFlags(Qt::TextSelectableByMouse);
                            label.setCursor(QCursor(Qt::IBeamCursor));
-                  }
+                  });
          };
 
          make_label_text_selectable({torrent_name_label_,created_by_label_,creation_date_label_,comment_label_,encoding_label_,piece_length_label_,size_label_,

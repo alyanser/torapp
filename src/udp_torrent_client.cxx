@@ -198,7 +198,7 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
          }();
 
          auto peer_urls = [&reply]{
-                  QList<QUrl> ret_peer_urls;
+                  QList<QUrl> peer_urls_ret;
 
                   constexpr auto peers_ip_offset = 20;
                   constexpr auto peer_url_byte_cnt = 6;
@@ -209,14 +209,14 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
                            const auto peer_ip = util::extract_integer<std::uint32_t>(reply,idx);
                            const auto peer_port = util::extract_integer<std::uint16_t>(reply,idx + ip_byte_cnt);
 
-                           auto & url = ret_peer_urls.emplace_back();
+                           auto & url = peer_urls_ret.emplace_back();
 
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
                            assert(url.isValid());
                   }
                   
-                  return ret_peer_urls;
+                  return peer_urls_ret;
          }();
 
          return Announce_reply{std::move(peer_urls),interval_time,leecher_cnt,seed_cnt};
@@ -277,6 +277,10 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                                              if(socket){
                                                       socket->announce_request = craft_announce_request(*connection_id);
+
+                                                      QTimer::singleShot(0,socket,[socket]{
+                                                               socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
+                                                      });
                                              }
                                     }
                            };

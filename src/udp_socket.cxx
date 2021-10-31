@@ -52,7 +52,6 @@ void Udp_socket::configure_default_connections() noexcept {
 
                            connection_timer_.start(get_timeout());
                   }else{
-                           //todo alert the tracker about connection timeout
                            connection_timer_.stop();
                            emit connection_timed_out();
                            abort();
@@ -75,14 +74,23 @@ void Udp_socket::reset_time_specs() noexcept {
 void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          assert(!hex_packet.isEmpty());
 
-         if(state_ != State::Connect && !connection_id_valid_){
-                  assert(false && "trying to send packet with invalid connection id");
-         }
-
          const auto raw_packet = QByteArray::fromHex(hex_packet);
          write(raw_packet);
+
+         qDebug() << "sending packet";
 
          constexpr auto txn_id_offset = 12;
          assert(raw_packet.size() >= txn_id_offset + static_cast<qsizetype>(sizeof(std::int32_t)));
          txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
+}
+
+void Udp_socket::send_initial_request(const QByteArray & request,const State state) noexcept {
+         state_ = state;
+
+         if(state_ != State::Connect && !connection_id_valid_){
+                  send_initial_request(connect_request_,State::Connect);
+         }else{
+                  reset_time_specs();
+                  send_packet(request);
+         }
 }

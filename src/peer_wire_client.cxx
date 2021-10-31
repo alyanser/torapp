@@ -535,7 +535,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   received_blocks.fill(false);
          }
 
-         constexpr auto max_duplicate_requests = 10;
+         constexpr auto max_duplicate_requests = 5;
          const auto max_request_cnt = piece_info(piece_idx).block_cnt; // ? consider validity
 
          for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){

@@ -36,7 +36,7 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
                   label->setAlignment(Qt::AlignmentFlag::AlignCenter);
                   label->setTextInteractionFlags(Qt::TextSelectableByMouse);
                   label->setFrameShape(QFrame::Shape::Panel);
-                  label->setFrameShadow(QFrame::Shadow::Raised);
+                  label->setFrameShadow(QFrame::Shadow::Sunken);
                   label->setCursor(QCursor(Qt::IBeamCursor));
 
                   return label;
@@ -60,6 +60,7 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
          peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
 
          const QList<QString> peer_table_headings {"Peer Id","Downloaded","Uploaded","Download Speed"};
+         
          peer_table_.setColumnCount(static_cast<std::int32_t>(peer_table_headings.size()));
          peer_table_.setHorizontalHeaderLabels(peer_table_headings);
 }
@@ -91,7 +92,7 @@ QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file
 
          connect(open_button,&QPushButton::clicked,&file_info_tab_,[file_path]{
 
-                  if(!QDesktopServices::openUrl(file_path)){
+                  if(!QDesktopServices::openUrl(QUrl::fromLocalFile(file_path))){
                            constexpr std::string_view error_title("Could not open");
                            constexpr std::string_view error_body("Could not open the file. It may have been deleted or corrupted");
                            QMessageBox::critical(nullptr,error_title.data(),error_body.data());
@@ -137,6 +138,7 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx,con
 
 void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noexcept {
          assert(socket->state() == Tcp_socket::SocketState::ConnectedState);
+         assert(!socket->peer_id.isEmpty());
          assert(peer_table_.columnCount() == 4);
 
          peer_table_.setRowCount((peer_table_.rowCount() + 1));
@@ -146,7 +148,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return QString::number(converted_byte_cnt) + ' ' + suffix.data();
          };
 
-         auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{
+         auto * const get_dled_byte_cnt_label = [socket,get_cell_label_text]{
                   auto * const dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
                   dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
                   
@@ -157,7 +159,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return dled_byte_cnt_label;
          }();
 
-         auto * const uled_byte_cnt_label = [socket,get_cell_label_text]{
+         auto * const get_uled_byte_cnt_label = [socket,get_cell_label_text]{
                   auto * const uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
                   uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
@@ -168,7 +170,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return uled_byte_cnt_label;
          }();
 
-         auto * const dl_speed_label = [get_cell_label_text,socket]{
+         auto * const get_dl_speed_label = [get_cell_label_text,socket]{
                   auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
                   dl_speed_label->setAlignment(Qt::AlignCenter);
 
@@ -186,12 +188,12 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return dl_speed_label;
          }();
 
-         auto * const peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
-                  auto * const peer_id_label = new QLabel(peer_id);
+         auto * const get_peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
+                  assert(peer_id.size() == 20);
+                  auto * const peer_id_label = new QLabel(peer_id.sliced(0,8));
                   peer_id_label->setAlignment(Qt::AlignCenter);
                   return peer_id_label;
          }();
-
 
          constexpr auto peer_id_col_idx = 0;
          constexpr auto dled_byte_col_idx = 1;
@@ -199,8 +201,8 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
          constexpr auto dl_speed_col_idx = 3;
          const auto row_idx = peer_table_.rowCount() - 1;
 
-         peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
-         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
+         peer_table_.setCellWidget(row_idx,peer_id_col_idx,get_peer_id_label);
+         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,get_dled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,get_uled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,get_dl_speed_label);
 }

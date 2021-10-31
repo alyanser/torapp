@@ -47,12 +47,6 @@ inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval
          interval_timer_.start(interval_timeout);
 }
 
-inline void Udp_socket::send_initial_request(const QByteArray & request,const State state) noexcept {
-         state_ = state;
-         send_packet(request);
-         reset_time_specs();
-}
-
 [[nodiscard]]
 inline std::chrono::seconds Udp_socket::get_timeout() const noexcept {
          constexpr auto protocol_constant = 15;

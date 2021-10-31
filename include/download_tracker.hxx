@@ -111,7 +111,7 @@ private:
          QPushButton open_button_{"Open"};
          QPushButton retry_button_{"Retry"};
          QPushButton delete_button_{"Delete"};
-         QPushButton open_dir_button_{"Open in directory"};
+         QPushButton open_dir_button_{"Open directory"};
          QPushButton pause_button_{"Pause"};
          QPushButton resume_button_{"Resume"};
          QPushButton properties_button_{"Properties"};
