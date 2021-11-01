@@ -18,7 +18,7 @@ public:
          void reset_disconnect_timer() noexcept;
          void send_packet(const QByteArray & packet) noexcept;
          QUrl peer_url() const noexcept;
-         void on_invalid_peer_reply() noexcept;
+         void on_peer_fault() noexcept;
          void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
          void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
          ///
@@ -44,7 +44,7 @@ private:
          QUrl peer_url_;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
-         std::int8_t peer_error_cnt_ = 0;
+         std::int8_t peer_fault_cnt_ = 0;
 };
 
 [[nodiscard]]
@@ -52,9 +52,9 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
          return peer_url_;
 }
 
-inline void Tcp_socket::on_invalid_peer_reply() noexcept {
+inline void Tcp_socket::on_peer_fault() noexcept {
          
-         if(constexpr auto peer_error_threshold = 5;++peer_error_cnt_ > peer_error_threshold){
+         if(constexpr std::int8_t peer_fault_threshold = 5;++peer_fault_cnt_ > peer_fault_threshold){
                   qDebug() << "Peer made too many mistakes. aborting";
                   abort();
          }
@@ -63,10 +63,9 @@ inline void Tcp_socket::on_invalid_peer_reply() noexcept {
 [[nodiscard]]
 inline bool Tcp_socket::is_good_ratio() const noexcept {
          constexpr auto min_ratio = 0.25;
-         // todo: make the threshold == piece_size
-         constexpr auto uled_byte_threshold = 2097152; // 1 mb
+         constexpr auto uled_byte_threshold = 2097152;
          assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
-         return !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio ? true : uled_byte_cnt_ <= uled_byte_threshold;
+         return uled_byte_cnt_ <= uled_byte_threshold ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
 }
 
 [[nodiscard]]

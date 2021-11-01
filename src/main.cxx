@@ -4,8 +4,8 @@
 #include <QFile>
 
 int main(int argc,char ** argv){
-         QApplication::setOrganizationName("Tast");
-         QApplication::setApplicationName("Torapp");
+         QApplication::setOrganizationName("tast");
+         QApplication::setApplicationName("torapp");
 
          QApplication torapp(argc,argv);
 

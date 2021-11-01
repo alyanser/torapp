@@ -13,7 +13,6 @@ class File_manager : public QObject {
 public:
          enum class File_Error {
                   Null,
-                  Already_Exists,
                   File_Lock,
                   Permissions,
          };

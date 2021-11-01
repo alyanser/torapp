@@ -62,7 +62,6 @@ signals:
          void download_stopped() const;
          void properties_button_clicked() const;
 private:
-
          enum class Download_Type {
                   Url,
                   Torrent

@@ -35,6 +35,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          });
 
          resources.file_handles.clear();
+         resources.file_handles.squeeze();
 
          configure_default_connections();
          read_settings();
@@ -43,10 +44,10 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
 
 void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
-         connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
+         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::on_verification_completed);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::showMaximized);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::raise);
-         connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::on_verification_completed);
+         connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
 
          connect(tracker_,&Download_tracker::move_files_to_trash,this,[&file_handles_ = file_handles_](){
 
@@ -228,7 +229,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky: times requests. fix later
+                                    refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests. fix later
                                     state_ = State::Leecher;
                            }
 
@@ -931,7 +932,7 @@ void Peer_wire_client::on_have_message_received(Tcp_socket * const socket,const 
 
          if(!is_valid_piece_index(peer_have_piece_idx)){
                   qDebug() << "peer sent invalid have index";
-                  return socket->on_invalid_peer_reply();
+                  return socket->on_peer_fault();
          }
 
          if(!socket->peer_bitfield[peer_have_piece_idx]){
@@ -976,7 +977,7 @@ void Peer_wire_client::on_piece_downloaded(Piece & dled_piece,const std::int32_t
                            clear_piece(dled_piece_idx);
                   });
          }else{
-                  qDebug() << "hash verification failed";
+                  qDebug() << "downloaded piece's hash verification failed";
                   clear_piece(dled_piece_idx);
          }
 }
@@ -1000,7 +1001,7 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
 
          if(received_piece_idx < 0 || received_piece_idx >= total_piece_cnt_){
                   qDebug() << "Invalid piece idx from peer";
-                  return socket->on_invalid_peer_reply();
+                  return socket->on_peer_fault();
          }
 
          const auto received_block_idx = received_offset / max_block_size;
@@ -1008,7 +1009,7 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
 
          if(received_block_idx >= total_block_cnt){
                   qDebug() << "Invalid block idx from peer";
-                  return socket->on_invalid_peer_reply();
+                  return socket->on_peer_fault();
          }
 
          socket->add_downloaded_bytes(received_block.size());
@@ -1033,9 +1034,7 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
          assert(received_block_idx >= 0 && received_block_idx < total_block_cnt);
          received_blocks[received_block_idx] = true;
 
-         qDebug() << received_blocks;
          ++received_block_cnt;
-         qDebug() << received_block_cnt << total_block_cnt << received_block_idx;
          assert(received_block_cnt <= total_block_cnt);
 
          assert(received_offset + received_block.size() <= piece_data.size());
@@ -1055,7 +1054,7 @@ void Peer_wire_client::on_allowed_fast_received(Tcp_socket * const socket,const 
          
          if(allowed_piece_idx < 0 || allowed_piece_idx >= total_piece_cnt_){
                   qDebug() << "invalid allowed fast index";
-                  return socket->on_invalid_peer_reply();
+                  return socket->on_peer_fault();
          }
 
          if(bitfield_[allowed_piece_idx]){
@@ -1075,7 +1074,7 @@ void Peer_wire_client::on_suggest_piece_received(Tcp_socket * const socket,const
 
          if(!is_valid_piece_index(suggested_piece_idx) || !socket->peer_bitfield[suggested_piece_idx]){
                   qDebug() << "peer sent invalid suggest msg" << suggested_piece_idx;
-                  return socket->on_invalid_peer_reply();
+                  return socket->on_peer_fault();
          }
 
          if(!bitfield_[suggested_piece_idx]){
@@ -1260,7 +1259,13 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   }
 
                   case Message_Id::Uninterested : {
-                           socket->peer_interested = false;
+
+                           if(socket->peer_interested){
+                                    socket->peer_interested = false;
+                           }else{
+                                    socket->on_peer_fault();
+                           }
+
                            break;
                   }
 

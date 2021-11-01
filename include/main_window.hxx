@@ -78,9 +78,12 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 
          switch(file_error){
 
-                  case File_manager::File_Error::Already_Exists : {
-                           // todo: valid desc
-                           [[fallthrough]];
+                  case File_manager::File_Error::Null : {
+                           assert(file_handles);
+                           assert(!file_handles->isEmpty());
+                           
+                           network_manager_.download({dl_path,std::move(*file_handles),tracker},std::forward<dl_metadata_type>(dl_metadata));
+                           break;
                   }
 
                   case File_manager::File_Error::File_Lock : {
@@ -92,14 +95,6 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
                   case File_manager::File_Error::Permissions : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Write);
-                           break;
-                  }
-
-                  case File_manager::File_Error::Null : {
-                           assert(file_handles);
-                           assert(!file_handles->isEmpty());
-                           
-                           network_manager_.download({dl_path,std::move(*file_handles),tracker},std::forward<dl_metadata_type>(dl_metadata));
                            break;
                   }
          }

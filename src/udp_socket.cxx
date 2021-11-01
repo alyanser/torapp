@@ -73,8 +73,6 @@ void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
          const auto raw_packet = QByteArray::fromHex(hex_packet);
          write(raw_packet);
 
-         qDebug() << "sending packet";
-
          constexpr auto txn_id_offset = 12;
          assert(raw_packet.size() >= txn_id_offset + static_cast<qsizetype>(sizeof(std::int32_t)));
          txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);

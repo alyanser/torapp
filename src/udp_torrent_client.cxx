@@ -262,7 +262,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            const auto connection_id = extract_connect_reply(reply,socket->txn_id);
 
                            if(!connection_id){
-                                    qDebug() << "Invalid connect reply";
+                                    qDebug() << "Invalid connect reply from tracker";
                                     return socket->abort();
                            }
 
@@ -331,7 +331,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            if(const auto tracker_error = extract_tracker_error(reply,socket->txn_id)){
                                     emit error_received(*tracker_error);
                            }else{
-                                    qDebug() << "tracker can't be send the error reply without errors";
+                                    qDebug() << "tracker can't even send the error reply without errors";
                                     return socket->abort();
                            }
                            

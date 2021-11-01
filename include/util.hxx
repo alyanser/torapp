@@ -61,9 +61,9 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
 
 template<typename numeric_type_x,typename numeric_type_y,typename = std::enable_if_t<std::is_arithmetic_v<std::common_type_t<numeric_type_x,numeric_type_y>>>>
 [[nodiscard]]
-constexpr std::int8_t convert_to_percentile(const numeric_type_x dividend,const numeric_type_y divisor) noexcept {
+QString convert_to_percent_format(const numeric_type_x dividend,const numeric_type_y divisor) noexcept {
          assert(divisor);
-         return static_cast<std::int8_t>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100);
+         return QString::number(static_cast<std::int64_t>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100)) + " %";
 }
 
 template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>

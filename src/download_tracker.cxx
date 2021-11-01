@@ -168,8 +168,7 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
          dl_quantity_label_.setText(text_fmt);
 
-         using util::conversion::convert_to_percentile;
-         dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : ' ' + QString::number(convert_to_percentile(received_byte_cnt,total_byte_cnt)) + "%"));
+         dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt,total_byte_cnt)));
 }
 
 void Download_tracker::set_state(const State state) noexcept {
@@ -211,7 +210,7 @@ void Download_tracker::verification_progress_update(std::int32_t verified_asset_
          assert(state_ == State::Verification);
          verify_progress_bar_.setValue(verified_asset_cnt);
          verify_progress_bar_.setMaximum(total_asset_cnt);
-         verify_progress_bar_.setFormat("Verifying " + QString::number(util::conversion::convert_to_percentile(verified_asset_cnt,total_asset_cnt)) + "%");
+         verify_progress_bar_.setFormat("Verifying " + util::conversion::convert_to_percent_format(verified_asset_cnt,total_asset_cnt));
 }
 
 void Download_tracker::write_settings() const noexcept {
@@ -308,7 +307,6 @@ void Download_tracker::on_verification_completed() noexcept {
          properties_button_.setEnabled(true);
          assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
          pause_button_.setEnabled(dled_byte_cnt_ != total_byte_cnt_);
-         qDebug() << pause_button_.isEnabled();
 }
 
 void Download_tracker::switch_to_finished_state(const Error error) noexcept {
@@ -351,7 +349,7 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
                            }
                            
                            case Error::File_Lock : { 
-                                    return "Given path already locked by another process";
+                                    return "Given path is already locked by another process";
                            }
 
                            case Error::Space : {

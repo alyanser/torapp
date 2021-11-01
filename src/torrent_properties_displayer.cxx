@@ -83,9 +83,8 @@ QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file
          open_button->setEnabled(false);
 
          connect(file_dl_progress_bar,&QProgressBar::valueChanged,open_button,[file_dl_progress_bar,open_button](const auto new_value){
-                  assert(util::conversion::convert_to_percentile(new_value,file_dl_progress_bar->maximum()) <= 100);
 
-                  if(util::conversion::convert_to_percentile(new_value,file_dl_progress_bar->maximum()) == 100){
+                  if(new_value == file_dl_progress_bar->maximum()){
                            open_button->setEnabled(true);
                   }
          });
@@ -133,7 +132,7 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx,con
          assert(file_dl_progress_bar->maximum() > 0);
 
          file_dl_progress_bar->setValue(static_cast<std::int32_t>(file_dled_byte_cnt));
-         file_dl_progress_bar->setFormat(QString("Downloaded: %1%").arg(util::conversion::convert_to_percentile(file_dled_byte_cnt,file_dl_progress_bar->maximum())));
+         file_dl_progress_bar->setFormat("Downloaded: " + util::conversion::convert_to_percent_format(file_dled_byte_cnt,file_dl_progress_bar->maximum()));
 }
 
 void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noexcept {
