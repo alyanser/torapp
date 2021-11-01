@@ -46,9 +46,7 @@ private:
          template<typename dl_metadata_type>
          void begin_setting_group(QSettings & settings) const noexcept;
 
-         void setup_menu_bar() noexcept;
          void write_settings() const noexcept;
-         void setup_sort_menu() noexcept;
          void add_top_actions() noexcept;
          void read_settings() noexcept;
          ///
@@ -57,20 +55,12 @@ private:
          QVBoxLayout central_layout_{&central_widget_};
          QToolBar tool_bar_;
          QMenu file_menu_{"File",menuBar()};
-         QMenu sort_menu_{"Sort",menuBar()};
-         QActionGroup sort_action_group_{this};
          Network_manager network_manager_;
          File_manager file_manager_;
 };
 
 inline Main_window::~Main_window() {
          write_settings();
-}
-
-inline void Main_window::setup_menu_bar() noexcept {
-         assert(menuBar());
-         menuBar()->addMenu(&file_menu_);
-         menuBar()->addMenu(&sort_menu_);
 }
 
 template<typename dl_metadata_type>
@@ -108,14 +98,9 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
-                           assert(tracker->error() == Download_tracker::Error::Null);
                            
                            network_manager_.download({dl_path,std::move(*file_handles),tracker},std::forward<dl_metadata_type>(dl_metadata));
                            break;
-                  }
-
-                  default : {
-                           __builtin_unreachable();
                   }
          }
 }
@@ -157,7 +142,7 @@ void Main_window::restore_downloads() noexcept {
 
          auto display_modified_error = [this]{
                   constexpr std::string_view error_title("Settings modified");
-                  constexpr std::string_view error_body("Torapp config file was modified. Some downloads (if any) could not be recovered");
+                  constexpr std::string_view error_body("Torapp config file was modified. Some downloads could not be recovered :(");
                   QMessageBox::critical(this,error_title.data(),error_body.data());
          };
 

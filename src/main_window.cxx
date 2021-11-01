@@ -14,8 +14,9 @@ Main_window::Main_window(){
          addToolBar(&tool_bar_);
          setMinimumSize({640,480});
 
-         setup_menu_bar();
-         setup_sort_menu();
+         assert(menuBar());
+         menuBar()->addMenu(&file_menu_);
+
          add_top_actions();
          read_settings();
 
@@ -28,7 +29,7 @@ Main_window::Main_window(){
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
          constexpr std::string_view warning_title("Quit");
-         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads will be stopped.");
+         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads (if any) will be stopped.");
          const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
          reply_button == QMessageBox::Yes ? event->accept(),emit closed() : event->ignore();
 }
@@ -38,24 +39,6 @@ void Main_window::write_settings() const noexcept {
          settings.beginGroup("main_window");
          settings.setValue("size",size());
          settings.setValue("pos",pos());
-}
-
-void Main_window::setup_sort_menu() noexcept {
-         auto * const sort_by_name_action = new QAction("By name",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_time_action = new QAction("By time",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_size_action = new QAction("By size",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_progress_action = new QAction("By progress",&sort_action_group_);
-         [[maybe_unused]] auto * const sort_by_activity_action = new QAction("By activity",&sort_action_group_);
-
-         const auto sort_actions = sort_action_group_.actions();
-         assert(!sort_actions.empty());
-
-         std::for_each(sort_actions.cbegin(),sort_actions.cend(),[](auto * const sort_action){
-                  sort_action->setCheckable(true);
-         });
-
-         sort_by_name_action->setChecked(true);
-         sort_menu_.addActions(sort_actions);
 }
 
 void Main_window::read_settings() noexcept {

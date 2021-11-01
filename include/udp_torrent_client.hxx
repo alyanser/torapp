@@ -89,3 +89,15 @@ inline bool Udp_torrent_client::verify_txn_id(const QByteArray & reply,const std
          const auto received_txn_id = util::extract_integer<std::int32_t>(reply,txn_id_offset);
          return sent_txn_id == received_txn_id;
 }
+
+[[nodiscard]]
+inline std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & reply,const std::int32_t sent_txn_id){
+         constexpr auto error_offset = 8;
+         return verify_txn_id(reply,sent_txn_id) ? reply.sliced(error_offset) : std::optional<QByteArray>{};
+}
+
+[[nodiscard]]
+inline std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply,const std::int32_t sent_txn_id){
+         constexpr auto connection_id_offset = 8;
+         return verify_txn_id(reply,sent_txn_id) ? util::extract_integer<std::int64_t>(reply,connection_id_offset) : std::optional<std::int64_t>{};
+}

@@ -53,12 +53,11 @@ void Udp_torrent_client::send_connect_request() noexcept {
 
                   auto recall_if_unread = [this,socket = QPointer(socket)]{
 
-                           if(socket && socket->bytesAvailable()){
+                           if(socket && socket->hasPendingDatagrams()){
 
                                     QTimer::singleShot(0,this,[this,socket]{
 
-                                             if(socket && socket->bytesAvailable()){
-                                                      assert(socket->hasPendingDatagrams());
+                                             if(socket && socket->hasPendingDatagrams()){
                                                       communicate_with_tracker(socket);
                                              }
                                     });
@@ -248,13 +247,14 @@ std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_sc
 }
 
 void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
+         assert(socket->bytesAvailable());
          assert(socket->hasPendingDatagrams());
 
          // todo: validate the response size and use transactions
          const auto reply = socket->receiveDatagram().data();
          const auto tracker_action = static_cast<Action_Code>(util::extract_integer<std::int32_t>(reply,0));
 
-         qDebug() << reply.size() << tracker_action;
+         qDebug() << tracker_action;
 
          switch(tracker_action){
 
@@ -339,29 +339,8 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                   }
 
                   default : {
-                           return socket->abort();
+                           socket->abort();
+                           break;
                   }
          }
-}
-
-[[nodiscard]]
-std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & reply,const std::int32_t sent_txn_id){
-
-         if(!verify_txn_id(reply,sent_txn_id)){
-                  return {};
-         }
-
-         constexpr auto error_offset = 8;
-         return reply.sliced(error_offset);
-}
-
-[[nodiscard]]
-std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply,const std::int32_t sent_txn_id){
-
-         if(!verify_txn_id(reply,sent_txn_id)){
-                  return {};
-         }
-
-         constexpr auto connection_id_offset = 8;
-         return util::extract_integer<std::int64_t>(reply,connection_id_offset);
 }
