@@ -78,18 +78,6 @@ void Url_input_dialog::on_input_received() noexcept {
                   return;
          }
          
-         if(!url.isValid()){
-                  static const QString error_body("URL is invalid. Reason: %1");
-                  auto error_reason = url.errorString();
-
-                  if(error_reason.isEmpty()){
-                           error_reason = "Unknown";
-                  }
-
-                  QMessageBox::critical(this,"Invalid URL",error_body.arg(error_reason));
-                  return;
-         }
-
          auto dir_path = path_line_.text().simplified();
 
          if(dir_path.isEmpty()){
@@ -117,7 +105,9 @@ void Url_input_dialog::on_input_received() noexcept {
                   package_name = std::move(package_name_replacement);
          }
 
-         if(QFileInfo::exists(dir_path + package_name)){
+         const auto file_path = dir_path + package_name;
+
+         if(QFileInfo::exists(file_path)){
                   constexpr std::string_view query_title("Already exists");
                   constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
 
@@ -128,11 +118,7 @@ void Url_input_dialog::on_input_received() noexcept {
                   }
          }
 
-         assert(!dir_path.isEmpty());
-         assert(!package_name.isEmpty());
-         assert(dir_path.back() == '/');
-
+         assert(!file_path.isEmpty());
          accept();
-         // todo: add more options if temp already exists
-         emit new_request_received(dir_path + (url.fileName().isEmpty() ? "temp" : url.fileName()),url);
+         emit new_request_received(file_path,url);
 }

@@ -54,10 +54,9 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   network_reply->deleteLater();
                   file_handle->deleteLater();
          });
-         
+
          connect(network_reply,&QNetworkReply::downloadProgress,tracker,&Download_tracker::download_progress_update);
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::set_upload_byte_count);
-         connect(network_reply,&QNetworkReply::redirected,&QNetworkReply::redirectAllowed);
          connect(tracker,&Download_tracker::delete_files_permanently,file_handle,qOverload<>(&QFile::remove));
          connect(tracker,&Download_tracker::move_files_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
 }

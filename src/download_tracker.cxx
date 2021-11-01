@@ -66,7 +66,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidge
          assert(!url.isEmpty());
          assert(!dl_path.isEmpty());
 
-         package_name_label_.setText(url.fileName());
+         package_name_label_.setText(QUrl(dl_path).fileName());
 
          auto restart_download = [this,dl_path,url]{
                   emit retry_download(dl_path,url);
@@ -160,9 +160,8 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
          if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
                   dl_progress_bar_.setRange(0,0); // sets in pending state
          }else{
-                  // ! consider the overflow
-                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
-                  dl_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
+                  dl_progress_bar_.setValue(static_cast<std::int32_t>(util::conversion::stringify_bytes(received_byte_cnt,util::conversion::Format::Memory).first));
+                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(util::conversion::stringify_bytes(total_byte_cnt,util::conversion::Format::Memory).first));
          }
 
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);

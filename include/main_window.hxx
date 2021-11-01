@@ -81,7 +81,6 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
                   case File_manager::File_Error::Null : {
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
-                           
                            network_manager_.download({dl_path,std::move(*file_handles),tracker},std::forward<dl_metadata_type>(dl_metadata));
                            break;
                   }
