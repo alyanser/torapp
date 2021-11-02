@@ -36,6 +36,8 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
 
          resources.file_handles.clear();
          resources.file_handles.squeeze();
+         properties_displayer_.setup_file_info_widget(torrent_metadata_,file_handles_);
+         
 
          configure_default_connections();
          read_settings();
@@ -63,20 +65,16 @@ void Peer_wire_client::configure_default_connections() noexcept {
                   });
          });
 
-         connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,&state_ = std::as_const(state_)]{
-
-                  if(state_ != State::Verification){
-
-                           for(qsizetype file_idx = 0;file_idx < file_handles_.size();++file_idx){
-                                    const auto file_dled_byte_cnt = file_handles_[file_idx].second;
-                                    properties_displayer_.update_file_info(file_idx,file_dled_byte_cnt);
-                           }
+         connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_]{
+                  
+                  for(qsizetype file_idx = 0;file_idx < file_handles_.size();++file_idx){
+                           const auto file_dled_byte_cnt = file_handles_[file_idx].second;
+                           properties_displayer_.update_file_info(file_idx,file_dled_byte_cnt);
                   }
          });
 
          connect(this,&Peer_wire_client::existing_pieces_verified,[this]{
                   state_ = remaining_byte_count() ? State::Leecher : State::Seed;
-                  properties_displayer_.setup_file_info_widget(torrent_metadata_,file_handles_);
                   settings_timer_.start(std::chrono::seconds(1));
          });
 

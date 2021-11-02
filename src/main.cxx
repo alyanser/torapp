@@ -9,6 +9,8 @@ int main(int argc,char ** argv){
 
          QApplication torapp(argc,argv);
 
+         torapp.setWindowIcon(QIcon(":app_icon.png"));
+
          torapp.setStyleSheet([]{
                   QFile stylesheet_file(":app_stylesheet.qss");
                   return stylesheet_file.open(QFile::ReadOnly) ? stylesheet_file.readAll() : "";

@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-             <file alias="app_stylesheet.qss">../style/stylesheet.qss</file>
+             <file alias="app_stylesheet.qss">../resources/stylesheet.qss</file>
+             <file alias="app_icon.png">../resources/app_icon.png</file>
 </qresource>
 </RCC>

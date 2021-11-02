@@ -14,22 +14,18 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          setFrameShape(QFrame::Shape::Box);
          setLineWidth(3);
 
-         setup_layout();
+         setup_central_layout();
          setup_file_status_layout();
          setup_network_status_layout();
          setup_state_stack();
          configure_default_connections();
          read_settings();
 
-         central_layout_.setSpacing(15);
-
          open_button_.setEnabled(false);
          delete_button_.setEnabled(false);
-         properties_button_.setEnabled(false);
          pause_button_.setEnabled(false);
 
          dl_progress_bar_.setTextVisible(true);
-         dl_progress_bar_.setRange(0,0);
 
          package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
          package_name_label_.setFrameShape(QFrame::Shape::Panel);
@@ -40,7 +36,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          time_elapsed_label_.setAlignment(Qt::AlignCenter);
 
          {
-                  auto open_url = [this](const auto & path){
+                  auto open_url = [this](const QString & path){
 
                            if(!QDesktopServices::openUrl(QUrl::fromLocalFile(path))){
                                     constexpr std::string_view error_title("Open error");
@@ -93,7 +89,10 @@ void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
          file_stat_layout_.addWidget(&open_dir_button_);
-         file_stat_layout_.addWidget(&properties_button_);
+
+         if(dl_type_ == Download_Type::Torrent){ // todo: make it dynamic
+                  file_stat_layout_.addWidget(&properties_button_);
+         }
 
          package_name_layout_.addWidget(&package_name_buddy_);
          package_name_layout_.addWidget(&package_name_label_);
@@ -119,7 +118,11 @@ void Download_tracker::setup_network_status_layout() noexcept {
          }
 
          network_stat_layout_.addWidget(&delete_button_);
-         network_stat_layout_.addWidget(&state_button_stack_);
+
+         if(dl_type_ == Download_Type::Torrent){ // todo: also support download interruption for url type
+                  network_stat_layout_.addWidget(&state_button_stack_);
+         }
+
          network_stat_layout_.addWidget(&initiate_button_stack_);
          network_stat_layout_.addWidget(&terminate_button_stack_);
 
@@ -199,9 +202,13 @@ void Download_tracker::setup_state_stack() noexcept {
          progress_bar_stack_.addWidget(&verify_progress_bar_);
          progress_bar_stack_.addWidget(&finish_line_);
 
-         dl_progress_bar_.setMinimum(0);
          dl_progress_bar_.setValue(0);
-         
+         dl_progress_bar_.setRange(0,0);
+
+         verify_progress_bar_.setValue(0);
+         verify_progress_bar_.setRange(0,0);
+
+         assert(finish_line_.text().isEmpty());
          finish_line_.setAlignment(Qt::AlignCenter);
          assert(progress_bar_stack_.currentWidget() == &dl_progress_bar_);
 }
@@ -244,18 +251,14 @@ void Download_tracker::configure_default_connections() noexcept {
          }
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
+                  assert(dl_type_ == Download_Type::Torrent);
                   state_button_stack_.setCurrentWidget(&resume_button_);
                   assert(session_timer_.isActive());
                   session_timer_.stop();
-
-                  if(dl_type_ == Download_Type::Url){
-                           emit download_stopped();
-                  }else{
-                           session_dled_byte_cnt_ = 0;
-                           session_time_ = std::chrono::seconds::zero();
-                           update_download_speed();
-                           emit download_paused();
-                  }
+                  session_dled_byte_cnt_ = 0;
+                  session_time_ = std::chrono::seconds::zero();
+                  update_download_speed();
+                  emit download_paused();
          });
 
          connect(&resume_button_,&QPushButton::clicked,this,[this]{
@@ -282,13 +285,12 @@ void Download_tracker::configure_default_connections() noexcept {
          });
 
          connect(&cancel_button_,&QPushButton::clicked,this,[this]{
-                  constexpr std::string_view query_title("Cancel Download");
-                  constexpr std::string_view query_body("Are you sure you want to cancel the download?");
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
-                  
-                  const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data(),buttons);
+                  constexpr std::string_view query_title("Cancel Download");
+                  constexpr std::string_view query_body("Are you sure you want to cancel the download&?");
+                  const auto reply = QMessageBox::question(this,query_title.data(),query_body.data(),buttons);
 
-                  if(reply_button == QMessageBox::StandardButton::Yes){
+                  if(reply == QMessageBox::StandardButton::Yes){
                            session_timer_.stop();
                            emit download_dropped();
                   }
@@ -304,8 +306,7 @@ void Download_tracker::configure_default_connections() noexcept {
 }
 
 void Download_tracker::on_verification_completed() noexcept {
-         assert(!properties_button_.isEnabled());
-         properties_button_.setEnabled(true);
+         assert(dl_type_ == Download_Type::Torrent);
          assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
          pause_button_.setEnabled(dled_byte_cnt_ != total_byte_cnt_);
 }
@@ -317,8 +318,8 @@ void Download_tracker::switch_to_finished_state(const Error error) noexcept {
          pause_button_.setEnabled(false);
          resume_button_.setEnabled(false);
          session_timer_.stop();
-         dl_speed_label_.hide();
-         
+         dl_speed_label_.setText("0 byte (s) / sec");
+
          if(error == Error::Null){
                   assert(initiate_button_stack_.currentWidget() == &open_button_);
                   assert(!delete_button_.isEnabled());
@@ -328,13 +329,17 @@ void Download_tracker::switch_to_finished_state(const Error error) noexcept {
          }else{
                   initiate_button_stack_.setCurrentWidget(&retry_button_);
          }
+
+         if(dl_type_ == Download_Type::Url){
+                  emit url_download_finished();
+         }
 }
 
 void Download_tracker::update_finish_line(const Error error) noexcept {
          assert(error != Error::Custom);
 
          finish_line_.setText([error,dl_type_ = dl_type_]{
-                  // ? consider using static QStrings or QStrlingLiteral
+
                   switch(error){
                            
                            case Error::Null : {

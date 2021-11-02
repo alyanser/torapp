@@ -91,7 +91,7 @@ void Main_window::add_top_actions() noexcept {
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,[this,file_path = std::move(file_path)](const QString & dl_dir){
 
                            if(QFile torrent_file(file_path);torrent_file.open(QFile::ReadOnly)){
-                                    add_dl_to_settings(dl_dir,torrent_file.readAll());
+                                    add_download_to_settings(dl_dir,torrent_file.readAll());
                            }
                   });
 
@@ -108,7 +108,7 @@ void Main_window::add_top_actions() noexcept {
                   connect(&url_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl url){
                            assert(!file_path.isEmpty());
                            assert(!url.isEmpty());
-                           add_dl_to_settings(file_path,url);
+                           add_download_to_settings(file_path,url);
                   });
 
                   url_dialog.exec();

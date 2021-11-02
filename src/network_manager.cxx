@@ -21,11 +21,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          tracker->set_restored_byte_count(file_handle->size());
          tracker->set_state(Download_tracker::State::Download);
 
-         auto * const network_reply = [this,url,file_handle = file_handle]{
-                  QNetworkRequest network_request(url);
-                  network_request.setRawHeader("Range","bytes=" + QByteArray::number(file_handle->size()) + '-');
-                  return get(network_request);
-         }();
+         auto * const network_reply = get(QNetworkRequest(url));
 
          connect(network_reply,&QNetworkReply::readyRead,tracker,[network_reply,tracker = tracker,file_handle = file_handle]{
 
@@ -36,11 +32,6 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
                   }else{
                            file_handle->write(network_reply->readAll());
                   }
-         });
-
-         connect(tracker,&Download_tracker::download_stopped,network_reply,[tracker = tracker,network_reply]{
-                  disconnect(network_reply,nullptr,tracker,nullptr);
-                  network_reply->abort();
          });
 
          connect(network_reply,&QNetworkReply::finished,tracker,[tracker = tracker,file_handle = file_handle,network_reply]{

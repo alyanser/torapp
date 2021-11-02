@@ -35,10 +35,10 @@ protected:
          void closeEvent(QCloseEvent * event) noexcept override;
 private:
          template<typename dl_metadata_type>
-         void add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept;
+         void add_download_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept;
          
          template<typename dl_metadata_type>
-         void remove_dl_from_settings(const QString & file_path) const noexcept;
+         void remove_download_from_settings(const QString & file_path) const noexcept;
 
          template<typename dl_metadata_type>
          void restore_downloads() noexcept;
@@ -70,9 +70,17 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 
          connect(tracker,qOverload<decltype(dl_path),dl_metadata_type>(&Download_tracker::retry_download),this,&Main_window::initiate_download<dl_metadata_type>);
 
-         connect(tracker,&Download_tracker::download_dropped,this,[this,dl_path = dl_path]{
-                  remove_dl_from_settings<dl_metadata_type>(dl_path);
-         });
+         {
+                  auto remove_dl = [this,dl_path]{
+                           remove_download_from_settings<dl_metadata_type>(dl_path);
+                  };
+
+                  connect(tracker,&Download_tracker::download_dropped,this,remove_dl);
+
+                  if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
+                           connect(tracker,&Download_tracker::url_download_finished,this,remove_dl);
+                  }
+         }
 
          auto [file_error,file_handles] = file_manager_.open_file_handles(dl_path,dl_metadata);
 
@@ -110,7 +118,7 @@ void Main_window::begin_setting_group(QSettings & settings) const noexcept {
 }
 
 template<typename dl_metadata_type>
-void Main_window::add_dl_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept {
+void Main_window::add_download_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept {
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(path).replace('/','\x20'));
@@ -119,7 +127,7 @@ void Main_window::add_dl_to_settings(const QString & path,dl_metadata_type && dl
 }
 
 template<typename dl_metadata_type>
-void Main_window::remove_dl_from_settings(const QString & file_path) const noexcept {
+void Main_window::remove_download_from_settings(const QString & file_path) const noexcept {
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(file_path).replace('/','\x20'));

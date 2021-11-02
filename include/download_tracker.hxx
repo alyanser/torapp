@@ -59,8 +59,8 @@ signals:
          void download_dropped() const;
          void download_paused() const;
          void download_resumed() const;
-         void download_stopped() const;
          void properties_button_clicked() const;
+         void url_download_finished() const;
 private:
          enum class Download_Type {
                   Url,
@@ -69,7 +69,7 @@ private:
 
          Download_tracker(const QString & dl_path,Download_Type dl_type,QWidget * parent = nullptr);
 
-         void setup_layout() noexcept;
+         void setup_central_layout() noexcept;
          void configure_default_connections() noexcept;
          void setup_file_status_layout() noexcept;
          void setup_network_status_layout() noexcept;
@@ -128,6 +128,7 @@ private:
 };
 
 inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
          const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
 }
@@ -137,10 +138,14 @@ inline void Download_tracker::set_restored_byte_count(const std::int64_t restore
 }
 
 inline void Download_tracker::set_ratio(const double ratio) noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         assert(ratio >= 0);
          ratio_label_.setText(QString::number(ratio));
 }
 
-inline void Download_tracker::setup_layout() noexcept {
+inline void Download_tracker::setup_central_layout() noexcept {
+         central_layout_.setSpacing(15);
+
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&progress_bar_stack_);
          central_layout_.addLayout(&network_stat_layout_);

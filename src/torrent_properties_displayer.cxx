@@ -14,7 +14,7 @@
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
          : QTabWidget(parent)
 {
-         setMinimumSize(200,200); // totally well-thought numbers
+         setMinimumSize(200,200); // totally well-thought
          setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
 
          setUsesScrollButtons(false);
@@ -106,9 +106,7 @@ void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadat
          for(qsizetype file_idx = 0;file_idx < file_handles.size();++file_idx){
                   const auto & [torrent_file_name,total_file_size] = torrent_metadata.file_info[static_cast<std::size_t>(file_idx)];
                   auto [file_handle,file_dl_byte_cnt] = file_handles[file_idx];
-                  file_info_layout_.addRow(torrent_file_name.data(),get_new_file_widget(file_handle->fileName(),static_cast<std::int32_t>(total_file_size)));
-                  
-                  update_file_info(file_idx,file_dl_byte_cnt);
+                  file_info_layout_.addRow(torrent_file_name.data(),get_new_file_widget(file_handle->fileName(),static_cast<std::int64_t>(total_file_size)));
          }
 }
 
