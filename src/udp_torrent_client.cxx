@@ -30,8 +30,10 @@ void Udp_torrent_client::configure_default_connections() noexcept {
 
          connect(this,&Udp_torrent_client::announce_reply_received,[&peer_client_ = peer_client_,&event_ = event_](const Announce_reply & reply){
                   event_ = Event::Started;
-                  assert(!reply.peer_urls.empty());
-                  peer_client_.connect_to_peers(reply.peer_urls);
+                  
+                  if(!reply.peer_urls.empty()){
+                           peer_client_.connect_to_peers(reply.peer_urls);
+                  }
          });
 
          connect(&peer_client_,&Peer_wire_client::existing_pieces_verified,this,&Udp_torrent_client::send_connect_request);
@@ -272,11 +274,16 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                            auto update_event_and_request = [this,socket = QPointer(socket),connection_id](const auto new_event){
 
-                                    if(event_ != new_event){
-                                             event_ = new_event;
+                                    if(event_ == new_event){
+                                             return;
+                                    }
 
-                                             if(socket){
-                                                      socket->announce_request = craft_announce_request(*connection_id);
+                                    event_ = new_event;
+
+                                    if(socket){
+                                             socket->announce_request = craft_announce_request(*connection_id);
+
+                                             if(event_ != Event::Stopped){
 
                                                       QTimer::singleShot(0,socket,[socket]{
                                                                socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
@@ -331,7 +338,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            if(const auto tracker_error = extract_tracker_error(reply,socket->txn_id)){
                                     emit error_received(*tracker_error);
                            }else{
-                                    qDebug() << "tracker can't even send the error reply without errors";
+                                    qDebug() << "tracker can't even send the error without errors";
                                     return socket->abort();
                            }
                            

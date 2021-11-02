@@ -63,19 +63,19 @@ void Peer_wire_client::configure_default_connections() noexcept {
                   });
          });
 
-         connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,state_ = state_]{
+         connect(this,&Peer_wire_client::piece_verified,[&properties_displayer_ = properties_displayer_,&file_handles_ = file_handles_,&state_ = std::as_const(state_)]{
 
-                  if(state_ != State::Leecher){
-                           return;
-                  }
+                  if(state_ != State::Verification){
 
-                  for(qsizetype file_idx = 0;file_idx < file_handles_.size();++file_idx){
-                           const auto file_dled_byte_cnt = file_handles_[file_idx].second;
-                           properties_displayer_.update_file_info(file_idx,file_dled_byte_cnt);
+                           for(qsizetype file_idx = 0;file_idx < file_handles_.size();++file_idx){
+                                    const auto file_dled_byte_cnt = file_handles_[file_idx].second;
+                                    properties_displayer_.update_file_info(file_idx,file_dled_byte_cnt);
+                           }
                   }
          });
 
          connect(this,&Peer_wire_client::existing_pieces_verified,[this]{
+                  state_ = remaining_byte_count() ? State::Leecher : State::Seed;
                   properties_displayer_.setup_file_info_widget(torrent_metadata_,file_handles_);
                   settings_timer_.start(std::chrono::seconds(1));
          });
@@ -110,7 +110,7 @@ std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) const no
          return static_cast<std::int32_t>(piece_size);
 }
 
-void Peer_wire_client::on_piece_verified(std::int32_t verified_piece_idx) noexcept {
+void Peer_wire_client::on_piece_verified(const std::int32_t verified_piece_idx) noexcept {
          assert(is_valid_piece_index(verified_piece_idx));
          assert(!bitfield_.isEmpty());
          bitfield_[verified_piece_idx] = true;
@@ -217,6 +217,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                     if(const auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
                                              emit piece_verified(piece_idx);
                                     }else{
+                                             // todo: warn the user
                                              qDebug() << piece_idx << "was changed on the disk";
                                              bitfield_[piece_idx] = false;
                                     }
@@ -230,7 +231,6 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
                                     refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests. fix later
-                                    state_ = State::Leecher;
                            }
 
                            emit existing_pieces_verified();
@@ -270,9 +270,6 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                                     properties_displayer_.remove_peer(static_cast<std::int32_t>(peer_idx));
                                     active_peers_.remove(peer_idx);
                            }
-
-                           assert(!bitfield_.isEmpty());
-                           assert(socket->peer_bitfield.size() == bitfield_.size());
 
                            for(qsizetype piece_idx = 0;piece_idx < socket->peer_bitfield.size();++piece_idx){
                                     peer_additive_bitfield_[piece_idx] -= socket->peer_bitfield[piece_idx];

@@ -69,9 +69,8 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
 QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file_path,const std::int64_t total_file_size) noexcept {
          auto * const file_widget = new QWidget(&file_info_tab_);
          auto * const file_layout = new QHBoxLayout(file_widget);
-
-         auto * const file_dl_progress_bar = new QProgressBar();
-         auto * const open_button = new QPushButton("Open");
+         auto * const file_dl_progress_bar = new QProgressBar(&file_info_tab_);
+         auto * const open_button = new QPushButton("Open",&file_info_tab_);
 
          file_layout->addWidget(file_dl_progress_bar);
          file_layout->addWidget(open_button);
@@ -108,7 +107,7 @@ void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadat
                   const auto & [torrent_file_name,total_file_size] = torrent_metadata.file_info[static_cast<std::size_t>(file_idx)];
                   auto [file_handle,file_dl_byte_cnt] = file_handles[file_idx];
                   file_info_layout_.addRow(torrent_file_name.data(),get_new_file_widget(file_handle->fileName(),static_cast<std::int32_t>(total_file_size)));
-
+                  
                   update_file_info(file_idx,file_dl_byte_cnt);
          }
 }
@@ -147,7 +146,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return QString::number(converted_byte_cnt) + ' ' + suffix.data();
          };
 
-         auto * const get_dled_byte_cnt_label = [socket,get_cell_label_text]{
+         auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{
                   auto * const dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
                   dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
                   
@@ -158,7 +157,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return dled_byte_cnt_label;
          }();
 
-         auto * const get_uled_byte_cnt_label = [socket,get_cell_label_text]{
+         auto * const uled_byte_cnt_label = [socket,get_cell_label_text]{
                   auto * const uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
                   uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
@@ -169,8 +168,9 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return uled_byte_cnt_label;
          }();
 
-         auto * const get_dl_speed_label = [get_cell_label_text,socket]{
+         auto * const dl_speed_label = [get_cell_label_text,socket]{
                   auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
+                  
                   dl_speed_label->setAlignment(Qt::AlignCenter);
 
                   {
@@ -187,7 +187,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return dl_speed_label;
          }();
 
-         auto * const get_peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
+         auto * const peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
                   assert(peer_id.size() == 20);
                   auto * const peer_id_label = new QLabel(peer_id.sliced(0,8));
                   peer_id_label->setAlignment(Qt::AlignCenter);
@@ -200,8 +200,8 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
          constexpr auto dl_speed_col_idx = 3;
          const auto row_idx = peer_table_.rowCount() - 1;
 
-         peer_table_.setCellWidget(row_idx,peer_id_col_idx,get_peer_id_label);
-         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,get_dled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,get_uled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,get_dl_speed_label);
+         peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
+         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
 }

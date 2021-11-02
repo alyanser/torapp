@@ -59,7 +59,7 @@ private:
          File_manager file_manager_;
 };
 
-inline Main_window::~Main_window() {
+inline Main_window::~Main_window(){
          write_settings();
 }
 

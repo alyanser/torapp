@@ -92,17 +92,15 @@ void Url_input_dialog::on_input_received() noexcept {
          auto package_name = package_name_line_.text().simplified();
 
          if(package_name.isEmpty()){
-                  auto package_name_replacement = url.fileName();
 
-                  if(package_name_replacement.isEmpty()){
+                  if(url.fileName().isEmpty()){
                            constexpr std::string_view error_title("Invalid file name");
                            constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
-
                            QMessageBox::critical(this,error_title.data(),error_body.data());
                            return;
                   }
 
-                  package_name = std::move(package_name_replacement);
+                  package_name = url.fileName();
          }
 
          const auto file_path = dir_path + package_name;

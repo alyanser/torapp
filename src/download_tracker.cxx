@@ -8,7 +8,7 @@
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
          : QFrame(parent), dl_path_(dl_path),dl_type_(dl_type)
 {
-         setFixedHeight(230); // todo: figure later
+         setFixedHeight(230); // todo: figure generic
 
          setFrameShadow(QFrame::Shadow::Sunken);
          setFrameShape(QFrame::Shape::Box);
@@ -39,25 +39,26 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
          time_elapsed_label_.setAlignment(Qt::AlignCenter);
 
-         connect(&open_dir_button_,&QPushButton::clicked,this,[this,dl_path]{
+         {
+                  auto open_url = [this](const auto & path){
 
-                  if(QFileInfo file_info(dl_path);!QDesktopServices::openUrl(file_info.absolutePath())){
-                           constexpr std::string_view error_title("Directory open error");
-                           constexpr std::string_view error_body("Directory could not be opened");
-                           QMessageBox::critical(this,error_title.data(),error_body.data());
-                  }
-         });
+                           if(!QDesktopServices::openUrl(QUrl::fromLocalFile(path))){
+                                    constexpr std::string_view error_title("Open error");
+                                    constexpr std::string_view error_body("Given path could not be opened");
+                                    QMessageBox::critical(this,error_title.data(),error_body.data());
+                           }
+                  };
 
-         connect(&open_button_,&QPushButton::clicked,this,[this,dl_type,dl_path]{
-                  
-                  if(QFileInfo file_info(dl_path);!QDesktopServices::openUrl(dl_type == Download_Type::Torrent ? file_info.absolutePath() : file_info.absoluteFilePath())){
-                           constexpr std::string_view message_title("Could not open file");
-                           constexpr std::string_view message_body("Downloaded file (s) could not be opened");
-                           QMessageBox::critical(this,message_title.data(),message_body.data());
-                  }else{
-                           qDebug() << dl_path << "could not be opened";
-                  }
-         });
+                  connect(&open_dir_button_,&QPushButton::clicked,this,[dl_path,open_url]{
+                           QFileInfo file_info(dl_path);
+                           open_url(file_info.isDir() ? file_info.absoluteFilePath() : file_info.absolutePath());
+                  });
+
+                  connect(&open_button_,&QPushButton::clicked,this,[dl_path,open_url]{
+                           QFileInfo file_info(dl_path);
+                           open_url(file_info.absoluteFilePath());
+                  });
+         }
 }
 
 Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidget * const parent) 
@@ -114,7 +115,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          if(dl_type_ == Download_Type::Torrent){
                   network_form_layout_.addRow("Uploaded",&ul_quantity_label_);
-                  network_form_layout_.addRow("Ratio",&ratio_label_);
+                  network_form_layout_.addRow("Session ratio",&ratio_label_);
          }
 
          network_stat_layout_.addWidget(&delete_button_);
@@ -160,8 +161,9 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
          if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
                   dl_progress_bar_.setRange(0,0); // sets in pending state
          }else{
-                  dl_progress_bar_.setValue(static_cast<std::int32_t>(util::conversion::stringify_bytes(received_byte_cnt,util::conversion::Format::Memory).first));
-                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(util::conversion::stringify_bytes(total_byte_cnt,util::conversion::Format::Memory).first));
+                  // ! consider overflow
+                  dl_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
+                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
          }
 
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
@@ -331,12 +333,12 @@ void Download_tracker::switch_to_finished_state(const Error error) noexcept {
 void Download_tracker::update_finish_line(const Error error) noexcept {
          assert(error != Error::Custom);
 
-         finish_line_.setText([error]{
+         finish_line_.setText([error,dl_type_ = dl_type_]{
                   // ? consider using static QStrings or QStrlingLiteral
                   switch(error){
                            
                            case Error::Null : {
-                                    return "Download finished";
+                                    return dl_type_ == Download_Type::Torrent ? "Seeding" : "Download finished";
                            }
 
                            case Error::File_Write : {
@@ -348,7 +350,7 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
                            }
                            
                            case Error::File_Lock : { 
-                                    return "Given path is already locked by another process";
+                                    return "Given path is locked by another process";
                            }
 
                            case Error::Space : {
@@ -356,7 +358,7 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
                            }
 
                            default : {
-                                    return "Oops. Something went wrong";
+                                    return "Oops. Something went wrong :(";
                            }
                   }
          }());
