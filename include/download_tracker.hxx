@@ -53,6 +53,7 @@ public:
 signals:
          void retry_download(const QString & file_path,const QUrl & url) const;
          void retry_download(const QString & file_path,const bencode::Metadata & torrent_metadata) const;
+         void torrent_open_button_clicked() const;
          void delete_files_permanently() const;
          void move_files_to_trash() const;
          void request_satisfied() const;

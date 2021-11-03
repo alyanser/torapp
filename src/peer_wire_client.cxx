@@ -50,6 +50,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::showMaximized);
          connect(tracker_,&Download_tracker::properties_button_clicked,&properties_displayer_,&Torrent_properties_displayer::raise);
          connect(&settings_timer_,&QTimer::timeout,this,&Peer_wire_client::write_settings);
+         connect(tracker_,&Download_tracker::torrent_open_button_clicked,&properties_displayer_,&Torrent_properties_displayer::display_file_bar);
 
          connect(tracker_,&Download_tracker::move_files_to_trash,this,[&file_handles_ = file_handles_](){
 
@@ -803,7 +804,7 @@ bool Peer_wire_client::is_valid_reply(Tcp_socket * const socket,const QByteArray
 
          constexpr auto pseudo = 0;
 
-         constexpr std::array<std::int32_t,max_msg_id + 1> expected_reply_sizes {
+         constexpr static std::array<std::int32_t,max_msg_id + 1> expected_reply_sizes {
                   1, // choke
                   1, // unchoke
                   1, // interested

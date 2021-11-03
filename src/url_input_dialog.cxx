@@ -73,7 +73,6 @@ void Url_input_dialog::on_input_received() noexcept {
          if(url.isEmpty()){
                   constexpr std::string_view error_title("Empty URL");
                   constexpr std::string_view error_body("URL field cannot be empty");
-
                   QMessageBox::critical(this,error_title.data(),error_body.data());
                   return;
          }

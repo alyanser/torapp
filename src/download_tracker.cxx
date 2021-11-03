@@ -21,40 +21,29 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          configure_default_connections();
          read_settings();
 
-         open_button_.setEnabled(false);
-         delete_button_.setEnabled(false);
-         pause_button_.setEnabled(false);
+         auto open_url = [this](const QString & path){
 
-         dl_progress_bar_.setTextVisible(true);
+                  if(!QDesktopServices::openUrl(QUrl::fromLocalFile(path))){
+                           constexpr std::string_view error_title("Open error");
+                           constexpr std::string_view error_body("Given path could not be opened");
+                           QMessageBox::critical(this,error_title.data(),error_body.data());
+                  }
+         };
 
-         package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
-         package_name_label_.setFrameShape(QFrame::Shape::Panel);
-         package_name_label_.setAlignment(Qt::AlignCenter);
+         connect(&open_dir_button_,&QPushButton::clicked,this,[dl_path,open_url]{
+                  QFileInfo file_info(dl_path);
+                  open_url(file_info.isDir() ? file_info.absoluteFilePath() : file_info.absolutePath());
+         });
 
-         time_elapsed_label_.setFrameShadow(QFrame::Shadow::Raised);
-         time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
-         time_elapsed_label_.setAlignment(Qt::AlignCenter);
+         connect(&open_button_,&QPushButton::clicked,this,[this,dl_type_ = dl_type_,dl_path,open_url]{
 
-         {
-                  auto open_url = [this](const QString & path){
-
-                           if(!QDesktopServices::openUrl(QUrl::fromLocalFile(path))){
-                                    constexpr std::string_view error_title("Open error");
-                                    constexpr std::string_view error_body("Given path could not be opened");
-                                    QMessageBox::critical(this,error_title.data(),error_body.data());
-                           }
-                  };
-
-                  connect(&open_dir_button_,&QPushButton::clicked,this,[dl_path,open_url]{
-                           QFileInfo file_info(dl_path);
-                           open_url(file_info.isDir() ? file_info.absoluteFilePath() : file_info.absolutePath());
-                  });
-
-                  connect(&open_button_,&QPushButton::clicked,this,[dl_path,open_url]{
+                  if(dl_type_ == Download_Type::Torrent){
+                           emit torrent_open_button_clicked();
+                  }else{
                            QFileInfo file_info(dl_path);
                            open_url(file_info.absoluteFilePath());
-                  });
-         }
+                  }
+         });
 }
 
 Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidget * const parent) 
@@ -97,10 +86,18 @@ void Download_tracker::setup_file_status_layout() noexcept {
          package_name_layout_.addWidget(&package_name_buddy_);
          package_name_layout_.addWidget(&package_name_label_);
          package_name_buddy_.setBuddy(&package_name_label_);
-
+         
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
+
+         package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
+         package_name_label_.setFrameShape(QFrame::Shape::Panel);
+         package_name_label_.setAlignment(Qt::AlignCenter);
+
+         time_elapsed_label_.setFrameShadow(QFrame::Shadow::Raised);
+         time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
+         time_elapsed_label_.setAlignment(Qt::AlignCenter);
 }
 
 void Download_tracker::setup_network_status_layout() noexcept {
@@ -134,6 +131,10 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          state_button_stack_.addWidget(&pause_button_);
          state_button_stack_.addWidget(&resume_button_);
+
+         delete_button_.setEnabled(false);
+         pause_button_.setEnabled(false);
+         open_button_.setEnabled(false);
 }
 
 void Download_tracker::set_error_and_finish(const Error error) noexcept {
@@ -202,6 +203,7 @@ void Download_tracker::setup_state_stack() noexcept {
          progress_bar_stack_.addWidget(&verify_progress_bar_);
          progress_bar_stack_.addWidget(&finish_line_);
 
+         dl_progress_bar_.setTextVisible(true);
          dl_progress_bar_.setValue(0);
          dl_progress_bar_.setRange(0,0);
 

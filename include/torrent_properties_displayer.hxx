@@ -20,6 +20,7 @@ public:
          void remove_peer(std::int32_t peer_row_idx) noexcept;
          void update_file_info(qsizetype file_idx,std::int64_t file_dled_byte_cnt) noexcept;
          void setup_file_info_widget(const bencode::Metadata & torrent_metadata,const QList<std::pair<QFile *,std::int64_t>> & file_handles) noexcept;
+         void display_file_bar() noexcept;
 private:
          void setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept;
          void setup_peer_table() noexcept;
@@ -31,3 +32,13 @@ private:
          QFormLayout general_info_layout_{&general_info_tab_};
          QFormLayout file_info_layout_{&file_info_tab_};
 };
+
+inline void Torrent_properties_displayer::display_file_bar() noexcept {
+         setCurrentWidget(&file_info_tab_);
+         show();
+}
+
+inline void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
+         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
+         peer_table_.removeRow(peer_row_idx);
+}

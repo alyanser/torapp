@@ -3,11 +3,12 @@
 #include "util.hxx"
 
 #include <QNetworkAccessManager>
-#include <QSettings>
 
 namespace bencode {
 	struct Metadata;
 }
+
+class QUrl;
 
 class Network_manager : public QNetworkAccessManager {
          Q_OBJECT

@@ -8,7 +8,6 @@
 #include <QPointer>
 #include <QTimer>
 #include <QFile>
-#include <QPair>
 
 void Network_manager::download(util::Download_resources resources,const QUrl url) noexcept {
 

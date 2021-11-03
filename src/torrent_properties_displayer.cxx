@@ -51,11 +51,6 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          general_info_layout_.addRow("Piece Size:",get_new_label(std::to_string(torrent_metadata.piece_length) + " bytes"));
 }
 
-void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
-         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
-         peer_table_.removeRow(peer_row_idx);
-}
-
 void Torrent_properties_displayer::setup_peer_table() noexcept {
          peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
 
