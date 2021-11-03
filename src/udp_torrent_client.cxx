@@ -46,6 +46,7 @@ void Udp_torrent_client::send_connect_request() noexcept {
 
          if(tracker_url_idx_ == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
                   tracker_url_idx_ = 0;
+                  return;
          }
 
          const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx_)];
@@ -76,10 +77,11 @@ void Udp_torrent_client::send_connect_request() noexcept {
                   recall_if_unread();
          });
 
-         connect(socket,&Udp_socket::connection_timed_out,this,[this]{
+         // ! experimental
+         // connect(socket,&Udp_socket::connection_timed_out,this,[this]{
                   ++tracker_url_idx_;
                   send_connect_request();
-         });
+         // });
 }
 
 [[nodiscard]]
@@ -91,8 +93,8 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
                   return convert_to_hex(protocol_constant);
          }();
 
-         constexpr auto connect_request_size = 32;
-         connect_request.reserve(connect_request_size);
+         constexpr auto fin_connect_request_size = 32;
+         connect_request.reserve(fin_connect_request_size);
 
          connect_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Connect));
 
@@ -101,7 +103,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
                   return convert_to_hex(txn_id);
          }();
 
-         assert(connect_request.size() == connect_request_size);
+         assert(connect_request.size() == fin_connect_request_size);
          return connect_request;
 }
 
@@ -110,8 +112,8 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          using util::conversion::convert_to_hex;
          
          auto announce_request = convert_to_hex(tracker_connection_id);
-         constexpr auto announce_request_size = 196;
-         announce_request.reserve(announce_request_size);
+         constexpr auto fin_announce_request_size = 196;
+         announce_request.reserve(fin_announce_request_size);
 
          announce_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Announce));
 
@@ -151,7 +153,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
                   return convert_to_hex(default_port);
          }();
 
-         assert(announce_request.size() == announce_request_size);
+         assert(announce_request.size() == fin_announce_request_size);
          return announce_request;
 }
 
@@ -160,8 +162,8 @@ QByteArray Udp_torrent_client::craft_scrape_request(const std::int64_t tracker_c
          using util::conversion::convert_to_hex;
          
          auto scrape_request = convert_to_hex(tracker_connection_id);
-         const auto scrape_request_size = 72;
-         scrape_request.reserve(scrape_request_size);
+         constexpr auto fin_scrape_request_size = 72;
+         scrape_request.reserve(fin_scrape_request_size);
 
          scrape_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Scrape));
 
@@ -172,7 +174,7 @@ QByteArray Udp_torrent_client::craft_scrape_request(const std::int64_t tracker_c
 
          scrape_request += info_sha1_hash_;
 
-         assert(scrape_request.size() == scrape_request_size);
+         assert(scrape_request.size() == fin_scrape_request_size);
          return scrape_request;
 }
 
@@ -210,11 +212,15 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
                            const auto peer_ip = util::extract_integer<std::uint32_t>(reply,idx);
                            const auto peer_port = util::extract_integer<std::uint16_t>(reply,idx + ip_byte_cnt);
 
-                           auto & url = peer_urls_ret.emplace_back();
-
+                           QUrl url;
                            url.setHost(QHostAddress(peer_ip).toString());
                            url.setPort(peer_port);
-                           assert(url.isValid());
+
+                           if(url.isValid()){
+                                    peer_urls_ret.emplace_back(std::move(url));
+                           }else{
+                                    qDebug() << "tracker sent invalid peer url";
+                           }
                   }
                   
                   return peer_urls_ret;
@@ -249,10 +255,9 @@ std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_sc
 }
 
 void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
-         assert(socket->bytesAvailable());
+         assert(socket->state() == Udp_socket::SocketState::ConnectedState);
          assert(socket->hasPendingDatagrams());
 
-         // todo: validate the response size and use transactions
          const auto reply = socket->receiveDatagram().data();
          const auto tracker_action = static_cast<Action_Code>(util::extract_integer<std::int32_t>(reply,0));
 
@@ -272,13 +277,13 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            socket->scrape_request = craft_scrape_request(*connection_id);
                            socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
 
-                           auto update_event_and_request = [this,socket = QPointer(socket),connection_id](const auto new_event){
+                           auto update_event_and_request = [this,socket = QPointer(socket),connection_id](const Event event){
 
-                                    if(event_ == new_event){
+                                    if(event_ == event){
                                              return;
                                     }
 
-                                    event_ = new_event;
+                                    event_ = event;
 
                                     if(socket){
                                              socket->announce_request = craft_announce_request(*connection_id);

@@ -81,15 +81,15 @@ private:
                   QFile * file_handle;
                   std::int64_t dled_byte_cnt;
          };
+
+         template<Message_Id message_id>
+         QByteArray craft_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt = 0) const noexcept;
          
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
          static QByteArray craft_allowed_fast_message(std::int32_t piece_idx) noexcept;
-         static QByteArray craft_reject_message(std::int32_t piece_idx,std::int32_t piece_offset,std::int32_t byte_cnt) noexcept;
          QByteArray craft_handshake_message() const noexcept;
-         QByteArray craft_request_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
-         QByteArray craft_cancel_message(std::int32_t piece_idx,std::int32_t piece_offset) const noexcept;
 
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
          void on_have_message_received(Tcp_socket * socket,std::int32_t peer_have_piece_idx) noexcept;
@@ -137,8 +137,8 @@ private:
          constexpr static std::string_view uninterested_msg{"0000000103"};
          constexpr static std::string_view have_all_msg{"000000010e"};
          constexpr static std::string_view have_none_msg{"000000010f"};
-         constexpr static auto max_block_size = 1 << 14;
          constexpr static std::string_view reserved_bytes{"0000000000000004"};
+         constexpr static std::int16_t max_block_size = 1 << 14;
          QList<std::pair<QFile *,std::int64_t>> file_handles_; // {file_handle,count of bytes downloaded}
          QList<QUrl> active_peers_;
          QList<std::int32_t> target_piece_idxes_;
@@ -191,4 +191,33 @@ inline bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx)
 [[nodiscard]]
 inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
          return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
+}
+
+template<Peer_wire_client::Message_Id msg_id>
+[[nodiscard]]
+QByteArray Peer_wire_client::craft_message(const std::int32_t piece_idx,const std::int32_t piece_offset, [[maybe_unused]] const std::int32_t byte_cnt) const noexcept {
+         static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,"Only valid for specified message id types");
+
+         using util::conversion::convert_to_hex;
+
+         auto msg = []{
+                  constexpr auto packet_size = 13;
+                  return convert_to_hex(packet_size);
+         }();
+
+         constexpr auto fin_msg_size = 34;
+         msg.reserve(fin_msg_size);
+
+         msg += convert_to_hex(static_cast<std::int8_t>(msg_id));
+         msg += convert_to_hex(piece_idx);
+         msg += convert_to_hex(piece_offset);
+
+         if constexpr (msg_id == Message_Id::Reject_Request){
+                  msg += convert_to_hex(byte_cnt);
+         }else{
+                  msg += convert_to_hex(piece_info(piece_idx,piece_offset).block_size);
+         }
+
+         assert(msg.size() == fin_msg_size);
+         return msg;
 }

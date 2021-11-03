@@ -14,14 +14,14 @@
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
          : QTabWidget(parent)
 {
-         setMinimumSize(200,200); // totally well-thought
+         setMinimumSize(200,200); // totally well thought
          setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
 
          setUsesScrollButtons(false);
          addTab(&general_info_tab_,"General");
          addTab(&file_info_tab_,"Files");
          addTab(&peer_table_,"Peers");
-         
+
          setup_general_info_widget(torrent_metadata);
          setup_peer_table();
 }
@@ -33,7 +33,7 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          auto get_new_label = [&general_info_tab_ = general_info_tab_](const std::string & label_text){
                   auto * const label = new QLabel(label_text.empty() ? "N/A" : QByteArray(label_text.data(),static_cast<qsizetype>(label_text.size())),&general_info_tab_);
 
-                  label->setAlignment(Qt::AlignmentFlag::AlignCenter);
+                  label->setAlignment(Qt::AlignCenter);
                   label->setTextInteractionFlags(Qt::TextSelectableByMouse);
                   label->setFrameShape(QFrame::Shape::Panel);
                   label->setFrameShadow(QFrame::Shadow::Sunken);
@@ -49,12 +49,13 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          general_info_layout_.addRow("Encoding",get_new_label(torrent_metadata.encoding));
          general_info_layout_.addRow("Md5-Sum",get_new_label(torrent_metadata.md5sum));
          general_info_layout_.addRow("Piece Size:",get_new_label(std::to_string(torrent_metadata.piece_length) + " bytes"));
+         general_info_layout_.addRow("Announce URL",get_new_label(torrent_metadata.announce_url));
 }
 
 void Torrent_properties_displayer::setup_peer_table() noexcept {
          peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
 
-         const QList<QString> peer_table_headings {"Peer Id","Downloaded","Uploaded","Download Speed"};
+         const static QList<QString> peer_table_headings {"Peer Id","Downloaded","Uploaded","Download Speed"};
          
          peer_table_.setColumnCount(static_cast<std::int32_t>(peer_table_headings.size()));
          peer_table_.setHorizontalHeaderLabels(peer_table_headings);
@@ -163,7 +164,6 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 
          auto * const dl_speed_label = [get_cell_label_text,socket]{
                   auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
-                  
                   dl_speed_label->setAlignment(Qt::AlignCenter);
 
                   {

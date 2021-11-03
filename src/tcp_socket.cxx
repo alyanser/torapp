@@ -2,9 +2,9 @@
 
 #include <QHostAddress>
 
-Tcp_socket::Tcp_socket(const QUrl peer_url,QObject * const parent)
+Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent)
          : QTcpSocket(parent)
-         , peer_url_(peer_url)
+         , peer_url_(std::move(peer_url))
 {
          configure_default_connections();
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
@@ -55,10 +55,6 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
          auto & buffer_data = receive_buffer_.second;
 
          if((buffer_data.capacity() < *msg_size)){
-                  buffer_data.reserve(*msg_size);
-         }
-
-         if(buffer_data.capacity() < *msg_size){
                   buffer_data.reserve(*msg_size);
          }
 

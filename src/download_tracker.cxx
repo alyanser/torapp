@@ -243,10 +243,11 @@ void Download_tracker::read_settings() noexcept {
 }
 
 void Download_tracker::configure_default_connections() noexcept {
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::download_dropped);
-         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::request_satisfied);
-         connect(this,&Download_tracker::download_dropped,this,&Download_tracker::request_satisfied);
          connect(this,&Download_tracker::request_satisfied,&Download_tracker::deleteLater);
+         connect(this,&Download_tracker::download_dropped,this,&Download_tracker::request_satisfied);
+         connect(this,&Download_tracker::delete_files_permanently,this,&Download_tracker::download_dropped);
+         connect(this,&Download_tracker::move_files_to_trash,this,&Download_tracker::download_dropped);
+         connect(&finish_button_,&QPushButton::clicked,this,&Download_tracker::download_dropped);
 
          if(dl_type_ == Download_Type::Torrent){
                   connect(&properties_button_,&QPushButton::clicked,this,&Download_tracker::properties_button_clicked);
@@ -271,17 +272,14 @@ void Download_tracker::configure_default_connections() noexcept {
          });
 
          connect(&delete_button_,&QPushButton::clicked,this,[this]{
-                  QMessageBox query_box(QMessageBox::Icon::Warning,"Delete file (s)","Choose an action",QMessageBox::Button::NoButton);
+                  QMessageBox query_box(QMessageBox::Icon::Warning,"Delete file (s)","Delete?",QMessageBox::Button::NoButton);
 
                   auto * const delete_permanently_button = query_box.addButton("Delete permanently",QMessageBox::ButtonRole::DestructiveRole);
                   auto * const move_to_trash_button = query_box.addButton("Move to Trash",QMessageBox::ButtonRole::YesRole);
-
                   query_box.addButton("Cancel",QMessageBox::ButtonRole::RejectRole);
 
                   connect(delete_permanently_button,&QPushButton::clicked,this,&Download_tracker::delete_files_permanently);
                   connect(move_to_trash_button,&QPushButton::clicked,this,&Download_tracker::move_files_to_trash);
-                  connect(this,&Download_tracker::delete_files_permanently,this,&Download_tracker::download_dropped);
-                  connect(this,&Download_tracker::move_files_to_trash,this,&Download_tracker::download_dropped);
 
                   query_box.exec();
          });

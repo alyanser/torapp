@@ -4,10 +4,10 @@
 #include <QFile>
 
 int main(int argc,char ** argv){
-         QApplication::setOrganizationName("tast");
-         QApplication::setApplicationName("torapp");
-
          QApplication torapp(argc,argv);
+
+         QApplication::setOrganizationName("conat");
+         QApplication::setApplicationName("torapp");
          QApplication::setWindowIcon(QIcon(":app_icon.png"));
 
          if(QFile stylesheet_file(":app_stylesheet.qss");stylesheet_file.open(QFile::ReadOnly)){
