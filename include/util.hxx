@@ -8,6 +8,10 @@
 class Download_tracker;
 class QFile;
 
+namespace bendode {
+         struct Metadata;
+}
+
 namespace util {
 
 namespace conversion {
@@ -137,6 +141,16 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          }
 
          return result;
+}
+
+template<typename dl_metadata_type>
+void begin_settings_group(QSettings & settings) noexcept {
+
+         if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
+                  settings.beginGroup("url_downloads");
+         }else{
+                  settings.beginGroup("torrent_downloads");
+         }
 }
 
 struct Download_resources {

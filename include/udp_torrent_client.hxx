@@ -75,6 +75,7 @@ private:
          Download_tracker * tracker_ = nullptr;
          qsizetype tracker_url_idx_ = 0;
          Event event_ = Event::None;
+         bool connect_requests_sent_ = false;
 };
 
 [[nodiscard]]

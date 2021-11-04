@@ -21,6 +21,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          tracker->set_state(Download_tracker::State::Download);
 
          auto * const network_reply = get(QNetworkRequest(url));
+         assert(network_reply->parent());
 
          connect(network_reply,&QNetworkReply::readyRead,tracker,[network_reply,tracker = tracker,file_handle = file_handle]{
 

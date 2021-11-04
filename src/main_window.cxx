@@ -13,10 +13,8 @@ Main_window::Main_window(){
          setCentralWidget(&scroll_area_);
          addToolBar(&tool_bar_);
          setMinimumSize({640,480});
-
          assert(menuBar());
          menuBar()->addMenu(&file_menu_);
-
          add_top_actions();
          read_settings();
 
@@ -89,6 +87,7 @@ void Main_window::add_top_actions() noexcept {
                   Torrent_metadata_dialog torrent_dialog(file_path,this);
 
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,[this,file_path = std::move(file_path)](const QString & dl_dir){
+                           // ? consider storing bencode::Metadata instead of file content
 
                            if(QFile torrent_file(file_path);torrent_file.open(QFile::ReadOnly)){
                                     add_download_to_settings(dl_dir,torrent_file.readAll());

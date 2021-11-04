@@ -71,9 +71,7 @@ void Url_input_dialog::on_input_received() noexcept {
          QUrl url(url_line_.text().simplified());
 
          if(url.isEmpty()){
-                  constexpr std::string_view error_title("Empty URL");
-                  constexpr std::string_view error_body("URL field cannot be empty");
-                  QMessageBox::critical(this,error_title.data(),error_body.data());
+                  QMessageBox::critical(this,"Empty Url","Url field cannot be empty");
                   return;
          }
          
@@ -115,7 +113,6 @@ void Url_input_dialog::on_input_received() noexcept {
                   }
          }
 
-         assert(!file_path.isEmpty());
          accept();
          emit new_request_received(file_path,url);
 }

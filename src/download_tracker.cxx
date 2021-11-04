@@ -6,13 +6,15 @@
 #include <QDir>
 
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
-         : QFrame(parent), dl_path_(dl_path),dl_type_(dl_type)
+         : QFrame(parent)
+         , dl_path_(dl_path)
+         , dl_type_(dl_type)
 {
-         setFixedHeight(230); // todo: figure generic
+         setFixedHeight(230);
+         setLineWidth(3);
 
          setFrameShadow(QFrame::Shadow::Sunken);
          setFrameShape(QFrame::Shape::Box);
-         setLineWidth(3);
 
          setup_central_layout();
          setup_file_status_layout();
@@ -20,6 +22,8 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          setup_state_stack();
          configure_default_connections();
          read_settings();
+
+         session_timer_.setInterval(std::chrono::seconds(1));
 
          auto open_url = [this](const QString & path){
 
@@ -134,6 +138,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          delete_button_.setEnabled(false);
          pause_button_.setEnabled(false);
+         resume_button_.setEnabled(false);
          open_button_.setEnabled(false);
 }
 
@@ -180,8 +185,14 @@ void Download_tracker::set_state(const State state) noexcept {
          state_ = state;
 
          if(state_ == State::Download){
+
+                  if(pause_button_.isEnabled()){
+                           session_timer_.start();
+                  }
+
                   pause_button_.setEnabled(true);
-                  session_timer_.start(std::chrono::seconds(1));
+                  resume_button_.setEnabled(true);
+
                   progress_bar_stack_.setCurrentWidget(&dl_progress_bar_);
          }else{
                   assert(dl_type_ == Download_Type::Torrent);
@@ -227,18 +238,18 @@ void Download_tracker::write_settings() const noexcept {
          QSettings settings;
          begin_setting_groups(settings);
          settings.setValue("time_elapsed",QVariant::fromValue(time_elapsed_));
+         settings.setValue("download_paused",pause_button_.isEnabled());
 }
 
 void Download_tracker::read_settings() noexcept {
          QSettings settings;
          begin_setting_groups(settings);
 
-         time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed"));
-
-         if(!time_elapsed_.isValid()){
-                  time_elapsed_ = QTime(0,0,0);
+         if(dl_type_ == Download_Type::Torrent && qvariant_cast<bool>(settings.value("download_paused",false))){
+                  state_button_stack_.setCurrentWidget(&resume_button_);
          }
 
+         time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed",QTime(0,0,0)));
          time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
 }
 
@@ -255,11 +266,16 @@ void Download_tracker::configure_default_connections() noexcept {
 
          connect(&pause_button_,&QPushButton::clicked,this,[this]{
                   assert(dl_type_ == Download_Type::Torrent);
+
+                  assert(state_button_stack_.currentWidget() == &pause_button_);
                   state_button_stack_.setCurrentWidget(&resume_button_);
+
                   assert(session_timer_.isActive());
                   session_timer_.stop();
+
                   session_dled_byte_cnt_ = 0;
                   session_time_ = std::chrono::seconds::zero();
+
                   update_download_speed();
                   emit download_paused();
          });
@@ -267,7 +283,10 @@ void Download_tracker::configure_default_connections() noexcept {
          connect(&resume_button_,&QPushButton::clicked,this,[this]{
                   assert(!session_timer_.isActive());
                   session_timer_.start();
+
+                  assert(state_button_stack_.currentWidget() == &resume_button_);
                   state_button_stack_.setCurrentWidget(&pause_button_);
+
                   emit download_resumed();
          });
 
@@ -288,6 +307,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
                   constexpr std::string_view query_title("Cancel Download");
                   constexpr std::string_view query_body("Are you sure you want to cancel the download&?");
+
                   const auto reply = QMessageBox::question(this,query_title.data(),query_body.data(),buttons);
 
                   if(reply == QMessageBox::StandardButton::Yes){
@@ -303,12 +323,6 @@ void Download_tracker::configure_default_connections() noexcept {
                   update_download_speed();
                   write_settings();
          });
-}
-
-void Download_tracker::on_verification_completed() noexcept {
-         assert(dl_type_ == Download_Type::Torrent);
-         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
-         pause_button_.setEnabled(dled_byte_cnt_ != total_byte_cnt_);
 }
 
 void Download_tracker::switch_to_finished_state(const Error error) noexcept {

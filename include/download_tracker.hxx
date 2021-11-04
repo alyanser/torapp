@@ -53,6 +53,7 @@ public:
 signals:
          void retry_download(const QString & file_path,const QUrl & url) const;
          void retry_download(const QString & file_path,const bencode::Metadata & torrent_metadata) const;
+         void restored_download_paused() const;
          void torrent_open_button_clicked() const;
          void delete_files_permanently() const;
          void move_files_to_trash() const;
@@ -146,7 +147,6 @@ inline void Download_tracker::set_ratio(const double ratio) noexcept {
 
 inline void Download_tracker::setup_central_layout() noexcept {
          central_layout_.setSpacing(15);
-
          central_layout_.addLayout(&file_stat_layout_);
          central_layout_.addWidget(&progress_bar_stack_);
          central_layout_.addLayout(&network_stat_layout_);
@@ -155,4 +155,10 @@ inline void Download_tracker::setup_central_layout() noexcept {
 inline void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {
          settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
          settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+}
+
+inline void Download_tracker::on_verification_completed() noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
+         pause_button_.setEnabled(dled_byte_cnt_ != total_byte_cnt_);
 }

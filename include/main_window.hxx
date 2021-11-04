@@ -21,10 +21,7 @@ class Main_window : public QMainWindow {
          Q_OBJECT
 public:
          Main_window();
-         Main_window(const Main_window & rhs) = delete;
-         Main_window(Main_window && rhs) = delete;
-         Main_window & operator = (const Main_window & rhs) = delete;
-         Main_window & operator = (Main_window && rhs) = delete;
+         Q_DISABLE_COPY_MOVE(Main_window);
          ~Main_window() override;
 
          template<typename dl_metadata_type>
@@ -131,7 +128,7 @@ void Main_window::remove_download_from_settings(const QString & file_path) const
          QSettings settings;
          begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(file_path).replace('/','\x20'));
-         settings.remove(""); // removes current group and child keys
+         settings.remove("");
          assert(settings.childKeys().isEmpty());
 }
 

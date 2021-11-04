@@ -148,9 +148,9 @@ private:
          QByteArray handshake_msg_;
          QString dl_path_;
          QBitArray bitfield_;
-         bencode::Metadata & torrent_metadata_;
          QTimer settings_timer_;
          QTimer refresh_timer_;
+         bencode::Metadata & torrent_metadata_;
          Download_tracker * const tracker_ = nullptr;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;

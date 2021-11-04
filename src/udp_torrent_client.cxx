@@ -11,11 +11,29 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
          : QObject(parent)
          , torrent_metadata_(std::move(torrent_metadata))
          , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
-         , peer_client_(torrent_metadata_,{std::move(resources.dl_path),std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
+         , peer_client_(torrent_metadata_,{resources.dl_path,std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
 {
          configure_default_connections();
 
+         connect(&peer_client_,&Peer_wire_client::existing_pieces_verified,this,[this,dl_path = std::move(resources.dl_path)]() mutable {
+
+                  auto restored_dl_paused = [&dl_path]{
+                           QSettings settings;
+                           util::begin_settings_group<decltype(torrent_metadata)>(settings);
+                           settings.beginGroup(dl_path.replace('/','\x20'));
+                           return qvariant_cast<bool>(settings.value("download_paused",false));
+                  }();
+                  
+                  if(!restored_dl_paused){
+                           send_connect_request();
+                  }else{
+                           connect(tracker_,&Download_tracker::download_resumed,this,[this]{
+                                    send_connect_request();
+                           },Qt::SingleShotConnection);
+                  }
+         });
+         
          {
                   assert(!torrent_metadata_.announce_url.empty());
                   auto & tracker_urls = torrent_metadata_.announce_url_list;
@@ -36,24 +54,31 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   }
          });
 
-         connect(&peer_client_,&Peer_wire_client::existing_pieces_verified,this,&Udp_torrent_client::send_connect_request);
+
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
 void Udp_torrent_client::send_connect_request() noexcept {
+
+         if(!connect_requests_sent_){
+                  connect_requests_sent_ = true;
+         }
+
          assert(!torrent_metadata_.announce_url_list.empty());
          assert(tracker_url_idx_ <= static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
 
          if(tracker_url_idx_ == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
                   tracker_url_idx_ = 0;
-                  return;
+                  return; // ! experimental
          }
 
          const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx_)];
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
-         
-         connect(socket,&Udp_socket::readyRead,this,[this,socket]{
 
+         connect(socket,&Udp_socket::readyRead,this,[this,socket]{
+                  assert(socket->bytesAvailable());
+                  assert(socket->hasPendingDatagrams());
+                  
                   auto recall_if_unread = [this,socket = QPointer(socket)]{
 
                            if(socket && socket->hasPendingDatagrams()){
@@ -78,9 +103,15 @@ void Udp_torrent_client::send_connect_request() noexcept {
          });
 
          // ! experimental
-         // connect(socket,&Udp_socket::connection_timed_out,this,[this]{
+
+         QTimer::singleShot(0,this,[this]{
                   ++tracker_url_idx_;
                   send_connect_request();
+         });
+         
+         // connect(socket,&Udp_socket::connection_timed_out,this,[this]{
+                  // ++tracker_url_idx_;
+                  // send_connect_request();
          // });
 }
 
@@ -147,12 +178,10 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          }();
 
          announce_request += []{
-                  // todo: consider the range
-                  static std::uniform_int_distribution<std::uint16_t> port_dist(10'000);
-                  const auto default_port = port_dist(random_generator);
+                  constexpr std::int16_t default_port = 6881;
                   return convert_to_hex(default_port);
          }();
-
+         
          assert(announce_request.size() == fin_announce_request_size);
          return announce_request;
 }
@@ -297,12 +326,12 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                                     }
                            };
 
-                           connect(tracker_,&Download_tracker::download_paused,this,[update_event_and_request]{
-                                    update_event_and_request(Event::Stopped);
-                           });
-
                            connect(tracker_,&Download_tracker::download_resumed,this,[update_event_and_request]{
                                     update_event_and_request(Event::Started);
+                           });
+
+                           connect(tracker_,&Download_tracker::download_paused,this,[update_event_and_request]{
+                                    update_event_and_request(Event::Stopped);
                            });
 
                            connect(&peer_client_,&Peer_wire_client::download_finished,this,[update_event_and_request]{

@@ -23,7 +23,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          , average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(torrent_piece_size_) / max_block_size)))
          , peer_additive_bitfield_(total_piece_cnt_ + spare_bit_cnt_,0)
          , pieces_(total_piece_cnt_)
-{        
+{
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
