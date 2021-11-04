@@ -68,6 +68,14 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
          return {};
 }
 
+[[nodiscard]]
+bool Tcp_socket::is_good_ratio() const noexcept {
+         constexpr auto min_ratio = 0.25;
+         constexpr auto uled_byte_threshold = 2097152;
+         assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
+         return uled_byte_cnt_ <= uled_byte_threshold ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
+}
+
 void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
          assert(!packet.isEmpty());
 

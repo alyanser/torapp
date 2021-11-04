@@ -17,7 +17,7 @@ set(SOURCES
          src/udp_socket.cxx
          src/torrent_properties_displayer.cxx
          src/tcp_socket.cxx
-         src/file_manager.cxx
+         src/file_allocator.cxx
 )
 
 set(MOC_INCLUDES
@@ -30,7 +30,7 @@ set(MOC_INCLUDES
          include/udp_torrent_client.hxx
          include/udp_socket.hxx
          include/tcp_socket.hxx
-         include/file_manager.hxx
+         include/file_allocator.hxx
          include/torrent_properties_displayer.hxx
          src/resources.qrc
 )

@@ -1,4 +1,4 @@
-#include "file_manager.hxx"
+#include "file_allocator.hxx"
 
 #include <bencode_parser.hxx>
 #include <QMessageBox>
@@ -7,7 +7,7 @@
 #include <QDir>
 
 [[nodiscard]]
-File_manager::handle_return_type File_manager::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
+File_allocator::handle_return_type File_allocator::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
          assert(!torrent_metadata.file_info.empty());
          assert(!dir_path.isEmpty());
          
@@ -41,7 +41,7 @@ File_manager::handle_return_type File_manager::open_file_handles(const QString &
 }
 
 [[nodiscard]]
-File_manager::handle_return_type File_manager::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
+File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
          assert(!file_path.isEmpty());
          auto file_handle = std::make_unique<QFile>(file_path,this);
 

@@ -37,6 +37,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
 
          resources.file_handles.clear();
          resources.file_handles.squeeze();
+         
          properties_displayer_.setup_file_info_widget(torrent_metadata_,file_handles_);
 
          configure_default_connections();
@@ -229,7 +230,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests. fix later
+                                    refresh_timer_.start(std::chrono::seconds(5)); // ! hacky: times requests
                            }
 
                            emit existing_pieces_verified();
@@ -268,6 +269,10 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                                     assert(peer_idx != -1);
                                     properties_displayer_.remove_peer(static_cast<std::int32_t>(peer_idx));
                                     active_peers_.remove(peer_idx);
+
+                                    if(constexpr auto min_peer_cnt_threshold = 3;active_peers_.size() < min_peer_cnt_threshold){
+                                             emit min_peer_threshold_reached();
+                                    }
                            }
 
                            for(qsizetype piece_idx = 0;piece_idx < socket->peer_bitfield.size();++piece_idx){

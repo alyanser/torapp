@@ -54,18 +54,10 @@ inline QUrl Tcp_socket::peer_url() const noexcept {
 
 inline void Tcp_socket::on_peer_fault() noexcept {
          
-         if(constexpr std::int8_t peer_fault_threshold = 5;++peer_fault_cnt_ > peer_fault_threshold){
+         if(constexpr auto peer_fault_threshold = 5;++peer_fault_cnt_ > peer_fault_threshold){
                   qDebug() << "Peer made too many mistakes. aborting";
                   abort();
          }
-}
-
-[[nodiscard]]
-inline bool Tcp_socket::is_good_ratio() const noexcept {
-         constexpr auto min_ratio = 0.25;
-         constexpr auto uled_byte_threshold = 2097152;
-         assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
-         return uled_byte_cnt_ <= uled_byte_threshold ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
 }
 
 [[nodiscard]]

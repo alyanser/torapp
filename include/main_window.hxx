@@ -3,7 +3,7 @@
 #include "url_input_dialog.hxx"
 #include "network_manager.hxx"
 #include "download_tracker.hxx"
-#include "file_manager.hxx"
+#include "file_allocator.hxx"
 
 #include <bencode_parser.hxx>
 #include <QActionGroup>
@@ -53,7 +53,7 @@ private:
          QToolBar tool_bar_;
          QMenu file_menu_{"File",menuBar()};
          Network_manager network_manager_;
-         File_manager file_manager_;
+         File_allocator file_manager_;
 };
 
 inline Main_window::~Main_window(){
@@ -83,20 +83,20 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 
          switch(file_error){
 
-                  case File_manager::File_Error::Null : {
+                  case File_allocator::File_Error::Null : {
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
                            network_manager_.download({dl_path,std::move(*file_handles),tracker},std::forward<dl_metadata_type>(dl_metadata));
                            break;
                   }
 
-                  case File_manager::File_Error::File_Lock : {
+                  case File_allocator::File_Error::File_Lock : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
                            break;
                   }
 
-                  case File_manager::File_Error::Permissions : {
+                  case File_allocator::File_Error::Permissions : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Write);
                            break;

@@ -57,6 +57,7 @@ signals:
          void download_finished() const;
          void send_requests() const;
          void request_rejected(Request_metadata request_metadata) const;
+         void min_peer_threshold_reached() const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;

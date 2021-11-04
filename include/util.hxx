@@ -2,6 +2,7 @@
 
 #include <QBigEndianStorageType>
 #include <QBitArray>
+#include <QSettings>
 #include <QString>
 #include <QList>
 
@@ -14,12 +15,64 @@ namespace bendode {
 
 namespace util {
 
+struct Download_resources {
+         QString dl_path;
+         QList<QFile *> file_handles;
+         Download_tracker * tracker = nullptr;
+};
+
 namespace conversion {
 
 enum class Format { 
          Speed,
          Memory
 };
+
+template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
+[[nodiscard]]
+QByteArray convert_to_hex(const numeric_type num) noexcept {
+         using unsigned_type = std::make_unsigned_t<numeric_type>;
+
+         constexpr auto hex_base = 16;
+         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
+
+         assert(!hex_fmt.isEmpty());
+
+         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
+         assert(req_hex_size - hex_fmt.size() >= 0);
+         assert(hex_fmt.front() != '-');
+         
+         return QByteArray(req_hex_size - hex_fmt.size(),'0') + hex_fmt;
+}
+
+[[nodiscard]]
+inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
+         constexpr auto bits_in_byte = 8;
+         QBitArray bits(bytes.size() * bits_in_byte,false);
+
+         for(qsizetype byte_idx = 0;byte_idx < bytes.size();++byte_idx){
+
+                  for(qsizetype bit_idx = 0;bit_idx < bits_in_byte;++bit_idx){
+                           bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << (bits_in_byte - 1 - bit_idx));
+                  }
+         }
+
+         return bits;
+}
+
+[[nodiscard]]
+inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
+         constexpr auto bits_in_byte = 8;
+         assert(bits.size() % bits_in_byte == 0);
+
+         QByteArray bytes(bits.size() / bits_in_byte,'\x00');
+
+         for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
+                  bytes[bit_idx / bits_in_byte] |= static_cast<char>(bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte));
+         }
+
+         return bytes.toHex();
+}
 
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
@@ -70,52 +123,6 @@ QString convert_to_percent_format(const numeric_type_x dividend,const numeric_ty
          return QString::number(static_cast<std::int64_t>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100)) + " %";
 }
 
-template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
-[[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num) noexcept {
-         using unsigned_type = std::make_unsigned_t<numeric_type>;
-
-         constexpr auto hex_base = 16;
-         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
-
-         assert(!hex_fmt.isEmpty());
-
-         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
-         assert(req_hex_size - hex_fmt.size() >= 0);
-         assert(hex_fmt.front() != '-');
-         
-         return QByteArray(req_hex_size - hex_fmt.size(),'0') + hex_fmt;
-}
-
-[[nodiscard]]
-inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
-         constexpr auto bits_in_byte = 8;
-         QBitArray bits(bytes.size() * bits_in_byte,false);
-
-         for(qsizetype byte_idx = 0;byte_idx < bytes.size();++byte_idx){
-
-                  for(qsizetype bit_idx = 0;bit_idx < bits_in_byte;++bit_idx){
-                           bits.setBit(byte_idx * bits_in_byte + bit_idx,bytes.at(byte_idx) & 1 << (bits_in_byte - 1 - bit_idx));
-                  }
-         }
-
-         return bits;
-}
-
-[[nodiscard]]
-inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
-         constexpr auto bits_in_byte = 8;
-         assert(bits.size() % bits_in_byte == 0);
-
-         QByteArray bytes(bits.size() / bits_in_byte,'\x00');
-
-         for(qsizetype bit_idx = 0;bit_idx < bits.size();++bit_idx){
-                  bytes[bit_idx / bits_in_byte] |= static_cast<char>(bits[bit_idx] << (bits_in_byte - 1 - bit_idx % bits_in_byte));
-         }
-
-         return bytes.toHex();
-}
-
 } // namespace conversion
 
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
@@ -152,11 +159,5 @@ void begin_settings_group(QSettings & settings) noexcept {
                   settings.beginGroup("torrent_downloads");
          }
 }
-
-struct Download_resources {
-         QString dl_path;
-         QList<QFile *> file_handles;
-         Download_tracker * tracker = nullptr;
-};
 
 } // namespace util

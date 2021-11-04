@@ -78,12 +78,19 @@ Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata tor
          });
 }
 
+void Download_tracker::setup_central_layout() noexcept {
+         central_layout_.setSpacing(15);
+         central_layout_.addLayout(&file_stat_layout_);
+         central_layout_.addWidget(&progress_bar_stack_);
+         central_layout_.addLayout(&network_stat_layout_);
+}
+
 void Download_tracker::setup_file_status_layout() noexcept {
          file_stat_layout_.addLayout(&package_name_layout_);
          file_stat_layout_.addLayout(&time_elapsed_layout_);
          file_stat_layout_.addWidget(&open_dir_button_);
 
-         if(dl_type_ == Download_Type::Torrent){ // todo: make it dynamic
+         if(dl_type_ == Download_Type::Torrent){
                   file_stat_layout_.addWidget(&properties_button_);
          }
 
@@ -186,8 +193,10 @@ void Download_tracker::set_state(const State state) noexcept {
 
          if(state_ == State::Download){
 
-                  if(pause_button_.isEnabled()){
+                  if(!restored_dl_paused_){
                            session_timer_.start();
+                  }else{
+                           state_button_stack_.setCurrentWidget(&resume_button_);
                   }
 
                   pause_button_.setEnabled(true);
@@ -244,11 +253,8 @@ void Download_tracker::write_settings() const noexcept {
 void Download_tracker::read_settings() noexcept {
          QSettings settings;
          begin_setting_groups(settings);
-
-         if(dl_type_ == Download_Type::Torrent && qvariant_cast<bool>(settings.value("download_paused",false))){
-                  state_button_stack_.setCurrentWidget(&resume_button_);
-         }
-
+         restored_dl_paused_ = dl_type_ == Download_Type::Torrent && qvariant_cast<bool>(settings.value("download_paused",false));
+         qDebug() << restored_dl_paused_;
          time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed",QTime(0,0,0)));
          time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
 }

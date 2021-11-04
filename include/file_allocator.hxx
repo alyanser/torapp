@@ -8,7 +8,7 @@ namespace bencode {
          struct Metadata;
 }
 
-class File_manager : public QObject {
+class File_allocator : public QObject {
          Q_OBJECT
 public:
          enum class File_Error {

@@ -54,7 +54,6 @@ void Udp_torrent_client::configure_default_connections() noexcept {
                   }
          });
 
-
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
@@ -120,7 +119,7 @@ QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          using util::conversion::convert_to_hex;
 
          auto connect_request = []{
-                  constexpr std::int64_t protocol_constant = 0x41727101980;
+                  constexpr auto protocol_constant = 0x41727101980;
                   return convert_to_hex(protocol_constant);
          }();
 
@@ -163,7 +162,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          announce_request += convert_to_hex(static_cast<std::int32_t>(event_));
 
          announce_request += []{
-                  constexpr std::int32_t default_ip_address = 0;
+                  constexpr auto default_ip_address = 0;
                   return convert_to_hex(default_ip_address);
          }();
 
@@ -173,7 +172,7 @@ QByteArray Udp_torrent_client::craft_announce_request(const std::int64_t tracker
          }();
 
          announce_request += []{
-                  constexpr std::int32_t default_num_want = -1;
+                  constexpr auto default_num_want = -1;
                   return convert_to_hex(default_num_want);
          }();
 
@@ -307,6 +306,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                            socket->send_initial_request(socket->announce_request,Udp_socket::State::Announce);
 
                            auto update_event_and_request = [this,socket = QPointer(socket),connection_id](const Event event){
+                                    assert(connection_id);
 
                                     if(event_ == event){
                                              return;
@@ -338,6 +338,15 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                                     update_event_and_request(Event::Completed);
                            });
 
+                           connect(&peer_client_,&Peer_wire_client::min_peer_threshold_reached,this,[this,socket = QPointer(socket),connection_id]{
+                                    assert(connection_id);
+                                    
+                                    if(socket){
+                                             qDebug() << "Sending packet to tracker because connected peer count is too low";
+                                             socket->send_request(craft_announce_request(*connection_id));
+                                    }
+                           });
+
                            break;
                   }
 
@@ -357,7 +366,6 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
                   case Action_Code::Scrape : {
 
                            if(const auto scrape_reply = extract_scrape_reply(reply,socket->txn_id)){
-                                    qDebug() << scrape_reply->completed_cnt << scrape_reply->leecher_cnt << scrape_reply->seed_cnt;
                                     emit swarm_metadata_received(*scrape_reply);
                            }else{
                                     qDebug() << "Invalid scrape reply";

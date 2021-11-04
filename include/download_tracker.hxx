@@ -127,6 +127,7 @@ private:
          std::chrono::seconds session_time_{};
          State state_ = State::Download;
          Download_Type dl_type_;
+         bool restored_dl_paused_ = false;
 };
 
 inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
@@ -143,13 +144,6 @@ inline void Download_tracker::set_ratio(const double ratio) noexcept {
          assert(dl_type_ == Download_Type::Torrent);
          assert(ratio >= 0);
          ratio_label_.setText(QString::number(ratio));
-}
-
-inline void Download_tracker::setup_central_layout() noexcept {
-         central_layout_.setSpacing(15);
-         central_layout_.addLayout(&file_stat_layout_);
-         central_layout_.addWidget(&progress_bar_stack_);
-         central_layout_.addLayout(&network_stat_layout_);
 }
 
 inline void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {
