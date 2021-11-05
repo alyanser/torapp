@@ -110,23 +110,13 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
 QByteArray Udp_torrent_client::craft_connect_request() noexcept {
          using util::conversion::convert_to_hex;
 
-         auto connect_request = []{
+         const static auto connect_request = []{
                   constexpr auto protocol_constant = 0x41727101980;
-                  return convert_to_hex(protocol_constant);
+                  return convert_to_hex(protocol_constant) + convert_to_hex(static_cast<std::int32_t>(Action_Code::Connect));
          }();
 
-         constexpr auto fin_connect_request_size = 32;
-         connect_request.reserve(fin_connect_request_size);
-
-         connect_request += convert_to_hex(static_cast<std::int32_t>(Action_Code::Connect));
-
-         connect_request += []{
-                  const auto txn_id = random_id_range(random_generator);
-                  return convert_to_hex(txn_id);
-         }();
-
-         assert(connect_request.size() == fin_connect_request_size);
-         return connect_request;
+         const auto txn_id = random_id_range(random_generator);
+         return connect_request + convert_to_hex(txn_id);
 }
 
 [[nodiscard]]

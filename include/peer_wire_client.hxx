@@ -202,24 +202,18 @@ QByteArray Peer_wire_client::craft_message(const std::int32_t piece_idx,const st
 
          using util::conversion::convert_to_hex;
 
-         auto msg = []{
+         const static auto msg = []{
                   constexpr auto packet_size = 13;
-                  return convert_to_hex(packet_size);
+                  return convert_to_hex(packet_size) + convert_to_hex(static_cast<std::int8_t>(msg_id));
          }();
 
-         constexpr auto fin_msg_size = 34;
-         msg.reserve(fin_msg_size);
-
-         msg += convert_to_hex(static_cast<std::int8_t>(msg_id));
-         msg += convert_to_hex(piece_idx);
-         msg += convert_to_hex(piece_offset);
+         auto resultant_msg = msg + convert_to_hex(piece_idx) + convert_to_hex(piece_offset);
 
          if constexpr (msg_id == Message_Id::Reject_Request){
-                  msg += convert_to_hex(byte_cnt);
+                  resultant_msg += convert_to_hex(byte_cnt);
          }else{
-                  msg += convert_to_hex(piece_info(piece_idx,piece_offset).block_size);
+                  resultant_msg += convert_to_hex(piece_info(piece_idx,piece_offset).block_size);
          }
 
-         assert(msg.size() == fin_msg_size);
-         return msg;
+         return resultant_msg;
 }

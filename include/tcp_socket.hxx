@@ -9,7 +9,7 @@
 class Tcp_socket : public QTcpSocket {
          Q_OBJECT
 public:
-         explicit Tcp_socket(QUrl peer_url,QObject * parent = nullptr);
+         explicit Tcp_socket(QUrl peer_url,std::int64_t uled_byte_threshold,QObject * parent = nullptr);
 
          bool is_good_ratio() const noexcept;
          std::int64_t downloaded_byte_count() const noexcept;
@@ -26,6 +26,7 @@ public:
          QByteArray peer_id;
          QSet<std::int32_t> peer_allowed_fast_set;
          QSet<std::int32_t> allowed_fast_set;
+         std::int64_t uled_byte_threshold_ = 0;
          bool handshake_done = false;
          bool am_choking = true;
          bool peer_choked = true;

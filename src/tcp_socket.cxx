@@ -2,8 +2,9 @@
 
 #include <QHostAddress>
 
-Tcp_socket::Tcp_socket(QUrl peer_url,QObject * const parent)
+Tcp_socket::Tcp_socket(QUrl peer_url,const std::int64_t uled_byte_threshold,QObject * const parent)
          : QTcpSocket(parent)
+         , uled_byte_threshold_(uled_byte_threshold)
          , peer_url_(std::move(peer_url))
 {
          configure_default_connections();
@@ -71,9 +72,8 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
 [[nodiscard]]
 bool Tcp_socket::is_good_ratio() const noexcept {
          constexpr auto min_ratio = 0.5;
-         constexpr auto uled_byte_threshold = 2097152;
          assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
-         return uled_byte_cnt_ <= uled_byte_threshold ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
+         return uled_byte_cnt_ <= uled_byte_threshold_ ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
 }
 
 void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
@@ -93,7 +93,6 @@ void Tcp_socket::configure_default_connections() noexcept {
          });
 
          disconnect_timer_.callOnTimeout(this,[this]{
-                  qDebug() << "connection timed out" << peer_id;
                   state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
          });
 }
