@@ -57,12 +57,16 @@ void Udp_torrent_client::configure_default_connections() noexcept {
 
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
 
+         if(socket->state() != Udp_socket::SocketState::ConnectedState){
+                  return;
+         }
+
+         assert(socket->bytesAvailable());
+
          auto is_valid_socket = [socket = QPointer(socket)]{
-                  return socket && socket->state() == Udp_socket::ConnectedState && socket->hasPendingDatagrams();
+                  return socket && socket->state() == Udp_socket::SocketState::ConnectedState && socket->hasPendingDatagrams();
          };
 
-         assert(is_valid_socket());
-         
          try {
                   communicate_with_tracker(socket);
          }catch(const std::exception & exception){

@@ -81,7 +81,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
          });
 
          refresh_timer_.callOnTimeout(this,[this]{
-                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) : 0);
+                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(session_uled_byte_cnt_) : 0);
                   send_requests();
          });
 }
@@ -211,7 +211,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
 
                   if(piece_idx < total_piece_cnt_){
                           
-                           if(bitfield_[piece_idx]){  // todo: let the user decide if only torapp-downloaded pieces should be verified
+                           // if(bitfield_[piece_idx]){  // todo: let the user decide if only torapp-downloaded pieces should be verified
                                     
                                     if(const auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
                                              emit piece_verified(piece_idx);
@@ -219,7 +219,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                              qDebug() << piece_idx << "was changed on the disk";
                                              bitfield_[piece_idx] = false;
                                     }
-                           }
+                           // }
 
                            QTimer::singleShot(0,this,[verify_piece_callback,piece_idx]{
                                     verify_piece_callback(verify_piece_callback,piece_idx + 1);
@@ -228,7 +228,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests
+                                    refresh_timer_.start(std::chrono::seconds(3));
                            }
 
                            emit existing_pieces_verified();
@@ -251,9 +251,11 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
          connect(tracker_,&Download_tracker::download_paused,socket,&Tcp_socket::disconnectFromHost);
 
          connect(socket,&Tcp_socket::readyRead,this,[this,socket]{
-                  assert(socket->state() == Tcp_socket::ConnectedState);
-                  assert(socket->bytesAvailable());
-                  on_socket_ready_read(socket);
+                  
+                  if(socket->state() == Tcp_socket::SocketState::ConnectedState){
+                           assert(socket->bytesAvailable());
+                           on_socket_ready_read(socket);
+                  }
          });
 
          connect(this,&Peer_wire_client::piece_verified,socket,[socket](const std::int32_t dled_piece_idx){

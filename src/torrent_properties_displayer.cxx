@@ -111,7 +111,7 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx,con
 
          auto * const file_dl_progress_bar = [&file_info_layout_ = file_info_layout_,file_idx]{
                   auto * const progress_bar_item = file_info_layout_.itemAt(static_cast<std::int32_t>(file_idx),QFormLayout::ItemRole::FieldRole);
-
+                  
                   assert(progress_bar_item);
                   assert(progress_bar_item->widget());
                   assert(progress_bar_item->widget()->layout());
@@ -137,7 +137,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 
          auto get_cell_label_text = [](const auto byte_cnt,const auto conversion_fmt){
                   const auto [converted_byte_cnt,suffix] = util::conversion::stringify_bytes(byte_cnt,conversion_fmt);
-                  return QString::number(converted_byte_cnt) + ' ' + suffix.data();
+                  return QString::number(converted_byte_cnt,'f',2) + ' ' + suffix.data();
          };
 
          auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{

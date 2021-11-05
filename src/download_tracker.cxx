@@ -120,16 +120,19 @@ void Download_tracker::setup_network_status_layout() noexcept {
          network_form_layout_.addRow("Download Speed",&dl_speed_label_);
          network_form_layout_.addRow("Downloaded",&dl_quantity_label_);
 
-         if(dl_type_ == Download_Type::Torrent){
+         network_stat_layout_.addWidget(&delete_button_);
+         
+         if(dl_type_ == Download_Type::Torrent){ // todo: also support download interruption for url type
+                  // ? make it dynamic
                   network_form_layout_.addRow("Uploaded",&ul_quantity_label_);
                   network_form_layout_.addRow("Session ratio",&ratio_label_);
-         }
-
-         network_stat_layout_.addWidget(&delete_button_);
-
-         if(dl_type_ == Download_Type::Torrent){ // todo: also support download interruption for url type
                   network_stat_layout_.addWidget(&state_button_stack_);
+                  state_button_stack_.addWidget(&pause_button_);
+                  state_button_stack_.addWidget(&resume_button_);
+                  pause_button_.setEnabled(false);
+                  resume_button_.setEnabled(false);
          }
+
 
          network_stat_layout_.addWidget(&initiate_button_stack_);
          network_stat_layout_.addWidget(&terminate_button_stack_);
@@ -140,12 +143,7 @@ void Download_tracker::setup_network_status_layout() noexcept {
          terminate_button_stack_.addWidget(&cancel_button_);
          terminate_button_stack_.addWidget(&finish_button_);
 
-         state_button_stack_.addWidget(&pause_button_);
-         state_button_stack_.addWidget(&resume_button_);
-
          delete_button_.setEnabled(false);
-         pause_button_.setEnabled(false);
-         resume_button_.setEnabled(false);
          open_button_.setEnabled(false);
 }
 
@@ -342,12 +340,14 @@ void Download_tracker::switch_to_finished_state(const Error error) noexcept {
          dl_speed_label_.setText("0 byte (s) / sec");
 
          if(error == Error::Null){
+                  finish_line_.setStyleSheet("background-color:lightgreen");
                   assert(initiate_button_stack_.currentWidget() == &open_button_);
                   assert(!delete_button_.isEnabled());
                   assert(!open_button_.isEnabled());
                   delete_button_.setEnabled(true);
                   open_button_.setEnabled(true);
          }else{
+                  finish_line_.setStyleSheet("background-color:tomato");
                   initiate_button_stack_.setCurrentWidget(&retry_button_);
          }
 

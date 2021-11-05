@@ -28,23 +28,6 @@ enum class Format {
          Memory
 };
 
-template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
-[[nodiscard]]
-QByteArray convert_to_hex(const numeric_type num) noexcept {
-         using unsigned_type = std::make_unsigned_t<numeric_type>;
-
-         constexpr auto hex_base = 16;
-         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
-
-         assert(!hex_fmt.isEmpty());
-
-         constexpr auto req_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
-         assert(req_hex_size - hex_fmt.size() >= 0);
-         assert(hex_fmt.front() != '-');
-         
-         return QByteArray(req_hex_size - hex_fmt.size(),'0') + hex_fmt;
-}
-
 [[nodiscard]]
 inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
          constexpr auto bits_in_byte = 8;
@@ -74,10 +57,27 @@ inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
          return bytes.toHex();
 }
 
+template<typename numeric_type,typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
+[[nodiscard]]
+QByteArray convert_to_hex(const numeric_type num) noexcept {
+         using unsigned_type = std::make_unsigned_t<numeric_type>;
+
+         constexpr auto hex_base = 16;
+         const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
+         assert(!hex_fmt.isEmpty());
+
+         constexpr auto fin_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
+         assert(fin_hex_size - hex_fmt.size() >= 0);
+         assert(hex_fmt.front() != '-');
+         
+         return QByteArray(fin_hex_size - hex_fmt.size(),'0') + hex_fmt;
+}
+
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Format conversion_fmt) noexcept {
-         constexpr auto kb_byte_cnt = 1000;
+         // peer wire protocol use 1000 instead of 1024
+         constexpr auto kb_byte_cnt = 1000; 
          constexpr auto mb_byte_cnt = kb_byte_cnt * 1000;
          constexpr auto gb_byte_cnt = mb_byte_cnt * 1000;
 
