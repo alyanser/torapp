@@ -11,6 +11,7 @@ Tcp_socket::Tcp_socket(QUrl peer_url,const std::int64_t uled_byte_threshold,QObj
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
          
          disconnect_timer_.setSingleShot(true);
+         request_timer_.setInterval(std::chrono::milliseconds(10));
 }
 
 [[nodiscard]]
@@ -94,5 +95,15 @@ void Tcp_socket::configure_default_connections() noexcept {
 
          disconnect_timer_.callOnTimeout(this,[this]{
                   state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
+         });
+
+         request_timer_.callOnTimeout(this,[this]{
+
+                  if(requests_.isEmpty()){
+                           request_timer_.stop();
+                  }else{
+                           send_packet(*requests_.begin());
+                           requests_.erase(requests_.begin());
+                  }
          });
 }

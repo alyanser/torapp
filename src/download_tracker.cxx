@@ -21,11 +21,31 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          setup_network_status_layout();
          setup_state_stack();
          configure_default_connections();
-         read_settings();
 
          session_timer_.setInterval(std::chrono::seconds(1));
-         dl_progress_bar_.setRange(0,100);
-         verify_progress_bar_.setRange(0,100);
+
+         pause_button_.setEnabled(false);
+         resume_button_.setEnabled(false);
+         delete_button_.setEnabled(false);
+         open_button_.setEnabled(false);
+
+         package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
+         package_name_label_.setFrameShape(QFrame::Shape::Panel);
+         package_name_label_.setAlignment(Qt::AlignCenter);
+
+         time_elapsed_label_.setFrameShadow(QFrame::Shadow::Raised);
+         time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
+         time_elapsed_label_.setAlignment(Qt::AlignCenter);
+
+         dl_progress_bar_.setTextVisible(true);
+         dl_progress_bar_.setValue(0);
+         dl_progress_bar_.setRange(0,0);
+
+         verify_progress_bar_.setTextVisible(true);
+
+         finish_line_.setAlignment(Qt::AlignCenter);
+
+         read_settings();
 
          auto open_url = [this](const QString & path){
 
@@ -103,14 +123,6 @@ void Download_tracker::setup_file_status_layout() noexcept {
          time_elapsed_layout_.addWidget(&time_elapsed_buddy_);
          time_elapsed_layout_.addWidget(&time_elapsed_label_);
          time_elapsed_buddy_.setBuddy(&time_elapsed_label_);
-
-         package_name_label_.setFrameShadow(QFrame::Shadow::Raised);
-         package_name_label_.setFrameShape(QFrame::Shape::Panel);
-         package_name_label_.setAlignment(Qt::AlignCenter);
-
-         time_elapsed_label_.setFrameShadow(QFrame::Shadow::Raised);
-         time_elapsed_label_.setFrameShape(QFrame::Shape::Panel);
-         time_elapsed_label_.setAlignment(Qt::AlignCenter);
 }
 
 void Download_tracker::setup_network_status_layout() noexcept {
@@ -131,8 +143,6 @@ void Download_tracker::setup_network_status_layout() noexcept {
                   network_stat_layout_.addWidget(&state_button_stack_);
                   state_button_stack_.addWidget(&pause_button_);
                   state_button_stack_.addWidget(&resume_button_);
-                  pause_button_.setEnabled(false);
-                  resume_button_.setEnabled(false);
          }
 
          network_stat_layout_.addWidget(&initiate_button_stack_);
@@ -143,9 +153,6 @@ void Download_tracker::setup_network_status_layout() noexcept {
 
          terminate_button_stack_.addWidget(&cancel_button_);
          terminate_button_stack_.addWidget(&finish_button_);
-
-         delete_button_.setEnabled(false);
-         open_button_.setEnabled(false);
 }
 
 void Download_tracker::set_error_and_finish(const Error error) noexcept {
@@ -217,20 +224,10 @@ void Download_tracker::setup_state_stack() noexcept {
          progress_bar_stack_.addWidget(&dl_progress_bar_);
          progress_bar_stack_.addWidget(&verify_progress_bar_);
          progress_bar_stack_.addWidget(&finish_line_);
-
-         dl_progress_bar_.setTextVisible(true);
-         dl_progress_bar_.setValue(0);
-         dl_progress_bar_.setRange(0,0);
-
-         verify_progress_bar_.setValue(0);
-         verify_progress_bar_.setRange(0,0);
-
-         assert(finish_line_.text().isEmpty());
-         finish_line_.setAlignment(Qt::AlignCenter);
          assert(progress_bar_stack_.currentWidget() == &dl_progress_bar_);
 }
 
-void Download_tracker::verification_progress_update(std::int32_t verified_asset_cnt,std::int32_t total_asset_cnt) noexcept {
+void Download_tracker::verification_progress_update(const std::int32_t verified_asset_cnt,const std::int32_t total_asset_cnt) noexcept {
          assert(total_asset_cnt);
          assert(state_ == State::Verification);
          verify_progress_bar_.setValue(verified_asset_cnt);

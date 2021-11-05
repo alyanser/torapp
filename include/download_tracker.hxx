@@ -105,7 +105,7 @@ private:
          QLabel time_elapsed_buddy_{"Time elapsed"};
          QLabel time_elapsed_label_{time_elapsed_.toString() + time_elapsed_fmt.data()};
          QLabel dl_speed_label_{"0 byte (s) / sec"};
-         QLabel ratio_label_{"0.0"};
+         QLabel ratio_label_{"0.00"};
          QPushButton finish_button_{"Finish"};
          QPushButton cancel_button_{"Cancel"};
          QPushButton open_button_{"Open"};
@@ -153,5 +153,6 @@ inline void Download_tracker::begin_setting_groups(QSettings & settings) const n
 inline void Download_tracker::on_verification_completed() noexcept {
          assert(dl_type_ == Download_Type::Torrent);
          assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
-         pause_button_.setEnabled(dled_byte_cnt_ != total_byte_cnt_);
+         qDebug() << pause_button_.isEnabled() << dled_byte_cnt_ << total_byte_cnt_;
+         pause_button_.setEnabled(!total_byte_cnt_ || dled_byte_cnt_ != total_byte_cnt_);
 }
