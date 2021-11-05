@@ -81,7 +81,8 @@ void Peer_wire_client::configure_default_connections() noexcept {
          });
 
          refresh_timer_.callOnTimeout(this,[this]{
-                  tracker_->set_ratio(uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(session_uled_byte_cnt_) : 0);
+                  assert(session_uled_byte_cnt_ >= 0 && session_dled_byte_cnt_ >= 0);
+                  tracker_->set_ratio(session_uled_byte_cnt_ ? static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(session_uled_byte_cnt_) : 0);
                   send_requests();
          });
 }
@@ -211,7 +212,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
 
                   if(piece_idx < total_piece_cnt_){
                           
-                           // if(bitfield_[piece_idx]){  // todo: let the user decide if only torapp-downloaded pieces should be verified
+                           if(bitfield_[piece_idx]){  // todo: let the user decide if only torapp-downloaded pieces should be verified
                                     
                                     if(const auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
                                              emit piece_verified(piece_idx);
@@ -219,8 +220,8 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                                              qDebug() << piece_idx << "was changed on the disk";
                                              bitfield_[piece_idx] = false;
                                     }
-                           // }
-
+                           }
+                           
                            QTimer::singleShot(0,this,[verify_piece_callback,piece_idx]{
                                     verify_piece_callback(verify_piece_callback,piece_idx + 1);
                            });
@@ -491,8 +492,8 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   received_blocks.resize(total_block_cnt);
          }
 
-         constexpr auto max_duplicate_requests = 10;
-         const auto max_request_cnt = piece_info(piece_idx).block_cnt; // ? consider validity
+         constexpr auto max_duplicate_requests = 5;
+         const auto max_request_cnt = piece_info(piece_idx).block_cnt;
 
          for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){
                   assert(requested_blocks[block_idx] <= max_duplicate_requests);
@@ -534,10 +535,13 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                                     return;
                            }
 
-                           const auto [rejected_piece_idx,rejected_offset,rejected_byte_cnt] = request_metadata;
-                           const auto block_size = piece_info(rejected_piece_idx,rejected_offset).block_size;
+                           auto is_this_request_rejected = [this,piece_idx,block_idx,request_metadata]{
+                                    const auto [rejected_piece_idx,rejected_offset,rejected_byte_cnt] = request_metadata;
+                                    const auto block_size = piece_info(rejected_piece_idx,rejected_offset).block_size;
+                                    return piece_idx == rejected_piece_idx && rejected_byte_cnt == block_size && rejected_offset / max_block_size == block_idx;
+                           };
 
-                           if(piece_idx == rejected_piece_idx && rejected_byte_cnt == block_size && rejected_offset / max_block_size == block_idx){
+                           if(is_this_request_rejected()){
                                     assert(requested_blocks[block_idx] > 0);
                                     --requested_blocks[block_idx];
                                     decremented = true;
@@ -1063,12 +1067,12 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket,con
          properties_displayer_.add_peer(socket);
 
          connect(this,&Peer_wire_client::send_requests,socket,[this,socket]{
-                  assert(socket->state() == Tcp_socket::ConnectedState);
 
-                  if(socket->peer_bitfield.isEmpty()){
+                  if(socket->state() != Tcp_socket::SocketState::ConnectedState || socket->peer_bitfield.isEmpty()){
                            return;
                   }
 
+                  assert(!bitfield_.isEmpty());
                   assert(socket->peer_bitfield.size() == bitfield_.size());
 
                   if(!remaining_byte_count()){

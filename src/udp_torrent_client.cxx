@@ -1,7 +1,6 @@
 #include "udp_torrent_client.hxx"
 #include "peer_wire_client.hxx"
 #include "download_tracker.hxx"
-#include "magnet_uri_parser.hxx"
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
@@ -56,11 +55,7 @@ void Udp_torrent_client::configure_default_connections() noexcept {
 }
 
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
-
-         if(socket->state() != Udp_socket::SocketState::ConnectedState){
-                  return;
-         }
-
+         assert(socket->state() == Udp_socket::SocketState::ConnectedState);
          assert(socket->bytesAvailable());
 
          auto is_valid_socket = [socket = QPointer(socket)]{
@@ -100,7 +95,10 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
 
          connect(socket,&Udp_socket::readyRead,this,[this,socket]{
-                  on_socket_ready_read(socket);
+
+                  if(socket->state() == Udp_socket::SocketState::ConnectedState){
+                           on_socket_ready_read(socket);
+                  }
          });
 
          QTimer::singleShot(0,this,[this,tracker_url_idx]{

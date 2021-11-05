@@ -58,35 +58,3 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
          Qt6::Network
          Qt6::Widgets
 )
-
-target_precompile_headers(${PROJECT_NAME} PRIVATE 
-         [["QApplication"]]
-         [["QMainWindow"]]
-         [["QWidget"]]
-         [["QNetworkAccessManager"]]
-         [["QDebug"]]
-         [["QString"]]
-         [["QObject"]]
-         [["QGridLayout"]]
-         [["QHBoxLayout"]]
-         [["QVBoxLayout"]]
-         [["QAbstractSocket"]]
-         [["QTableWidget"]]
-         [["QFrame"]]
-         [["QUdpSocket"]]
-         [["QTimer"]]
-         [["QTime"]]
-         [["QByteArray"]]
-         [["QBitArray"]]
-         [["QAbstractSocket"]]
-         [["QTcpSocket"]]
-         [["QUdpSocket"]]
-         [["QPointer"]]
-         [["QFile"]]
-         [["QSettings"]]
-         [["QFileInfo"]]
-         [["QCryptographicHash"]]
-         [["QMessageBox"]]
-         [["QList"]]
-         [["bencode_parser.hxx"]]
-)

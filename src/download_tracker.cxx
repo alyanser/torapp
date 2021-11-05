@@ -10,7 +10,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          , dl_path_(dl_path)
          , dl_type_(dl_type)
 {
-         setFixedHeight(230);
+         setFixedHeight(205);
          setLineWidth(3);
 
          setFrameShadow(QFrame::Shadow::Sunken);
@@ -24,6 +24,8 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          read_settings();
 
          session_timer_.setInterval(std::chrono::seconds(1));
+         dl_progress_bar_.setRange(0,100);
+         verify_progress_bar_.setRange(0,100);
 
          auto open_url = [this](const QString & path){
 
@@ -113,7 +115,7 @@ void Download_tracker::setup_file_status_layout() noexcept {
 
 void Download_tracker::setup_network_status_layout() noexcept {
          network_form_layout_.setFormAlignment(Qt::AlignCenter);
-         network_form_layout_.setSpacing(15);
+         network_form_layout_.setSpacing(10);
 
          network_stat_layout_.addLayout(&network_form_layout_);
 
@@ -132,7 +134,6 @@ void Download_tracker::setup_network_status_layout() noexcept {
                   pause_button_.setEnabled(false);
                   resume_button_.setEnabled(false);
          }
-
 
          network_stat_layout_.addWidget(&initiate_button_stack_);
          network_stat_layout_.addWidget(&terminate_button_stack_);
@@ -160,7 +161,6 @@ void Download_tracker::set_error_and_finish(const QString & error_desc) noexcept
 
 void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
          assert(received_byte_cnt >= 0);
-         assert(!dl_progress_bar_.minimum());
 
          {
                   const auto newly_dled_byte_cnt = received_byte_cnt - dled_byte_cnt_;
@@ -175,9 +175,12 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
          if(constexpr auto unknown_byte_cnt = -1;total_byte_cnt == unknown_byte_cnt){
                   dl_progress_bar_.setRange(0,0); // sets in pending state
          }else{
-                  // ! consider overflow
-                  dl_progress_bar_.setValue(static_cast<std::int32_t>(received_byte_cnt));
-                  dl_progress_bar_.setMaximum(static_cast<std::int32_t>(total_byte_cnt));
+                  constexpr auto progress_bar_max = 100;
+                  dl_progress_bar_.setRange(0,progress_bar_max);
+                  assert(received_byte_cnt <= total_byte_cnt);
+                  const auto progress_bar_val = static_cast<double>(received_byte_cnt) / static_cast<double>(total_byte_cnt) * progress_bar_max;
+                  assert(progress_bar_val >= 0 && progress_bar_val <= 100);
+                  dl_progress_bar_.setValue(static_cast<std::int32_t>(progress_bar_val));
          }
 
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
@@ -189,13 +192,8 @@ void Download_tracker::set_state(const State state) noexcept {
          state_ = state;
 
          if(state_ == State::Download){
-
-                  if(!restored_dl_paused_){
-                           session_timer_.start();
-                  }else{
-                           state_button_stack_.setCurrentWidget(&resume_button_);
-                  }
-
+                  restored_dl_paused_ ? state_button_stack_.setCurrentWidget(&resume_button_) : session_timer_.start();
+                  
                   pause_button_.setEnabled(true);
                   resume_button_.setEnabled(true);
 
@@ -327,6 +325,7 @@ void Download_tracker::configure_default_connections() noexcept {
                   time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
                   ++session_time_;
                   update_download_speed();
+                  write_settings();
          });
 }
 
