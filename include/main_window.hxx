@@ -126,13 +126,7 @@ void Main_window::restore_downloads() noexcept {
 
          const auto child_groups = settings.childGroups();
 
-         auto display_modified_error = [this]{
-                  constexpr std::string_view error_title("Settings modified");
-                  constexpr std::string_view error_body("Torapp config file was modified. Some downloads could not be recovered :(");
-                  QMessageBox::critical(this,error_title.data(),error_body.data());
-         };
-
-         std::for_each(child_groups.cbegin(),child_groups.cend(),[this,&settings,display_modified_error](const auto & dl_group){
+         std::for_each(child_groups.cbegin(),child_groups.cend(),[this,&settings](const auto & dl_group){
                   settings.beginGroup(dl_group);
 
                   constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
@@ -149,13 +143,13 @@ void Main_window::restore_downloads() noexcept {
                   auto path = qvariant_cast<QString>(settings.value("path"));
 
                   if(dl_metadata.isEmpty() || path.isEmpty()){
-                           return display_modified_error();
+                           return;
                   }
 
-                  QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata),display_modified_error]{
+                  QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata)]{
 
                            if constexpr (is_url_download){
-                                    dl_metadata.isValid() ? initiate_download(path,dl_metadata) : display_modified_error();
+                                    dl_metadata.isValid() ? initiate_download(path,dl_metadata) : remove_download_from_settings<QUrl>(path);
                            }else{
                                     const auto torrent_metadata = [&path,&dl_metadata]() -> std::optional<bencode::Metadata> {
                                              const auto compl_file_content = dl_metadata.toStdString();
@@ -168,7 +162,7 @@ void Main_window::restore_downloads() noexcept {
                                              }
                                     }();
 
-                                    torrent_metadata ? initiate_download(path,*torrent_metadata) : display_modified_error();
+                                    torrent_metadata ? initiate_download(path,*torrent_metadata) : remove_download_from_settings<bencode::Metadata>(path);
                            }
                   });
 

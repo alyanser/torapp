@@ -184,7 +184,6 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
 
          const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt,total_byte_cnt);
          dl_quantity_label_.setText(text_fmt);
-
          dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt,total_byte_cnt)));
 }
 
@@ -214,8 +213,8 @@ void Download_tracker::update_download_speed() noexcept {
          assert(session_time_.count() >= 0);
          assert(session_dled_byte_cnt_ >= 0);
          const auto speed = session_time_.count() ? session_dled_byte_cnt_ / session_time_.count() : 0;
-         const auto [converted_speed,speed_postfix] = stringify_bytes(static_cast<double>(speed),util::conversion::Format::Speed);
-         dl_speed_label_.setText(QString("%1 %2").arg(converted_speed).arg(speed_postfix.data()));
+         const auto [converted_speed,speed_postfix] = stringify_bytes(speed,util::conversion::Format::Speed);
+         dl_speed_label_.setText(QString::number(converted_speed,'f',0) + ' ' + speed_postfix.data());
 }
 
 void Download_tracker::setup_state_stack() noexcept {

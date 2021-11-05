@@ -110,17 +110,15 @@ QString stringify_bytes(const byte_type received_byte_cnt,const byte_type total_
 
          const auto [converted_received_byte_cnt,received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt),Format::Memory);
 
-         auto converted_str = QString("%1 %2 / %3 %4").arg(converted_received_byte_cnt).arg(received_bytes_postfix.data());
-         converted_str = converted_str.arg(total_bytes_postfix == "inf" ? "" : QString::number(converted_total_byte_cnt)).arg(total_bytes_postfix.data());
-         
-         return converted_str;
+         return QString::number(converted_received_byte_cnt,'f',2) + ' ' + received_bytes_postfix.data() + " / " + 
+                  (total_bytes_postfix == "inf" ? "inf" : QString::number(converted_total_byte_cnt,'f',2) + ' ' + total_bytes_postfix.data());
 }
 
 template<typename numeric_type_x,typename numeric_type_y,typename = std::enable_if_t<std::is_arithmetic_v<std::common_type_t<numeric_type_x,numeric_type_y>>>>
 [[nodiscard]]
 QString convert_to_percent_format(const numeric_type_x dividend,const numeric_type_y divisor) noexcept {
          assert(divisor);
-         return QString::number(static_cast<std::int64_t>(static_cast<double>(dividend) / static_cast<double>(divisor) * 100)) + " %";
+         return QString::number(static_cast<double>(dividend) / static_cast<double>(divisor) * 100,'f',0) + " %";
 }
 
 } // namespace conversion

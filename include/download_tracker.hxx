@@ -132,14 +132,14 @@ private:
          bool restored_dl_paused_ = false;
 };
 
-inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
-         assert(dl_type_ == Download_Type::Torrent);
-         const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
-         ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
-}
-
 inline Download_tracker::~Download_tracker(){
          write_settings();
+}
+
+inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         const auto [converted_ul_byte_cnt,ul_byte_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
+         ul_quantity_label_.setText(QString::number(converted_ul_byte_cnt,'f',2) + ' ' + ul_byte_postfix.data());
 }
 
 inline void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
@@ -149,7 +149,7 @@ inline void Download_tracker::set_restored_byte_count(const std::int64_t restore
 inline void Download_tracker::set_ratio(const double ratio) noexcept {
          assert(dl_type_ == Download_Type::Torrent);
          assert(ratio >= 0);
-         ratio_label_.setText(QString::number(ratio));
+         ratio_label_.setText(QString::number(ratio,'f',2));
 }
 
 inline void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {

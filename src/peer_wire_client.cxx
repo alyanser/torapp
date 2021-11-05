@@ -19,12 +19,11 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata & torrent_metadata,util::Do
          , total_byte_cnt_(torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size)
          , torrent_piece_size_(torrent_metadata.piece_length)
          , total_piece_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(total_byte_cnt_) / static_cast<double>(torrent_piece_size_))))
-         , spare_bit_cnt_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0)
+         , spare_piece_cnt_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0)
          , average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(torrent_piece_size_) / max_block_size)))
-         , peer_additive_bitfield_(total_piece_cnt_ + spare_bit_cnt_,0)
+         , peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_,0)
          , pieces_(total_piece_cnt_)
 {
-         qDebug() << total_byte_cnt_;
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
@@ -61,7 +60,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
                   });
          });
 
-         connect(tracker_,&Download_tracker::delete_files_permanently,this,[&file_handles_ = file_handles_](){
+         connect(tracker_,&Download_tracker::delete_files_permanently,this,[&file_handles_ = file_handles_]{
 
                   std::for_each(file_handles_.cbegin(),file_handles_.cend(),[](const auto file_info){
                            file_info.first->remove();
@@ -229,7 +228,7 @@ void Peer_wire_client::verify_existing_pieces() noexcept {
                            if(remaining_byte_count()){
                                     assert(dled_piece_cnt_ >= 0 && dled_piece_cnt_ < total_piece_cnt_);
                                     tracker_->set_state(Download_tracker::State::Download);
-                                    refresh_timer_.start(std::chrono::seconds(2)); // ! hacky: times requests
+                                    refresh_timer_.start(std::chrono::seconds(3)); // ! hacky: times requests
                            }
 
                            emit existing_pieces_verified();
@@ -577,32 +576,33 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const
          };
 
          if(!pieces_[requested_piece_idx].data.isEmpty()){
-                  qDebug() << "Sending piece from the buffer";
+                  qDebug() << "Sending piece" << requested_piece_idx << "from the buffer";
                   assert(verify_piece_hash(pieces_[requested_piece_idx].data,requested_piece_idx));
                   return send_piece(pieces_[requested_piece_idx].data);
          }
 
          socket->send_packet(keep_alive_msg.data());
 
-         QTimer::singleShot(0,this,[this,socket = QPointer(socket),send_piece,send_reject_message,piece_idx = requested_piece_idx]{
-                  assert(bitfield_[piece_idx]);
+         QTimer::singleShot(0,this,[this,socket = QPointer(socket),send_piece,send_reject_message,requested_piece_idx = requested_piece_idx]{
+                  assert(bitfield_[requested_piece_idx]);
 
                   if(!socket || socket->state() != Tcp_socket::SocketState::ConnectedState){
                            return;
                   }
 
-                  if(!pieces_[piece_idx].data.isEmpty()){
-                           return send_piece(pieces_[piece_idx].data);
+                  if(!pieces_[requested_piece_idx].data.isEmpty()){
+                           qDebug() << "Sending piece" << requested_piece_idx << "from the buffer";
+                           return send_piece(pieces_[requested_piece_idx].data);
                   }
 
-                  if(auto piece = read_from_disk(piece_idx);piece && verify_piece_hash(*piece,piece_idx)){
-                           pieces_[piece_idx].data = std::move(*piece);
-                           send_piece(pieces_[piece_idx].data);
+                  if(auto piece = read_from_disk(requested_piece_idx);piece && verify_piece_hash(*piece,requested_piece_idx)){
+                           pieces_[requested_piece_idx].data = std::move(*piece);
+                           send_piece(pieces_[requested_piece_idx].data);
 
                            constexpr std::chrono::seconds piece_cleanup_timeout(15);
 
-                           QTimer::singleShot(piece_cleanup_timeout,this,[this,piece_idx]{
-                                    clear_piece(piece_idx);
+                           QTimer::singleShot(piece_cleanup_timeout,this,[this,requested_piece_idx]{
+                                    clear_piece(requested_piece_idx);
                            });
                   }else{
                            send_reject_message();
@@ -811,7 +811,7 @@ void Peer_wire_client::read_settings() noexcept {
          bitfield_ = qvariant_cast<QBitArray>(settings.value("bitfield"));
 
          if(bitfield_.isEmpty()){
-                  bitfield_.resize(total_piece_cnt_ + spare_bit_cnt_);
+                  bitfield_.resize(total_piece_cnt_ + spare_piece_cnt_);
          }
 
          uled_byte_cnt_ = qvariant_cast<std::int64_t>(settings.value("uploaded_byte_count"));
@@ -917,7 +917,7 @@ void Peer_wire_client::on_piece_downloaded(Piece & dled_piece,const std::int32_t
          }
 }
 
-void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteArray & reply) noexcept {
+void Peer_wire_client::on_block_received(Tcp_socket * const socket,const QByteArray & reply) noexcept {
 
          const auto received_piece_idx = [&reply]{
                   constexpr auto msg_begin_offset = 1;
@@ -968,18 +968,18 @@ void Peer_wire_client::on_block_received(Tcp_socket * const  socket,const QByteA
          assert(received_block_idx >= 0 && received_block_idx < total_block_cnt);
          received_blocks[received_block_idx] = true;
 
-         ++received_block_cnt;
-         assert(received_block_cnt <= total_block_cnt);
 
          assert(received_offset + received_block.size() <= piece_data.size());
-         std::copy(received_block.begin(),received_block.end(),piece_data.begin() + received_offset);
+         std::move(received_block.begin(),received_block.end(),piece_data.begin() + received_offset);
 
-         if(received_block_cnt == total_block_cnt){
+         if(++received_block_cnt == total_block_cnt){
 
                   QTimer::singleShot(0,this,[this,received_piece_idx]{
                            on_piece_downloaded(pieces_[received_piece_idx],received_piece_idx);
                   });
          }
+
+         assert(received_block_cnt <= total_block_cnt);
 }
 
 void Peer_wire_client::on_allowed_fast_received(Tcp_socket * const socket,const std::int32_t allowed_piece_idx) noexcept {
@@ -1010,7 +1010,7 @@ void Peer_wire_client::on_suggest_piece_received(Tcp_socket * const socket,const
                   qDebug() << "peer sent invalid suggest msg" << suggested_piece_idx;
                   return socket->on_peer_fault();
          }
-
+         
          if(!bitfield_[suggested_piece_idx]){
                   send_block_requests(socket,suggested_piece_idx);
          }
@@ -1195,15 +1195,16 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
                   case Message_Id::Interested : {
 
-                           if(!socket->peer_interested){
-                                    socket->peer_interested = true;
-
-                                    if(socket->am_choking && socket->is_good_ratio()){
-                                             socket->am_choking = false;
-                                             socket->send_packet(unchoke_msg.data());
-                                    }
-                           }else{
+                           if(socket->peer_interested){
                                     socket->on_peer_fault();
+                                    break;
+                           }
+                           
+                           socket->peer_interested = true;
+
+                           if(socket->am_choking && socket->is_good_ratio()){
+                                    socket->am_choking = false;
+                                    socket->send_packet(unchoke_msg.data());
                            }
 
                            break;
@@ -1230,12 +1231,12 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                            
                            if(!socket->peer_bitfield.isEmpty()){
                                     socket->on_peer_fault();
-                           }else{
-                                    socket->peer_bitfield = util::conversion::convert_to_bits(reply->sliced(msg_begin_offset,reply->size() - 1));
-                                    assert(socket->peer_bitfield.size() == bitfield_.size());
-                                    on_bitfield_received(socket);
+                                    break;
                            }
 
+                           socket->peer_bitfield = util::conversion::convert_to_bits(reply->sliced(msg_begin_offset,reply->size() - 1));
+                           assert(socket->peer_bitfield.size() == bitfield_.size());
+                           on_bitfield_received(socket);
                            break;
                   }
 
@@ -1259,12 +1260,18 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
                            if(!socket->peer_bitfield.isEmpty()){
                                     socket->on_peer_fault();
-                           }else{
-                                    socket->peer_bitfield = QBitArray(bitfield_.size());
-                                    socket->peer_bitfield.fill(true,0,socket->peer_bitfield.size() - spare_bit_cnt_);
-                                    on_bitfield_received(socket);
+                                    break;
                            }
 
+                           assert(total_piece_cnt_ + spare_piece_cnt_ == bitfield_.size());
+                           socket->peer_bitfield = QBitArray(bitfield_.size(),true);
+
+                           if(spare_piece_cnt_){
+                                    assert(total_piece_cnt_ < socket->peer_bitfield.size());
+                                    socket->peer_bitfield.fill(false,total_piece_cnt_,socket->peer_bitfield.size());
+                           }
+
+                           on_bitfield_received(socket);
                            break;
                   }
 

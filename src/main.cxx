@@ -10,8 +10,8 @@ int main(int argc,char ** argv){
          QApplication::setApplicationName("torapp");
          QApplication::setWindowIcon(QIcon(":app_icon.png"));
 
-         if(QFile stylesheet_file(":app_stylesheet.qss");stylesheet_file.open(QFile::ReadOnly)){
-                  torapp.setStyleSheet(stylesheet_file.readAll());
+         if(QFile stylesheet(":app_stylesheet.qss");stylesheet.open(QFile::ReadOnly)){
+                  torapp.setStyleSheet(stylesheet.readAll());
          }
 
          Main_window main_window;
