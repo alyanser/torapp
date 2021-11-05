@@ -11,7 +11,7 @@ Tcp_socket::Tcp_socket(QUrl peer_url,const std::int64_t uled_byte_threshold,QObj
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
          
          disconnect_timer_.setSingleShot(true);
-         request_timer_.setInterval(std::chrono::milliseconds(10));
+         request_timer_.setInterval(std::chrono::milliseconds(500));
 }
 
 [[nodiscard]]
@@ -99,11 +99,13 @@ void Tcp_socket::configure_default_connections() noexcept {
 
          request_timer_.callOnTimeout(this,[this]{
 
-                  if(requests_.isEmpty()){
+                  if(pending_requests_.isEmpty()){
                            request_timer_.stop();
                   }else{
-                           send_packet(*requests_.begin());
-                           requests_.erase(requests_.begin());
+                           const auto & [request_metadata,packet] = *pending_requests_.constKeyValueBegin();
+                           send_packet(packet);
+                           sent_requests_.insert(request_metadata);
+                           pending_requests_.erase(pending_requests_.constBegin());
                   }
          });
 }

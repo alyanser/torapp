@@ -14,8 +14,6 @@ class Tcp_socket;
 
 class Peer_wire_client : public QObject {
          Q_OBJECT
-         
-         struct Packet_metadata;
 public:
          enum class Message_Id {
                   Choke,
@@ -56,9 +54,9 @@ signals:
          void existing_pieces_verified() const;
          void download_finished() const;
          void send_requests() const;
-         void request_rejected(Packet_metadata request_metadata) const;
+         void request_rejected(util::Packet_metadata request_metadata) const;
          void min_peer_threshold_reached() const;
-         void valid_block_received(Packet_metadata) const;
+         void valid_block_received(util::Packet_metadata packet_metadata) const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;
@@ -73,19 +71,13 @@ private:
                   std::int32_t block_cnt = 0;
          };
 
-         struct Packet_metadata {
-                  std::int32_t piece_idx = 0;
-                  std::int32_t piece_offset = 0;
-                  std::int32_t byte_cnt = 0;
-         };
-
          struct File_info {
                   QFile * file_handle;
                   std::int64_t dled_byte_cnt;
          };
 
          template<Message_Id message_id>
-         static QByteArray craft_message(Packet_metadata packet_metadata) noexcept;
+         static QByteArray craft_message(util::Packet_metadata packet_metadata) noexcept;
          
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
@@ -110,7 +102,7 @@ private:
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
-         static Packet_metadata extract_piece_metadata(const QByteArray & reply);
+         static util::Packet_metadata extract_packet_metadata(const QByteArray & reply);
          void communicate_with_peer(Tcp_socket * socket);
          Piece_metadata piece_info(std::int32_t piece_idx,std::int32_t piece_offset = 0) const noexcept;
          qsizetype file_size(qsizetype file_idx) const noexcept;
@@ -197,7 +189,7 @@ inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noe
 
 template<Peer_wire_client::Message_Id msg_id>
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_message(const Packet_metadata packet_metadata) noexcept {
+QByteArray Peer_wire_client::craft_message(const util::Packet_metadata packet_metadata) noexcept {
          static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,
                   "Only valid for Message_Id::[Reject_Request,Cancel,Request]");
 

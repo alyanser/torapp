@@ -1,8 +1,9 @@
 #pragma once
 
 #include <QBigEndianStorageType>
-#include <QBitArray>
+#include <QHashFunctions>
 #include <QSettings>
+#include <QBitArray>
 #include <QString>
 #include <QList>
 
@@ -20,6 +21,24 @@ struct Download_resources {
          QList<QFile *> file_handles;
          Download_tracker * tracker = nullptr;
 };
+
+struct Packet_metadata {
+         constexpr bool operator == (const Packet_metadata rhs) const noexcept;
+         
+         std::int32_t piece_idx = 0;
+         std::int32_t piece_offset = 0;
+         std::int32_t byte_cnt = 0;
+};
+
+[[nodiscard]]
+constexpr bool Packet_metadata::operator == (const util::Packet_metadata rhs) const noexcept {
+         return byte_cnt == rhs.byte_cnt && piece_idx == rhs.piece_idx && piece_offset == rhs.piece_offset;
+}
+
+[[nodiscard]]
+constexpr std::size_t qHash(const Packet_metadata packet_metadata,const std::size_t seed = 0) noexcept {
+         return ::qHashMulti(seed,1,2,3,packet_metadata.byte_cnt,packet_metadata.piece_idx,packet_metadata.piece_offset);
+}
 
 namespace conversion {
 
