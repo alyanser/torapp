@@ -20,7 +20,7 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
 
                   auto restored_dl_paused = [&dl_path]{
                            QSettings settings;
-                           util::begin_settings_group<decltype(torrent_metadata)>(settings);
+                           util::begin_setting_group<decltype(torrent_metadata)>(settings);
                            settings.beginGroup(dl_path.replace('/','\x20'));
                            return qvariant_cast<bool>(settings.value("download_paused",false));
                   }();
@@ -34,13 +34,11 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
                   }
          });
          
-         {
-                  assert(!torrent_metadata_.announce_url.empty());
-                  auto & tracker_urls = torrent_metadata_.announce_url_list;
+         assert(!torrent_metadata_.announce_url.empty());
+         auto & tracker_urls = torrent_metadata_.announce_url_list;
 
-                  if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
-                           tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
-                  }
+         if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
+                  tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
          }
 }
 
@@ -57,61 +55,53 @@ void Udp_torrent_client::configure_default_connections() noexcept {
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
 }
 
-void Udp_torrent_client::send_connect_request() noexcept {
+void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
 
+         auto is_valid_socket = [socket = QPointer(socket)]{
+                  return socket && socket->state() == Udp_socket::ConnectedState && socket->hasPendingDatagrams();
+         };
+
+         assert(is_valid_socket());
+         
+         try {
+                  communicate_with_tracker(socket);
+         }catch(const std::exception & exception){
+                  qDebug() << exception.what();
+                  return socket->abort();
+         }
+
+         if(is_valid_socket()){
+
+                  QTimer::singleShot(0,this,[this,socket,is_valid_socket]{
+
+                           if(is_valid_socket()){
+                                    communicate_with_tracker(socket);
+                           }
+                  });
+         }
+}
+
+void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) noexcept {
+         assert(tracker_url_idx >= 0 && tracker_url_idx <= static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
+
+         if(tracker_url_idx == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
+                  return;
+         }
+         
          if(!connect_requests_sent_){
                   connect_requests_sent_ = true;
          }
 
-         assert(!torrent_metadata_.announce_url_list.empty());
-         assert(tracker_url_idx_ <= static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
-
-         if(tracker_url_idx_ == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
-                  tracker_url_idx_ = 0;
-                  return; // ! experimental
-         }
-
-         const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx_)];
+         const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx)];
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
 
          connect(socket,&Udp_socket::readyRead,this,[this,socket]{
-                  assert(socket->bytesAvailable());
-                  assert(socket->hasPendingDatagrams());
-                  
-                  auto recall_if_unread = [this,socket = QPointer(socket)]{
-
-                           if(socket && socket->hasPendingDatagrams()){
-
-                                    QTimer::singleShot(0,this,[this,socket]{
-
-                                             if(socket && socket->hasPendingDatagrams()){
-                                                      communicate_with_tracker(socket);
-                                             }
-                                    });
-                           }
-                  };
-
-                  try {
-                           communicate_with_tracker(socket);
-                  }catch(const std::exception & exception){
-                           qDebug() << exception.what();
-                           return socket->abort();
-                  }
-
-                  recall_if_unread();
+                  on_socket_ready_read(socket);
          });
 
-         // ! experimental
-
-         QTimer::singleShot(0,this,[this]{
-                  ++tracker_url_idx_;
-                  send_connect_request();
+         QTimer::singleShot(0,this,[this,tracker_url_idx]{
+                  send_connect_request(tracker_url_idx + 1);
          });
-         
-         // connect(socket,&Udp_socket::connection_timed_out,this,[this]{
-                  // ++tracker_url_idx_;
-                  // send_connect_request();
-         // });
 }
 
 [[nodiscard]]

@@ -45,7 +45,7 @@ public:
 
          Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * parent = nullptr);
 
-         void send_connect_request() noexcept;
+         void send_connect_request(qsizetype tracker_url_idx = 0) noexcept;
 signals:
          void announce_reply_received(const Announce_reply & announce_reply) const;
          void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
@@ -64,6 +64,7 @@ private:
          static bool verify_txn_id(const QByteArray & reply,std::int32_t sent_txn_id);
          void communicate_with_tracker(Udp_socket * socket);
          void configure_default_connections() noexcept;
+         void on_socket_ready_read(Udp_socket * socket) noexcept;
          ///
          inline static std::mt19937 random_generator{std::random_device{}()};
          inline static std::uniform_int_distribution<std::int32_t> random_id_range;
@@ -73,7 +74,6 @@ private:
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
          Download_tracker * tracker_ = nullptr;
-         qsizetype tracker_url_idx_ = 0;
          Event event_ = Event::None;
          bool connect_requests_sent_ = false;
 };

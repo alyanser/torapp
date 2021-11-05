@@ -247,14 +247,13 @@ void Download_tracker::write_settings() const noexcept {
          QSettings settings;
          begin_setting_groups(settings);
          settings.setValue("time_elapsed",QVariant::fromValue(time_elapsed_));
-         settings.setValue("download_paused",pause_button_.isEnabled());
+         settings.setValue("download_paused",dl_paused_);
 }
 
 void Download_tracker::read_settings() noexcept {
          QSettings settings;
          begin_setting_groups(settings);
          restored_dl_paused_ = dl_type_ == Download_Type::Torrent && qvariant_cast<bool>(settings.value("download_paused",false));
-         qDebug() << restored_dl_paused_;
          time_elapsed_ = qvariant_cast<QTime>(settings.value("time_elapsed",QTime(0,0,0)));
          time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
 }
@@ -281,17 +280,21 @@ void Download_tracker::configure_default_connections() noexcept {
 
                   session_dled_byte_cnt_ = 0;
                   session_time_ = std::chrono::seconds::zero();
+                  dl_paused_ = true;
 
                   update_download_speed();
                   emit download_paused();
          });
 
          connect(&resume_button_,&QPushButton::clicked,this,[this]{
+                  assert(dl_type_ == Download_Type::Torrent);
+
                   assert(!session_timer_.isActive());
                   session_timer_.start();
 
                   assert(state_button_stack_.currentWidget() == &resume_button_);
                   state_button_stack_.setCurrentWidget(&pause_button_);
+                  dl_paused_ = false;
 
                   emit download_resumed();
          });
@@ -327,7 +330,6 @@ void Download_tracker::configure_default_connections() noexcept {
                   time_elapsed_label_.setText(time_elapsed_.toString() + time_elapsed_fmt.data());
                   ++session_time_;
                   update_download_speed();
-                  write_settings();
          });
 }
 

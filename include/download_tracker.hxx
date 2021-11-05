@@ -21,7 +21,6 @@ namespace bencode {
 
 class Download_tracker : public QFrame {
          Q_OBJECT
-
 public:
          enum class Error { 
                   Null,
@@ -39,6 +38,8 @@ public:
 
          Download_tracker(const QString & dl_path,QUrl url,QWidget * parent = nullptr);
          Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * parent = nullptr);
+         Q_DISABLE_COPY_MOVE(Download_tracker);
+         ~Download_tracker() override;
 
          void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
 
@@ -127,6 +128,7 @@ private:
          std::chrono::seconds session_time_{};
          State state_ = State::Download;
          Download_Type dl_type_;
+         bool dl_paused_ = false;
          bool restored_dl_paused_ = false;
 };
 
@@ -134,6 +136,10 @@ inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte
          assert(dl_type_ == Download_Type::Torrent);
          const auto [converted_ul_byte_cnt,converted_ul_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
          ul_quantity_label_.setText(QString("%1 %2").arg(converted_ul_byte_cnt).arg(converted_ul_postfix.data()));
+}
+
+inline Download_tracker::~Download_tracker(){
+         write_settings();
 }
 
 inline void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {

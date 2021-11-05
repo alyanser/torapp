@@ -77,9 +77,9 @@ inline QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Format conversion_fmt) noexcept {
-         constexpr auto kb_byte_cnt = 1024;
-         constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
-         constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
+         constexpr auto kb_byte_cnt = 1000;
+         constexpr auto mb_byte_cnt = kb_byte_cnt * 1000;
+         constexpr auto gb_byte_cnt = mb_byte_cnt * 1000;
 
          using namespace std::string_view_literals;
 
@@ -151,7 +151,7 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
 }
 
 template<typename dl_metadata_type>
-void begin_settings_group(QSettings & settings) noexcept {
+void begin_setting_group(QSettings & settings) noexcept {
 
          if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
                   settings.beginGroup("url_downloads");

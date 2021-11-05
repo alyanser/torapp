@@ -40,9 +40,6 @@ private:
          template<typename dl_metadata_type>
          void restore_downloads() noexcept;
 
-         template<typename dl_metadata_type>
-         void begin_setting_group(QSettings & settings) const noexcept;
-
          void write_settings() const noexcept;
          void add_top_actions() noexcept;
          void read_settings() noexcept;
@@ -105,19 +102,9 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type && 
 }
 
 template<typename dl_metadata_type>
-void Main_window::begin_setting_group(QSettings & settings) const noexcept {
-
-         if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>){
-                  settings.beginGroup("url_downloads");
-         }else{
-                  settings.beginGroup("torrent_downloads");
-         }
-}
-
-template<typename dl_metadata_type>
 void Main_window::add_download_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept {
          QSettings settings;
-         begin_setting_group<dl_metadata_type>(settings);
+         util::begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(path).replace('/','\x20'));
          settings.setValue("path",path);
          settings.setValue("download_metadata",std::forward<dl_metadata_type>(dl_metadata));
@@ -126,7 +113,7 @@ void Main_window::add_download_to_settings(const QString & path,dl_metadata_type
 template<typename dl_metadata_type>
 void Main_window::remove_download_from_settings(const QString & file_path) const noexcept {
          QSettings settings;
-         begin_setting_group<dl_metadata_type>(settings);
+         util::begin_setting_group<dl_metadata_type>(settings);
          settings.beginGroup(QString(file_path).replace('/','\x20'));
          settings.remove("");
          assert(settings.childKeys().isEmpty());
@@ -135,7 +122,7 @@ void Main_window::remove_download_from_settings(const QString & file_path) const
 template<typename dl_metadata_type>
 void Main_window::restore_downloads() noexcept {
          QSettings settings;
-         begin_setting_group<dl_metadata_type>(settings);
+         util::begin_setting_group<dl_metadata_type>(settings);
 
          const auto child_groups = settings.childGroups();
 

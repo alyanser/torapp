@@ -196,7 +196,7 @@ inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noe
 
 template<Peer_wire_client::Message_Id msg_id>
 [[nodiscard]]
-QByteArray Peer_wire_client::craft_message(const std::int32_t piece_idx,const std::int32_t piece_offset, [[maybe_unused]] const std::int32_t byte_cnt) const noexcept {
+QByteArray Peer_wire_client::craft_message(const std::int32_t piece_idx,const std::int32_t piece_offset,const std::int32_t byte_cnt) const noexcept {
          static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,"Only valid for specified message id types");
 
          using util::conversion::convert_to_hex;

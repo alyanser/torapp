@@ -508,7 +508,7 @@ inline void extract_files_info(const list & file_info_list,Metadata & metadata) 
                            assert(file_key == "length" || file_key == "path");
 
                            if(file_key == "length"){
-                                    file_length = std::any_cast<std::int64_t>(file_value);
+                                    file_length += std::any_cast<std::int64_t>(file_value);
                            }else{
                                     const auto extracted_file_path = std::any_cast<list>(file_value);
 
