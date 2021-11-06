@@ -4,6 +4,7 @@
 #include <QStorageInfo>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDateTime>
 
 Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * const parent) 
          : QDialog(parent)
@@ -27,7 +28,7 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
                   });
          };
 
-         make_label_text_selectable({torrent_name_label_,created_by_label_,creation_date_label_,comment_label_,encoding_label_,piece_length_label_,size_label_,
+         make_label_text_selectable({torrent_name_label_,created_by_label_,creation_time_label_,comment_label_,encoding_label_,piece_length_label_,size_label_,
                   announce_label_,file_info_label_});
 }
 
@@ -49,13 +50,13 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
          
          central_form_layout_.addRow("Name",&torrent_name_label_);
          central_form_layout_.addRow("Size",&size_label_);
-         central_form_layout_.addRow("Created by",&created_by_label_);
-         central_form_layout_.addRow("Creation date",&creation_date_label_);
+         central_form_layout_.addRow("Created By",&created_by_label_);
+         central_form_layout_.addRow("Creation Time",&creation_time_label_);
          central_form_layout_.addRow("Announce",&announce_label_);
          central_form_layout_.addRow("Comment",&comment_label_);
          central_form_layout_.addRow("Encoding",&encoding_label_);
-         central_form_layout_.addRow("Piece length",&piece_length_label_);
-         central_form_layout_.addRow("Download directory",&path_layout_);
+         central_form_layout_.addRow("Piece Size",&piece_length_label_);
+         central_form_layout_.addRow("Download Directory",&path_layout_);
          central_form_layout_.addRow("Files",&file_info_label_);
          central_form_layout_.addRow(&button_layout_);
 
@@ -76,8 +77,7 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
          set_label_text(announce_label_,torrent_metadata.announce_url);
          set_label_text(comment_label_,torrent_metadata.comment);
          set_label_text(created_by_label_,torrent_metadata.created_by);
-         set_label_text(creation_date_label_,torrent_metadata.creation_date);
-         set_label_text(creation_date_label_,torrent_metadata.creation_date);
+         set_label_text(creation_time_label_,torrent_metadata.creation_time);
          set_label_text(encoding_label_,torrent_metadata.encoding);
 
          {

@@ -6,12 +6,13 @@
 #define BENCODE_PARSER_HXX
 
 #include <optional>
-#include <fstream>
-#include <string>
-#include <vector>
 #include <sstream>
 #include <cassert>
 #include <utility>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <ctime>
 #include <any>
 #include <map>
 
@@ -176,7 +177,7 @@ struct Metadata {
          std::string name;
          std::string announce_url;
          std::string created_by;
-         std::string creation_date;
+         std::string creation_time;
          std::string comment;
          std::string encoding;
          std::string pieces;
@@ -215,7 +216,7 @@ inline std::string convert_to_string(const Metadata & metadata,const std::string
          str_fmt += std::to_string((metadata.single_file ? metadata.single_file_size : metadata.multiple_files_size)) + delimeter.data();
          str_fmt += "- Announce URL : \n\n" + metadata.announce_url + delimeter.data();
          str_fmt += "- Created by : \n\n" + metadata.created_by + delimeter.data();
-         str_fmt += "- Creation date : \n\n" + metadata.creation_date + delimeter.data();
+         str_fmt += "- Creation date : \n\n" + metadata.creation_time + delimeter.data();
          str_fmt += "- Comment : \n\n" + metadata.comment + delimeter.data();
          str_fmt += "- Encoding : \n\n" + metadata.encoding + delimeter.data();
          str_fmt += "- Piece length : \n\n" + std::to_string(metadata.piece_length) + delimeter.data();
@@ -248,7 +249,9 @@ inline Metadata extract_metadata(const dictionary & parsed_content,const std::st
          for(const auto & [dict_key,value] : parsed_content){
 
                   if(dict_key == "creation date"){
-                           metadata.creation_date = std::to_string(std::any_cast<std::int64_t>(value));
+                           const auto time_since_epoch = std::any_cast<std::time_t>(value);
+                           metadata.creation_time.resize(50);
+                           std::strftime(metadata.creation_time.data(),metadata.creation_time.size(),"%H:%M:%S - %a - %d %b %Y",std::localtime(&time_since_epoch));
                   }else if(dict_key == "created by"){
                            metadata.created_by = std::any_cast<std::string>(value);
                   }else if(dict_key == "encoding"){

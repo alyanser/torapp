@@ -472,7 +472,7 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                            const auto byte_cnt = piece_info(piece_idx,piece_offset).block_size;
                            const util::Packet_metadata request_metadata{piece_idx,piece_offset,byte_cnt};
 
-                           if(socket->is_pending_request(request_metadata) || socket->rejected_requests.contains(request_metadata)){
+                           if(socket->is_pending_request(request_metadata) || socket->rejected_requests.contains(request_metadata) || socket->request_sent(request_metadata)){
                                     return;
                            }
 
@@ -934,7 +934,6 @@ void Peer_wire_client::on_block_received(Tcp_socket * const socket,const QByteAr
 
          if(piece_data.isEmpty()){
                   piece_data.resize(static_cast<qsizetype>(piece_size));
-                  assert(!std::accumulate(piece_data.begin(),piece_data.end(),0));
          }
 
          if(received_blocks.isEmpty()){
@@ -1267,8 +1266,14 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
                   case Message_Id::Reject_Request : {
                            const auto rejected_request_metadata = extract_packet_metadata(*reply);
-                           socket->rejected_requests.insert(rejected_request_metadata);
-                           emit request_rejected(rejected_request_metadata);
+
+                           if(socket->request_sent(rejected_request_metadata)){
+                                    socket->rejected_requests.insert(rejected_request_metadata);
+                                    emit request_rejected(rejected_request_metadata);
+                           }else{
+                                    socket->abort();
+                           }
+
                            break;
                   }
 

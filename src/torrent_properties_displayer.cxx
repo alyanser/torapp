@@ -44,7 +44,7 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
 
          general_info_layout_.addRow("Name",get_new_label(torrent_metadata.name));
          general_info_layout_.addRow("Created By",get_new_label(torrent_metadata.created_by));
-         general_info_layout_.addRow("Creation Date",get_new_label(torrent_metadata.creation_date));
+         general_info_layout_.addRow("Creation Time",get_new_label(torrent_metadata.creation_time));
          general_info_layout_.addRow("Comment",get_new_label(torrent_metadata.comment));
          general_info_layout_.addRow("Encoding",get_new_label(torrent_metadata.encoding));
          general_info_layout_.addRow("Md5-Sum",get_new_label(torrent_metadata.md5sum));

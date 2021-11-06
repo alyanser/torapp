@@ -2,6 +2,7 @@
 
 #include <QBigEndianStorageType>
 #include <QHashFunctions>
+#include <QDateTime>
 #include <QSettings>
 #include <QBitArray>
 #include <QString>
@@ -47,7 +48,6 @@ enum class Format {
          Memory
 };
 
-[[nodiscard]]
 inline QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
          constexpr auto bits_in_byte = 8;
          QBitArray bits(bytes.size() * bits_in_byte,false);

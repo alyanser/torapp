@@ -29,7 +29,7 @@ private:
          ///
          QLabel torrent_name_label_;
          QLabel created_by_label_;
-         QLabel creation_date_label_;
+         QLabel creation_time_label_;
          QLabel comment_label_;
          QLabel encoding_label_;
          QLabel piece_length_label_;
