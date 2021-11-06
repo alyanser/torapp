@@ -11,7 +11,6 @@ Tcp_socket::Tcp_socket(QUrl peer_url,const std::int64_t uled_byte_threshold,QObj
          connectToHost(QHostAddress(peer_url_.host()),static_cast<std::uint16_t>(peer_url_.port()));
          
          disconnect_timer_.setSingleShot(true);
-         request_timer_.setInterval(std::chrono::milliseconds(500));
 }
 
 [[nodiscard]]
@@ -56,7 +55,7 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
 
          auto & buffer_data = receive_buffer_.second;
 
-         if((buffer_data.capacity() < *msg_size)){
+         if(!buffer_data.capacity()){
                   buffer_data.reserve(*msg_size);
          }
 

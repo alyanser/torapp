@@ -446,24 +446,39 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
          assert(!socket->peer_choked || socket->fast_extension_enabled);
 
          const auto total_block_cnt = piece_info(piece_idx).block_cnt;
-         auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[piece_idx];
+         constexpr auto max_duplicate_requests = 5;
 
-         if(requested_blocks.empty()){
-                  requested_blocks.resize(total_block_cnt,0);
-         }
+         auto send_block_request_impl = [this,piece_idx,total_block_cnt,socket](auto send_block_request_callback,const std::int32_t block_idx) -> void {
+                  assert(block_idx >= 0 && block_idx <= total_block_cnt);
 
-         if(received_blocks.isEmpty()){
-                  received_blocks.resize(total_block_cnt);
-         }
+                  if(block_idx == total_block_cnt){
+                           return;
+                  }
 
-         constexpr auto max_duplicate_requests = 3;
-         const auto max_request_cnt = piece_info(piece_idx).block_cnt;
+                  auto & [requested_blocks,received_blocks,piece_data,received_block_cnt] = pieces_[piece_idx];
 
-         for(std::int32_t block_idx = 0,request_sent_cnt = 0;request_sent_cnt < max_request_cnt && block_idx < total_block_cnt;++block_idx){
+                  if(requested_blocks.empty()){
+                           requested_blocks.resize(total_block_cnt,0);
+                  }
+
+                  if(received_blocks.isEmpty()){
+                           received_blocks.resize(total_block_cnt);
+                  }
+                  
+                  auto post_callback = [this,socket,send_block_request_callback,block_idx]{
+
+                           QTimer::singleShot(0,this,[socket = QPointer(socket),send_block_request_callback,block_idx](){
+
+                                    if(socket){
+                                             send_block_request_callback(send_block_request_callback,block_idx + 1);
+                                    }
+                           });
+                  };
+
                   assert(requested_blocks[block_idx] <= max_duplicate_requests);
 
                   if(received_blocks[block_idx] || requested_blocks[block_idx] == max_duplicate_requests){
-                           continue;
+                           return post_callback();
                   }
 
                   {
@@ -479,7 +494,6 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                            socket->post_request(request_metadata,craft_message<Message_Id::Request>(request_metadata));
                   }
 
-                  ++request_sent_cnt;
                   ++requested_blocks[block_idx];
 
                   const auto dec_connection = connect(socket,&Tcp_socket::disconnected,this,[&requested_blocks = requested_blocks,block_idx]{
@@ -516,7 +530,15 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket,const std::
                   };
 
                   connect(this,&Peer_wire_client::request_rejected,socket,on_request_rejected);
-         }
+                  post_callback();
+         };
+
+         QTimer::singleShot(0,this,[socket = QPointer(socket),send_block_request_impl]{
+
+                  if(socket){
+                           send_block_request_impl(send_block_request_impl,0);
+                  }
+         });
 }
 
 void Peer_wire_client::on_block_request_received(Tcp_socket * const socket,const QByteArray & request) noexcept {
