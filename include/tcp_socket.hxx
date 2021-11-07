@@ -3,6 +3,7 @@
 #include "util.hxx"
 
 #include <QTcpSocket>
+#include <QBitArray>
 #include <QTimer>
 #include <QUrl>
 

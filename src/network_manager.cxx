@@ -52,10 +52,10 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          connect(tracker,&Download_tracker::move_files_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
 }
 
-void Network_manager::download(util::Download_resources resources,const bencode::Metadata & torrent_metadata) noexcept {
+void Network_manager::download(util::Download_resources resources,bencode::Metadata torrent_metadata) noexcept {
          
          if(const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();protocol == "udp"){
-                  [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(torrent_metadata,std::move(resources),this);
+                  [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),std::move(resources),this);
          }else{
                   emit resources.tracker->download_dropped();
 

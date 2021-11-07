@@ -19,7 +19,7 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
 
                   auto restored_dl_paused = [&dl_path]{
                            QSettings settings;
-                           util::begin_setting_group<decltype(torrent_metadata)>(settings);
+                           util::begin_setting_group<bencode::Metadata>(settings);
                            settings.beginGroup(dl_path.replace('/','\x20'));
                            return qvariant_cast<bool>(settings.value("download_paused",false));
                   }();

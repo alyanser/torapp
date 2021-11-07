@@ -141,50 +141,50 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
          };
 
          auto * const dled_byte_cnt_label = [socket,get_cell_label_text]{
-                  auto * const dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
-                  dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
+                  auto * const ret_dled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
+                  ret_dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
                   
-                  connect(socket,&Tcp_socket::downloaded_byte_count_changed,dled_byte_cnt_label,[=](const auto dled_byte_cnt){
-                           dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt,util::conversion::Format::Memory));
+                  connect(socket,&Tcp_socket::downloaded_byte_count_changed,ret_dled_byte_cnt_label,[=](const auto dled_byte_cnt){
+                           ret_dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt,util::conversion::Format::Memory));
                   });
 
-                  return dled_byte_cnt_label;
+                  return ret_dled_byte_cnt_label;
          }();
 
          auto * const uled_byte_cnt_label = [socket,get_cell_label_text]{
-                  auto * const uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
-                  uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
+                  auto * const ret_uled_byte_cnt_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Memory));
+                  ret_uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
-                  connect(socket,&Tcp_socket::uploaded_byte_count_changed,uled_byte_cnt_label,[=](const auto uled_byte_cnt){
-                           uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt,util::conversion::Format::Memory));
+                  connect(socket,&Tcp_socket::uploaded_byte_count_changed,ret_uled_byte_cnt_label,[=](const auto uled_byte_cnt){
+                           ret_uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt,util::conversion::Format::Memory));
                   });
 
-                  return uled_byte_cnt_label;
+                  return ret_uled_byte_cnt_label;
          }();
 
          auto * const dl_speed_label = [get_cell_label_text,socket]{
-                  auto * const dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
-                  dl_speed_label->setAlignment(Qt::AlignCenter);
+                  auto * const ret_dl_speed_label = new QLabel(get_cell_label_text(0,util::conversion::Format::Speed));
+                  ret_dl_speed_label->setAlignment(Qt::AlignCenter);
 
                   {
-                           auto * const speed_refresh_timer = new QTimer(dl_speed_label);
+                           auto * const speed_refresh_timer = new QTimer(ret_dl_speed_label);
                            speed_refresh_timer->setInterval(std::chrono::seconds(1));
 
                            speed_refresh_timer->callOnTimeout(socket,[=,seconds_elapsed = 0LL]() mutable {
-                                    dl_speed_label->setText(get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed,util::conversion::Format::Speed));
+                                    ret_dl_speed_label->setText(get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed,util::conversion::Format::Speed));
                            });
 
                            speed_refresh_timer->start();
                   }
 
-                  return dl_speed_label;
+                  return ret_dl_speed_label;
          }();
 
          auto * const peer_id_label = [peer_id = QByteArray::fromHex(socket->peer_id)]{
                   assert(peer_id.size() == 20);
-                  auto * const peer_id_label = new QLabel(peer_id.sliced(0,8));
-                  peer_id_label->setAlignment(Qt::AlignCenter);
-                  return peer_id_label;
+                  auto * const ret_peer_id_label = new QLabel(peer_id.sliced(0,8));
+                  ret_peer_id_label->setAlignment(Qt::AlignCenter);
+                  return ret_peer_id_label;
          }();
 
          constexpr auto peer_id_col_idx = 0;

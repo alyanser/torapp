@@ -87,14 +87,13 @@ void Main_window::add_top_actions() noexcept {
                   Torrent_metadata_dialog torrent_dialog(file_path,this);
 
                   connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,[this,file_path = std::move(file_path)](const QString & dl_dir){
-                           // ? consider storing bencode::Metadata instead of file content
 
                            if(QFile torrent_file(file_path);torrent_file.open(QFile::ReadOnly)){
                                     add_download_to_settings(dl_dir,torrent_file.readAll());
                            }
                   });
 
-                  connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<const bencode::Metadata &>);
+                  connect(&torrent_dialog,&Torrent_metadata_dialog::new_request_received,this,&Main_window::initiate_download<bencode::Metadata>);
 
                   torrent_dialog.exec();
          });
@@ -102,7 +101,7 @@ void Main_window::add_top_actions() noexcept {
          connect(url_action,&QAction::triggered,this,[this]{
                   Url_input_dialog url_dialog(this);
 
-                  connect(&url_dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<const QUrl &>);
+                  connect(&url_dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<QUrl>);
 
                   connect(&url_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl url){
                            assert(!file_path.isEmpty());
@@ -113,3 +112,130 @@ void Main_window::add_top_actions() noexcept {
                   url_dialog.exec();
          });
 }
+
+template<typename dl_metadata_type>
+void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_metadata) noexcept {
+         static_assert(!std::is_reference_v<dl_metadata_type>);
+
+         auto * const tracker = new Download_tracker(dl_path,dl_metadata,&central_widget_);
+         central_layout_.addWidget(tracker);
+
+         {
+                  const auto tracker_signal = qOverload<decltype(dl_path),dl_metadata_type>(&Download_tracker::retry_download);
+                  connect(tracker,tracker_signal,this,&Main_window::initiate_download<dl_metadata_type>);
+         }
+
+         {
+                  auto remove_dl = [this,dl_path]{
+                           remove_download_from_settings<dl_metadata_type>(dl_path);
+                  };
+
+                  connect(tracker,&Download_tracker::download_dropped,this,remove_dl);
+
+                  if constexpr (std::is_same_v<dl_metadata_type,QUrl>){
+                           connect(tracker,&Download_tracker::url_download_finished,this,remove_dl);
+                  }
+         }
+
+         auto [file_error,file_handles] = file_manager_.open_file_handles(dl_path,dl_metadata);
+
+         switch(file_error){
+
+                  case File_allocator::File_Error::Null : {
+                           assert(file_handles);
+                           assert(!file_handles->isEmpty());
+                           network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata));
+                           break;
+                  }
+
+                  case File_allocator::File_Error::File_Lock : {
+                           assert(!file_handles);
+                           tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
+                           break;
+                  }
+
+                  case File_allocator::File_Error::Permissions : {
+                           assert(!file_handles);
+                           tracker->set_error_and_finish(Download_tracker::Error::File_Write);
+                           break;
+                  }
+         }
+}
+
+template<typename dl_metadata_type>
+void Main_window::add_download_to_settings(const QString & path,dl_metadata_type && dl_metadata) const noexcept {
+         QSettings settings;
+         util::begin_setting_group<dl_metadata_type>(settings);
+         settings.beginGroup(QString(path).replace('/','\x20'));
+         settings.setValue("path",path);
+         settings.setValue("download_metadata",std::forward<dl_metadata_type>(dl_metadata));
+}
+
+template<typename dl_metadata_type>
+void Main_window::remove_download_from_settings(const QString & file_path) const noexcept {
+         QSettings settings;
+         util::begin_setting_group<dl_metadata_type>(settings);
+         settings.beginGroup(QString(file_path).replace('/','\x20'));
+         settings.remove("");
+         assert(settings.childKeys().isEmpty());
+}
+
+template<typename dl_metadata_type>
+void Main_window::restore_downloads() noexcept {
+         QSettings settings;
+         util::begin_setting_group<dl_metadata_type>(settings);
+
+         const auto child_groups = settings.childGroups();
+
+         std::for_each(child_groups.cbegin(),child_groups.cend(),[this,&settings](const auto & dl_group){
+                  settings.beginGroup(dl_group);
+
+                  constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>,QUrl>;
+                  
+                  const auto dl_metadata = [&settings]{
+
+                           if constexpr (is_url_download){
+                                    return qvariant_cast<QUrl>(settings.value("download_metadata"));
+                           }else{
+                                    return qvariant_cast<QByteArray>(settings.value("download_metadata"));
+                           }
+                  }();
+
+                  auto path = qvariant_cast<QString>(settings.value("path"));
+
+                  if(dl_metadata.isEmpty() || path.isEmpty()){
+                           return;
+                  }
+
+                  QTimer::singleShot(0,this,[this,path = std::move(path),dl_metadata = std::move(dl_metadata)]() mutable {
+
+                           if constexpr (is_url_download){
+                                    dl_metadata.isValid() ? initiate_download(path,std::move(dl_metadata)) : remove_download_from_settings<QUrl>(path);
+                           }else{
+                                    const auto torrent_metadata = [&path,dl_metadata = std::move(dl_metadata)]() mutable -> std::optional<bencode::Metadata> {
+                                             const auto compl_file_content = dl_metadata.toStdString();
+
+                                             try{
+                                                      return bencode::extract_metadata(bencode::parse_content(compl_file_content,path.toStdString()),compl_file_content);
+                                             }catch(const std::exception & exception){
+                                                      qDebug() << exception.what();
+                                                      return {};
+                                             }
+                                    }();
+
+                                    torrent_metadata ? initiate_download(path,std::move(*torrent_metadata)) : remove_download_from_settings<bencode::Metadata>(path);
+                           }
+                  });
+
+                  settings.endGroup();
+         });
+}
+
+template void Main_window::initiate_download<bencode::Metadata>(const QString &,bencode::Metadata) noexcept;
+template void Main_window::initiate_download<QUrl>(const QString &,QUrl) noexcept;
+template void Main_window::add_download_to_settings<QUrl>(const QString &,QUrl &&) const noexcept;
+template void Main_window::add_download_to_settings<QString>(const QString &,QString &&) const noexcept;
+template void Main_window::remove_download_from_settings<bencode::Metadata>(const QString &) const noexcept;
+template void Main_window::remove_download_from_settings<QUrl>(const QString &) const noexcept;
+template void Main_window::restore_downloads<QUrl>() noexcept;
+template void Main_window::restore_downloads<bencode::Metadata>() noexcept;

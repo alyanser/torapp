@@ -123,7 +123,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 
          setup_display(*torrent_metadata);
 
-         connect(&begin_download_button_,&QPushButton::clicked,this,[this,torrent_metadata = std::move(torrent_metadata)]{
+         connect(&begin_download_button_,&QPushButton::clicked,this,[this,torrent_metadata = std::move(torrent_metadata)]() mutable {
 
                   const auto dir_path = [path_line_text = path_line_.text(),&torrent_metadata]() mutable {
 
@@ -165,6 +165,6 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                   }
 
                   accept();
-                  emit new_request_received(dir_path,*torrent_metadata);
+                  emit new_request_received(dir_path,std::move(*torrent_metadata));
          });
 }

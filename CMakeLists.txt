@@ -18,6 +18,7 @@ set(SOURCES
          src/torrent_properties_displayer.cxx
          src/tcp_socket.cxx
          src/file_allocator.cxx
+         src/util.cxx
 )
 
 set(MOC_INCLUDES

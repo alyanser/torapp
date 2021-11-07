@@ -72,7 +72,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          });
 }
 
-Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidget * const parent) 
+Download_tracker::Download_tracker(const QString & dl_path,QUrl url,QWidget * const parent) 
          : Download_tracker(dl_path,Download_Type::Url,parent)
 {
          assert(!url.isEmpty());
@@ -80,13 +80,13 @@ Download_tracker::Download_tracker(const QString & dl_path,const QUrl url,QWidge
 
          package_name_label_.setText(QUrl(dl_path).fileName());
 
-         auto restart_download = [this,dl_path,url]{
-                  emit retry_download(dl_path,url);
+         auto restart_download = [this,dl_path,url = std::move(url)]() mutable {
+                  emit retry_download(dl_path,std::move(url));
                   emit request_satisfied();
          };
 
-         connect(&retry_button_,&QPushButton::clicked,this,restart_download);
-         connect(&resume_button_,&QPushButton::clicked,this,restart_download);
+         connect(&retry_button_,&QPushButton::clicked,this,restart_download,Qt::SingleShotConnection);
+         connect(&resume_button_,&QPushButton::clicked,this,restart_download,Qt::SingleShotConnection);
 }
 
 Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata torrent_metadata,QWidget * const parent) 
@@ -94,10 +94,10 @@ Download_tracker::Download_tracker(const QString & dl_path,bencode::Metadata tor
 {
          package_name_label_.setText(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data());
 
-         connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,torrent_metadata = std::move(torrent_metadata)]{
-                  emit retry_download(dl_path,torrent_metadata);
+         connect(&retry_button_,&QPushButton::clicked,this,[this,dl_path,torrent_metadata = std::move(torrent_metadata)]() mutable {
+                  emit retry_download(dl_path,std::move(torrent_metadata));
                   emit request_satisfied();
-         });
+         },Qt::SingleShotConnection);
 }
 
 void Download_tracker::setup_central_layout() noexcept {

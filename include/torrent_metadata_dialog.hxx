@@ -20,7 +20,7 @@ class Torrent_metadata_dialog : public QDialog {
 public:
          explicit Torrent_metadata_dialog(const QString & torrent_file_path,QWidget * parent = nullptr);
 signals:
-         void new_request_received(const QString & dir_path,const bencode::Metadata & metadata) const;
+         void new_request_received(const QString & dir_path,bencode::Metadata metadata) const;
 private:
          void extract_metadata(const QString & torrent_file_path) noexcept;
          void setup_layout() noexcept;
