@@ -42,7 +42,7 @@ public:
 
          Q_ENUM(State);
 
-         Peer_wire_client(bencode::Metadata & torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
+         Peer_wire_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
 
          std::int64_t downloaded_byte_count() const noexcept;
          std::int64_t uploaded_byte_count() const noexcept;
@@ -77,7 +77,7 @@ private:
          };
 
          template<Message_Id message_id>
-         static QByteArray craft_message(util::Packet_metadata packet_metadata) noexcept;
+         static QByteArray craft_generic_message(util::Packet_metadata packet_metadata) noexcept;
          
          static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
@@ -144,7 +144,7 @@ private:
          QBitArray bitfield_;
          QTimer settings_timer_;
          QTimer refresh_timer_;
-         bencode::Metadata & torrent_metadata_;
+         bencode::Metadata torrent_metadata_;
          Download_tracker * tracker_ = nullptr;
          std::int64_t dled_byte_cnt_ = 0;
          std::int64_t uled_byte_cnt_ = 0;
@@ -161,44 +161,3 @@ private:
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };
-
-[[nodiscard]]
-inline std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
-         return dled_byte_cnt_;
-}
-
-[[nodiscard]]
-inline std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
-         return uled_byte_cnt_;
-}
-
-[[nodiscard]]
-inline std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
-         return total_byte_cnt_ - dled_byte_cnt_;
-}
-
-[[nodiscard]]
-inline bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx) const noexcept {
-         return piece_idx >= 0 && piece_idx < total_piece_cnt_;
-}
-
-[[nodiscard]]
-inline qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
-         return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
-}
-
-template<Peer_wire_client::Message_Id msg_id>
-[[nodiscard]]
-QByteArray Peer_wire_client::craft_message(const util::Packet_metadata packet_metadata) noexcept {
-         static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,
-                  "Only valid for Message_Id::[Reject_Request,Cancel,Request]");
-
-         using util::conversion::convert_to_hex;
-
-         const static auto msg = []{
-                  constexpr auto packet_size = 13;
-                  return convert_to_hex(packet_size) + convert_to_hex(static_cast<std::int8_t>(msg_id));
-         }();
-
-         return msg + convert_to_hex(packet_metadata.piece_idx) + convert_to_hex(packet_metadata.piece_offset) + convert_to_hex(packet_metadata.byte_cnt);
-}

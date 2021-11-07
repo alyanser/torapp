@@ -11,6 +11,21 @@ Udp_socket::Udp_socket(const QUrl url,QByteArray connect_request,QObject * const
          connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 }
 
+void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
+         interval_timer_.start(interval_timeout);
+}
+
+[[nodiscard]]
+std::chrono::seconds Udp_socket::get_timeout() const noexcept {
+         constexpr auto protocol_constant = 15;
+         const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
+         return timeout_seconds;
+}
+
+void Udp_socket::send_request(const QByteArray & request) noexcept {
+         state_ != State::Connect && !connection_id_valid_ ? send_initial_request(connect_request_,State::Connect) : send_packet(request);
+}
+
 void Udp_socket::configure_default_connections() noexcept {
          connect(this,&Udp_socket::disconnected,&Udp_socket::deleteLater);
          connect(this,&Udp_socket::readyRead,&connection_timer_,&QTimer::stop);

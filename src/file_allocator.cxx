@@ -8,13 +8,15 @@
 
 [[nodiscard]]
 File_allocator::handle_return_type File_allocator::open_file_handles(const QString & dir_path,const bencode::Metadata & torrent_metadata) noexcept {
-         assert(!torrent_metadata.file_info.empty());
-         assert(!dir_path.isEmpty());
+
+         if(torrent_metadata.file_info.empty() || dir_path.isEmpty()){
+                  return {Error::Invalid_Request,{}};
+         }
          
          QDir dir(dir_path);
 
          if(!dir.mkpath(dir.path())){
-                  return {File_Error::Permissions,{}};
+                  return {Error::Permissions,{}};
          }
 
          std::vector<std::unique_ptr<QFile>> temp_file_handles;
@@ -27,7 +29,7 @@ File_allocator::handle_return_type File_allocator::open_file_handles(const QStri
                   auto & file_handle = temp_file_handles.emplace_back(std::make_unique<QFile>(file_info.absoluteFilePath(),this));
 
                   if(!file_handle->open(QFile::ReadWrite)){
-                           return {File_Error::Permissions,{}};
+                           return {Error::Permissions,{}};
                   }
          }
 
@@ -37,17 +39,21 @@ File_allocator::handle_return_type File_allocator::open_file_handles(const QStri
                   return file_handle.release();
          });
 
-         return {File_Error::Null,std::move(file_handles)};
+         return {Error::Null,std::move(file_handles)};
 }
 
 [[nodiscard]]
-File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path,const QUrl /* url */) noexcept {
-         assert(!file_path.isEmpty());
+File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path,const QUrl url) noexcept {
+
+         if(file_path.isEmpty() || !url.isValid()){
+                  return {Error::Invalid_Request,{}};
+         }
+         
          auto file_handle = std::make_unique<QFile>(file_path,this);
 
          if(!file_handle->open(QFile::ReadWrite)){
-                  return {File_Error::Permissions,{}};
+                  return {Error::Permissions,{}};
          }
 
-         return {File_Error::Null,QList{file_handle.release()}};
+         return {Error::Null,QList{file_handle.release()}};
 }

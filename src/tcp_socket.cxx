@@ -14,6 +14,71 @@ Tcp_socket::Tcp_socket(QUrl peer_url,const std::int64_t uled_byte_threshold,QObj
 }
 
 [[nodiscard]]
+QUrl Tcp_socket::peer_url() const noexcept {
+         return peer_url_;
+}
+
+void Tcp_socket::on_peer_fault() noexcept {
+         
+         if(constexpr auto peer_fault_threshold = 5;++peer_fault_cnt_ > peer_fault_threshold){
+                  qDebug() << "Peer made too many mistakes. aborting";
+                  abort();
+         }
+}
+
+[[nodiscard]]
+bool Tcp_socket::is_pending_request(util::Packet_metadata request) const noexcept {
+         return pending_requests_.contains(request);
+}
+
+[[nodiscard]]
+std::int64_t Tcp_socket::downloaded_byte_count() const noexcept {
+         return dled_byte_cnt_;
+}
+
+[[nodiscard]]
+std::int64_t Tcp_socket::uploaded_byte_count() const noexcept {
+         return uled_byte_cnt_;
+}
+
+void Tcp_socket::add_uploaded_bytes(const std::int64_t uled_byte_cnt) noexcept {
+         assert(uled_byte_cnt > 0);
+         uled_byte_cnt_ += uled_byte_cnt;
+         emit uploaded_byte_count_changed(uled_byte_cnt);
+}
+
+void Tcp_socket::add_downloaded_bytes(const std::int64_t dled_byte_cnt) noexcept {
+         assert(dled_byte_cnt > 0);
+         dled_byte_cnt_ += dled_byte_cnt;
+         emit downloaded_byte_count_changed(dled_byte_cnt_);
+}
+
+void Tcp_socket::post_request(util::Packet_metadata request,QByteArray packet) noexcept {
+         assert(!packet.isEmpty());
+         assert(!pending_requests_.contains(request));
+         
+         pending_requests_[request] = std::move(packet);
+
+         if(!request_timer_.isActive()){
+                  request_timer_.start();
+         }
+}
+
+bool Tcp_socket::remove_request(const util::Packet_metadata request) noexcept {
+         return pending_requests_.remove(request);
+}
+
+[[nodiscard]]
+bool Tcp_socket::request_sent(const util::Packet_metadata request_metadata) const noexcept {
+         return sent_requests_.contains(request_metadata);
+}
+
+void Tcp_socket::reset_disconnect_timer() noexcept {
+         disconnect_timer_.start(std::chrono::minutes(10));
+}
+
+
+[[nodiscard]]
 std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
          auto & msg_size = receive_buffer_.first;
 

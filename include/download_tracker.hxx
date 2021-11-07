@@ -2,6 +2,7 @@
 
 #include "util.hxx"
 
+#include <bencode_parser.hxx>
 #include <QStackedWidget>
 #include <QProgressBar>
 #include <QFormLayout>
@@ -9,15 +10,10 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QLineEdit>
-#include <QSettings>
 #include <QFrame>
 #include <QLabel>
 #include <QTimer>
 #include <QTime>
-
-namespace bencode {
-         struct Metadata;
-}
 
 class Download_tracker : public QFrame {
          Q_OBJECT
@@ -28,6 +24,7 @@ public:
                   File_Lock,
                   Network,
                   Space,
+                  Invalid_Request,
                   Custom
          };
 
@@ -128,31 +125,3 @@ private:
          bool dl_paused_ = false;
          bool restored_dl_paused_ = false;
 };
-
-inline void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
-         assert(dl_type_ == Download_Type::Torrent);
-         const auto [converted_ul_byte_cnt,ul_byte_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
-         ul_quantity_label_.setText(QString::number(converted_ul_byte_cnt,'f',2) + ' ' + ul_byte_postfix.data());
-}
-
-inline void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
-         restored_byte_cnt_ = restored_byte_cnt;
-}
-
-inline void Download_tracker::set_ratio(const double ratio) noexcept {
-         assert(dl_type_ == Download_Type::Torrent);
-         assert(ratio >= 0);
-         ratio_label_.setText(QString::number(ratio,'f',2));
-}
-
-inline void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {
-         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
-         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
-}
-
-inline void Download_tracker::on_verification_completed() noexcept {
-         assert(dl_type_ == Download_Type::Torrent);
-         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
-         qDebug() << pause_button_.isEnabled() << dled_byte_cnt_ << total_byte_cnt_;
-         pause_button_.setEnabled(!total_byte_cnt_ || dled_byte_cnt_ != total_byte_cnt_);
-}

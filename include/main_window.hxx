@@ -1,20 +1,13 @@
 #pragma once
 
-#include "url_input_dialog.hxx"
 #include "network_manager.hxx"
-#include "download_tracker.hxx"
 #include "file_allocator.hxx"
 
-#include <bencode_parser.hxx>
-#include <QActionGroup>
 #include <QScrollArea>
-#include <QCloseEvent>
-#include <QMessageBox>
 #include <QMainWindow>
-#include <QSettings>
+#include <QVBoxLayout>
 #include <QToolBar>
 #include <QMenuBar>
-#include <QTimer>
 #include <QMenu>
 
 class Main_window : public QMainWindow {
@@ -22,10 +15,7 @@ class Main_window : public QMainWindow {
 public:
          Main_window();
          Q_DISABLE_COPY_MOVE(Main_window)
-
-         ~Main_window() override {
-                  write_settings();
-         }
+         ~Main_window() override;
 
          template<typename dl_metadata_type>
          void initiate_download(const QString & path,dl_metadata_type dl_metadata) noexcept;

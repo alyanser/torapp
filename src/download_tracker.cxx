@@ -3,6 +3,7 @@
 #include <bencode_parser.hxx>
 #include <QDesktopServices>
 #include <QMessageBox>
+#include <QSettings>
 #include <QDir>
 
 Download_tracker::Download_tracker(const QString & dl_path,const Download_Type dl_type,QWidget * const parent) 
@@ -164,6 +165,34 @@ void Download_tracker::set_error_and_finish(const QString & error_desc) noexcept
          assert(!error_desc.isEmpty());
          finish_line_.setText(error_desc);
          switch_to_finished_state(Error::Custom);
+}
+
+void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         const auto [converted_ul_byte_cnt,ul_byte_postfix] = util::conversion::stringify_bytes(uled_byte_cnt,util::conversion::Format::Memory);
+         ul_quantity_label_.setText(QString::number(converted_ul_byte_cnt,'f',2) + ' ' + ul_byte_postfix.data());
+}
+
+void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
+         restored_byte_cnt_ = restored_byte_cnt;
+}
+
+void Download_tracker::set_ratio(const double ratio) noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         assert(ratio >= 0);
+         ratio_label_.setText(QString::number(ratio,'f',2));
+}
+
+void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {
+         settings.beginGroup(dl_type_ == Download_Type::Torrent ? "torrent_downloads" : "url_downloads");
+         settings.beginGroup(QString(dl_path_).replace('/','\x20'));
+}
+
+void Download_tracker::on_verification_completed() noexcept {
+         assert(dl_type_ == Download_Type::Torrent);
+         assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
+         qDebug() << pause_button_.isEnabled() << dled_byte_cnt_ << total_byte_cnt_;
+         pause_button_.setEnabled(!total_byte_cnt_ || dled_byte_cnt_ != total_byte_cnt_);
 }
 
 void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt,const std::int64_t total_byte_cnt) noexcept {
@@ -355,7 +384,7 @@ void Download_tracker::switch_to_finished_state(const Error error) noexcept {
 void Download_tracker::update_finish_line(const Error error) noexcept {
          assert(error != Error::Custom);
 
-         finish_line_.setText([error,dl_type_ = dl_type_]{
+         finish_line_.setText([error,dl_type_ = dl_type_]() -> QString {
 
                   switch(error){
                            
@@ -377,6 +406,10 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
 
                            case Error::Space : {
                                     return "Not enough space";
+                           }
+
+                           case Error::Invalid_Request : {
+                                    return QString("Invalid request. Possibly corrupted path or invalid ") + (dl_type_ == Download_Type::Torrent ? "torrent file" : "url");
                            }
 
                            default : {

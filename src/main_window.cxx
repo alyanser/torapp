@@ -1,11 +1,16 @@
 #include "main_window.hxx"
 #include "torrent_metadata_dialog.hxx"
+#include "url_input_dialog.hxx"
+#include "download_tracker.hxx"
 #include "util.hxx"
 
 #include <bencode_parser.hxx>
+#include <QCloseEvent>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSettings>
 #include <QFileInfo>
+#include <QTimer>
 #include <QFile>
 
 Main_window::Main_window(){
@@ -23,6 +28,10 @@ Main_window::Main_window(){
          assert(central_widget_.layout());
          scroll_area_.setWidget(&central_widget_);
          scroll_area_.setWidgetResizable(true);
+}
+
+Main_window::~Main_window(){
+         write_settings();
 }
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -132,7 +141,7 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_
 
                   connect(tracker,&Download_tracker::download_dropped,this,remove_dl);
 
-                  if constexpr (std::is_same_v<dl_metadata_type,QUrl>){
+                  if constexpr (std::is_same_v<std::remove_const_t<dl_metadata_type>,QUrl>){
                            connect(tracker,&Download_tracker::url_download_finished,this,remove_dl);
                   }
          }
@@ -141,20 +150,26 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_
 
          switch(file_error){
 
-                  case File_allocator::File_Error::Null : {
+                  case File_allocator::Error::Null : {
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
                            network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata));
                            break;
                   }
 
-                  case File_allocator::File_Error::File_Lock : {
+                  case File_allocator::Error::Invalid_Request : {
+                           assert(!file_handles);
+                           tracker->set_error_and_finish(Download_tracker::Error::Invalid_Request);
+                           break;
+                  }
+
+                  case File_allocator::Error::File_Lock : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
                            break;
                   }
 
-                  case File_allocator::File_Error::Permissions : {
+                  case File_allocator::Error::Permissions : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Write);
                            break;

@@ -42,18 +42,3 @@ private:
          std::int8_t timeout_factor_ = 0;
          bool connection_id_valid_ = true;
 };
-
-inline void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
-         interval_timer_.start(interval_timeout);
-}
-
-[[nodiscard]]
-inline std::chrono::seconds Udp_socket::get_timeout() const noexcept {
-         constexpr auto protocol_constant = 15;
-         const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
-         return timeout_seconds;
-}
-
-inline void Udp_socket::send_request(const QByteArray & request) noexcept {
-         state_ != State::Connect && !connection_id_valid_ ? send_initial_request(connect_request_,State::Connect) : send_packet(request);
-}

@@ -52,6 +52,16 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
          general_info_layout_.addRow("Announce URL",get_new_label(torrent_metadata.announce_url));
 }
 
+void Torrent_properties_displayer::display_file_bar() noexcept {
+         setCurrentWidget(&file_info_tab_);
+         show();
+}
+
+void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
+         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
+         peer_table_.removeRow(peer_row_idx);
+}
+
 void Torrent_properties_displayer::setup_peer_table() noexcept {
          peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
 
@@ -100,9 +110,10 @@ void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadat
          assert(file_handles.size() == static_cast<qsizetype>(torrent_metadata.file_info.size()));
 
          for(qsizetype file_idx = 0;file_idx < file_handles.size();++file_idx){
-                  const auto & [torrent_file_name,total_file_size] = torrent_metadata.file_info[static_cast<std::size_t>(file_idx)];
-                  auto [file_handle,file_dl_byte_cnt] = file_handles[file_idx];
-                  file_info_layout_.addRow(torrent_file_name.data(),get_new_file_widget(file_handle->fileName(),static_cast<std::int64_t>(total_file_size)));
+                  const auto & [file_name,file_size] = torrent_metadata.file_info[static_cast<std::size_t>(file_idx)];
+                  const auto [file_handle,file_dl_byte_cnt] = file_handles[file_idx];
+                  assert(file_size > 0);
+                  file_info_layout_.addRow(file_name.data(),get_new_file_widget(file_handle->fileName(),static_cast<std::int64_t>(file_size)));
          }
 }
 

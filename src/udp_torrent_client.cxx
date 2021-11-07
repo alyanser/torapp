@@ -4,6 +4,7 @@
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
+#include <QSettings>
 #include <QPointer>
 
 Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
@@ -104,6 +105,31 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
          QTimer::singleShot(0,this,[this,tracker_url_idx]{
                   send_connect_request(tracker_url_idx + 1);
          });
+}
+
+[[nodiscard]]
+QByteArray Udp_torrent_client::calculate_info_sha1_hash(const bencode::Metadata & torrent_metadata) noexcept {
+         const auto raw_info_size = static_cast<qsizetype>(torrent_metadata.raw_info_dict.size());
+         return QCryptographicHash::hash(QByteArray(torrent_metadata.raw_info_dict.data(),raw_info_size),QCryptographicHash::Sha1).toHex();
+}
+
+[[nodiscard]]
+bool Udp_torrent_client::verify_txn_id(const QByteArray & reply,const std::int32_t sent_txn_id){
+         constexpr auto txn_id_offset = 4;
+         const auto received_txn_id = util::extract_integer<std::int32_t>(reply,txn_id_offset);
+         return sent_txn_id == received_txn_id;
+}
+
+[[nodiscard]]
+std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteArray & reply,const std::int32_t sent_txn_id){
+         constexpr auto error_offset = 8;
+         return verify_txn_id(reply,sent_txn_id) ? reply.sliced(error_offset) : std::optional<QByteArray>{};
+}
+
+[[nodiscard]]
+std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply,const std::int32_t sent_txn_id){
+         constexpr auto connection_id_offset = 8;
+         return verify_txn_id(reply,sent_txn_id) ? util::extract_integer<std::int64_t>(reply,connection_id_offset) : std::optional<std::int64_t>{};
 }
 
 [[nodiscard]]

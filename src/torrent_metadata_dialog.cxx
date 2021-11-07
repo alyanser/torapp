@@ -92,11 +92,8 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
          }
 
          std::for_each(torrent_metadata.file_info.cbegin(),torrent_metadata.file_info.cend(),[this](const auto & file_info){
-                  const auto & [file_path,file_size_kbs] = file_info;
-
-                  const auto file_size_byte_cnt = file_size_kbs * 1024;
-                  const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size_byte_cnt,util::conversion::Format::Memory);
-
+                  const auto & [file_path,file_size] = file_info;
+                  const auto [converted_size,postfix] = util::conversion::stringify_bytes(file_size,util::conversion::Format::Memory);
                   const auto file_label_text = QString(file_path.data()) + "\t( " + QString::number(converted_size) + ' ' + postfix.data() + " )";
                   file_info_label_.text().isEmpty() ? file_info_label_.setText(file_label_text) : file_info_label_.setText(file_info_label_.text() + '\n' + file_label_text);
          });

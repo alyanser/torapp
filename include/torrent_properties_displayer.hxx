@@ -32,13 +32,3 @@ private:
          QFormLayout general_info_layout_{&general_info_tab_};
          QFormLayout file_info_layout_{&file_info_tab_};
 };
-
-inline void Torrent_properties_displayer::display_file_bar() noexcept {
-         setCurrentWidget(&file_info_tab_);
-         show();
-}
-
-inline void Torrent_properties_displayer::remove_peer(std::int32_t peer_row_idx) noexcept {
-         assert(peer_row_idx >= 0 && peer_row_idx < peer_table_.rowCount());
-         peer_table_.removeRow(peer_row_idx);
-}
