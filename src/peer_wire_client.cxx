@@ -70,7 +70,6 @@ qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
          return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
 }
 
-
 void Peer_wire_client::configure_default_connections() noexcept {
          connect(this,&Peer_wire_client::piece_verified,this,&Peer_wire_client::on_piece_verified);
          connect(this,&Peer_wire_client::existing_pieces_verified,tracker_,&Download_tracker::on_verification_completed);
@@ -299,10 +298,6 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
                                     assert(peer_idx != -1);
                                     properties_displayer_.remove_peer(static_cast<std::int32_t>(peer_idx));
                                     active_peers_.remove(peer_idx);
-
-                                    if(constexpr auto min_peer_cnt_threshold = 5;state_ == State::Leecher && active_peers_.size() < min_peer_cnt_threshold){
-                                             qDebug() << "min peer threshold reached. spamming tracker for more peers";
-                                    }
                            }
 
                            for(qsizetype piece_idx = 0;piece_idx < socket->peer_bitfield.size();++piece_idx){
@@ -427,7 +422,7 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
                            return reply.sliced(protocol_label_offset,protocol_label_len);
                   }();
 
-                  if(peer_protocol_tag.data() != protocol_tag.data()){
+                  if(peer_protocol_tag != protocol_tag.data()){
                            qDebug() << "Peer is using some woodoo protocol";
                            return {};
                   }

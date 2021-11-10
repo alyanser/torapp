@@ -135,9 +135,9 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
 
 [[nodiscard]]
 bool Tcp_socket::is_good_ratio() const noexcept {
-         constexpr auto min_ratio = 0.5;
+         constexpr auto min_ratio = 1;
          assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
-         return uled_byte_cnt_ <= uled_byte_threshold_ ? true : !uled_byte_cnt_ || static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
+         return uled_byte_cnt_ <= uled_byte_threshold_ ? true : static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
 }
 
 void Tcp_socket::send_packet(const QByteArray & packet) noexcept {
@@ -163,12 +163,12 @@ void Tcp_socket::configure_default_connections() noexcept {
          request_timer_.callOnTimeout(this,[this]{
 
                   if(pending_requests_.isEmpty()){
-                           request_timer_.stop();
-                  }else{
-                           const auto & [request_metadata,packet] = *pending_requests_.constKeyValueBegin();
-                           send_packet(packet);
-                           sent_requests_.insert(request_metadata);
-                           pending_requests_.erase(pending_requests_.constBegin());
+                           return request_timer_.stop();
                   }
+
+                  const auto & [request_metadata,packet] = *pending_requests_.constKeyValueBegin();
+                  send_packet(packet);
+                  sent_requests_.insert(request_metadata);
+                  pending_requests_.erase(pending_requests_.constBegin());
          });
 }

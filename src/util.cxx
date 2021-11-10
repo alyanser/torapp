@@ -21,11 +21,11 @@ result_type extract_integer(const QByteArray & raw_data,const qsizetype offset){
          assert(hex_fmt.front() != '-');
 
          constexpr auto hex_base = 16;
-         bool conversion_success = true;
+         bool converted = true;
          
-         const auto result = static_cast<result_type>(hex_fmt.toULongLong(&conversion_success,hex_base));
+         const auto result = static_cast<result_type>(hex_fmt.toULongLong(&converted,hex_base));
 
-         if(!conversion_success){
+         if(!converted){
                   assert(!result);
                   throw std::overflow_error("content could not fit in the specified type");
          }
@@ -82,10 +82,10 @@ QByteArray convert_to_hex(const numeric_type num) noexcept {
          constexpr auto hex_base = 16;
          const auto hex_fmt = QByteArray::number(static_cast<QBEInteger<unsigned_type>>(static_cast<unsigned_type>(num)),hex_base);
          assert(!hex_fmt.isEmpty());
+         assert(hex_fmt.front() != '-');
 
          constexpr auto fin_hex_size = static_cast<qsizetype>(sizeof(unsigned_type)) * 2;
          assert(fin_hex_size - hex_fmt.size() >= 0);
-         assert(hex_fmt.front() != '-');
          
          return QByteArray(fin_hex_size - hex_fmt.size(),'0') + hex_fmt;
 }
@@ -114,7 +114,7 @@ QString convert_to_percent_format(const numeric_type_x dividend,const numeric_ty
 }
 
 template<typename ... arith_types>
-constexpr auto instantiate_arithmetic_types_types(){
+constexpr auto instantiate_arithmetic_types(){
          static_assert((std::is_arithmetic_v<arith_types> && ...));
 
          return std::tuple_cat(
@@ -125,7 +125,7 @@ constexpr auto instantiate_arithmetic_types_types(){
          );
 }
 
-extern const auto numeric_ins = instantiate_arithmetic_types_types<std::int32_t,std::uint32_t,std::int16_t,std::uint16_t,std::int64_t,std::uint16_t,std::uint8_t,std::int8_t>();
+extern const auto arithmetic_ins = instantiate_arithmetic_types<std::int32_t,std::uint32_t,std::int16_t,std::uint16_t,std::int64_t,std::uint16_t,std::uint8_t,std::int8_t>();
 
 template QString convert_to_percent_format<std::int64_t,std::int32_t>(std::int64_t,std::int32_t) noexcept;
 

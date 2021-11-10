@@ -11,15 +11,20 @@ Udp_socket::Udp_socket(const QUrl url,QByteArray connect_request,QObject * const
          connectToHost(url.host(),static_cast<std::uint16_t>(url.port()));
 }
 
-void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
-         interval_timer_.start(interval_timeout);
-}
-
 [[nodiscard]]
 std::chrono::seconds Udp_socket::get_timeout() const noexcept {
          constexpr auto protocol_constant = 15;
          const std::chrono::seconds timeout_seconds(protocol_constant * static_cast<std::int32_t>(std::exp2(timeout_factor_)));
          return timeout_seconds;
+}
+
+[[nodiscard]]
+std::int32_t Udp_socket::transaction_id() const noexcept {
+         return txn_id_;
+}
+
+void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
+         interval_timer_.start(interval_timeout);
 }
 
 void Udp_socket::send_request(const QByteArray & request) noexcept {
@@ -104,7 +109,7 @@ void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
 
          constexpr auto txn_id_offset = 12;
          assert(raw_packet.size() >= txn_id_offset + static_cast<qsizetype>(sizeof(std::int32_t)));
-         txn_id = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
+         txn_id_ = util::extract_integer<std::int32_t>(raw_packet,txn_id_offset);
 }
 
 void Udp_socket::send_initial_request(const QByteArray & request,const State state) noexcept {

@@ -65,10 +65,9 @@ QString stringify_bytes(byte_type received_byte_cnt,byte_type total_byte_cnt) no
 template<typename byte_type,typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
 [[nodiscard]]
 constexpr std::pair<double,std::string_view> stringify_bytes(const byte_type byte_cnt,const Format conversion_fmt) noexcept {
-         // protocol use 1000 instead of 1024. todo:verify
-         constexpr auto kb_byte_cnt = 1000; 
-         constexpr auto mb_byte_cnt = kb_byte_cnt * 1000;
-         constexpr auto gb_byte_cnt = mb_byte_cnt * 1000;
+         constexpr auto kb_byte_cnt = 1024; 
+         constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;
+         constexpr auto gb_byte_cnt = mb_byte_cnt * 1024;
 
          using namespace std::string_view_literals;
 

@@ -81,12 +81,8 @@ void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcep
 }
 
 void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) noexcept {
-         assert(tracker_url_idx >= 0 && tracker_url_idx <= static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
+         assert(tracker_url_idx >= 0 && tracker_url_idx < static_cast<qsizetype>(torrent_metadata_.announce_url_list.size()));
 
-         if(tracker_url_idx == static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
-                  return;
-         }
-         
          if(!connect_requests_sent_){
                   connect_requests_sent_ = true;
          }
@@ -101,9 +97,12 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
                   }
          });
 
-         QTimer::singleShot(0,this,[this,tracker_url_idx]{
-                  send_connect_request(tracker_url_idx + 1);
-         });
+         if(tracker_url_idx + 1 < static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){
+                  
+                  QTimer::singleShot(0,this,[this,tracker_url_idx]{
+                           send_connect_request(tracker_url_idx + 1);
+                  });
+         }
 }
 
 [[nodiscard]]
@@ -302,7 +301,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
          switch(tracker_action){
 
                   case Action_Code::Connect : {
-                           const auto connection_id = extract_connect_reply(reply,socket->txn_id);
+                           const auto connection_id = extract_connect_reply(reply,socket->transaction_id());
 
                            if(!connection_id){
                                     qDebug() << "Invalid connect reply from tracker";
@@ -321,15 +320,17 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                                     event_ = event;
 
-                                    if(socket){
-                                             socket->set_requests(craft_announce_request(*connection_id),craft_scrape_request(*connection_id));
+                                    if(!socket){
+                                             return;
+                                    }
 
-                                             if(event_ != Event::Stopped){
+                                    socket->set_requests(craft_announce_request(*connection_id),craft_scrape_request(*connection_id));
 
-                                                      QTimer::singleShot(0,socket,[socket]{
-                                                               socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
-                                                      });
-                                             }
+                                    if(event_ != Event::Stopped){
+
+                                             QTimer::singleShot(0,socket,[socket]{
+                                                      socket->send_initial_request(socket->announce_request(),Udp_socket::State::Announce);
+                                             });
                                     }
                            };
 
@@ -350,7 +351,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                   case Action_Code::Announce : {
 
-                           if(const auto announce_reply = extract_announce_reply(reply,socket->txn_id)){
+                           if(const auto announce_reply = extract_announce_reply(reply,socket->transaction_id())){
                                     socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
                                     emit announce_reply_received(*announce_reply);
                            }else{
@@ -363,7 +364,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                   case Action_Code::Scrape : {
 
-                           if(const auto scrape_reply = extract_scrape_reply(reply,socket->txn_id)){
+                           if(const auto scrape_reply = extract_scrape_reply(reply,socket->transaction_id())){
                                     emit swarm_metadata_received(*scrape_reply);
                            }else{
                                     qDebug() << "Invalid scrape reply";
@@ -375,7 +376,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket){
 
                   case Action_Code::Error : {
 
-                           if(const auto tracker_error = extract_tracker_error(reply,socket->txn_id)){
+                           if(const auto tracker_error = extract_tracker_error(reply,socket->transaction_id())){
                                     emit error_received(*tracker_error);
                            }else{
                                     qDebug() << "tracker can't even send the error without errors";

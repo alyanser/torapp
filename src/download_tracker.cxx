@@ -189,7 +189,6 @@ void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept
 void Download_tracker::on_verification_completed() noexcept {
          assert(dl_type_ == Download_Type::Torrent);
          assert(dled_byte_cnt_ >= 0 && dled_byte_cnt_ <= total_byte_cnt_);
-         qDebug() << pause_button_.isEnabled() << dled_byte_cnt_ << total_byte_cnt_;
          pause_button_.setEnabled(!total_byte_cnt_ || dled_byte_cnt_ != total_byte_cnt_);
 }
 
