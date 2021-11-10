@@ -91,9 +91,7 @@ void Url_input_dialog::on_input_received() noexcept {
          if(package_name.isEmpty()){
 
                   if(url.fileName().isEmpty()){
-                           constexpr std::string_view error_title("Invalid file name");
-                           constexpr std::string_view error_body("One of file name field or URL's file name must be non-empty");
-                           QMessageBox::critical(this,error_title.data(),error_body.data());
+                           QMessageBox::critical(this,"Empty file name","One of file name field or URL's file name must be non-empty");
                            return;
                   }
 
@@ -103,10 +101,7 @@ void Url_input_dialog::on_input_received() noexcept {
          const auto file_path = dir_path + package_name;
 
          if(QFileInfo::exists(file_path)){
-                  constexpr std::string_view query_title("Already exists");
-                  constexpr std::string_view query_body("File already exists. Do you wish to replace the existing file?");
-
-                  const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data());
+                  const auto reply_button = QMessageBox::question(this,"Already exists","Do you wish to replace the existing file?");
 
                   if(reply_button == QMessageBox::No){
                            return;

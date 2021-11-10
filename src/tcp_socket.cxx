@@ -77,7 +77,6 @@ void Tcp_socket::reset_disconnect_timer() noexcept {
          disconnect_timer_.start(std::chrono::minutes(10));
 }
 
-
 [[nodiscard]]
 std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
          auto & msg_size = receive_buffer_.first;

@@ -63,6 +63,6 @@ void Network_manager::download(util::Download_resources resources,bencode::Metad
                            file_handle->deleteLater();
                   });
 
-                  QMessageBox::critical(nullptr,"No support","Torapp doesn't support TCP trackers yet");
+                  QMessageBox::critical(nullptr,"No support","Torapp doesn't support TCP trackers yet :(");
          }
 }

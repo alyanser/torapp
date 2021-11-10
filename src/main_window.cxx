@@ -35,9 +35,7 @@ Main_window::~Main_window(){
 }
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
-         constexpr std::string_view warning_title("Quit");
-         constexpr std::string_view warning_body("Are you sure you want to quit? All of the downloads (if any) will be stopped.");
-         const auto reply_button = QMessageBox::question(this,warning_title.data(),warning_body.data());
+         const auto reply_button = QMessageBox::question(this,"Quit","Are you sure you want to quit? All of the downloads (if any) will be stopped.");
          reply_button == QMessageBox::Yes ? event->accept(),emit closed() : event->ignore();
 }
 
@@ -84,9 +82,7 @@ void Main_window::add_top_actions() noexcept {
          connect(torrent_action,&QAction::triggered,this,[this]{
 
                   auto file_path = [this]{
-                           constexpr std::string_view file_filter("Torrent (*.torrent);; All files (*.*)");
-                           constexpr std::string_view caption("Choose a torrent file");
-                           return QFileDialog::getOpenFileName(this,caption.data(),QDir::currentPath(),file_filter.data());
+                           return QFileDialog::getOpenFileName(this,"Choose a torren tfile",QDir::currentPath(),"Torrent (*.torrent);; All files (*.*)");
                   }();
 
                   if(file_path.isEmpty()){

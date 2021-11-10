@@ -112,9 +112,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
          }();
 
          if(!torrent_metadata){
-                  constexpr std::string_view error_header("Could not parse");
-                  constexpr std::string_view error_body("Given torrent file could not be parsed. Try with a different version");
-                  QMessageBox::critical(this,error_header.data(),error_body.data());
+                  QMessageBox::critical(this,"Parse error","Given torrent file could not be parsed. Try with a different version");
                   return;
          }
 
@@ -122,27 +120,34 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 
          connect(&begin_download_button_,&QPushButton::clicked,this,[this,torrent_metadata = std::move(torrent_metadata)]() mutable {
 
-                  const auto dir_path = [path_line_text = path_line_.text(),&torrent_metadata]() mutable {
+                  const auto dir_path = [this,&torrent_metadata = std::as_const(torrent_metadata),path_line_text = path_line_.text()]() mutable -> std::optional<QString> {
 
-                           if(!path_line_text.isEmpty() && path_line_text.back() != '/'){
+                           if(!QFileInfo::exists(path_line_text)){
+                                    const auto reply_button = QMessageBox::question(this,"Path doesn't exist","Path doesn't exist already. Do you wish to create it?");
+
+                                    if(reply_button == QMessageBox::No){
+                                             return {};
+                                    }
+
+                                    if(!QDir().mkpath(path_line_text)){
+                                             QMessageBox::critical(this,"Path creation error","Could not create given path. Choose a different one and try again");
+                                             return {};
+                                    }
+                           }
+
+                           if(path_line_text.isEmpty() || path_line_text.back() != '/'){
                                     path_line_text.push_back('/');
                            }
 
-                           return path_line_text + torrent_metadata->name.data();
+                           return path_line_text += torrent_metadata->name.data();
                   }();
-                  
-                  if(dir_path.isEmpty()){
-                           constexpr std::string_view error_title("Invalid path");
-                           constexpr std::string_view error_body("Path cannot be empty");
-                           QMessageBox::critical(this,error_title.data(),error_body.data());
+
+                  if(!dir_path){
                            return;
                   }
 
-                  if(QFileInfo::exists(dir_path)){
-                           constexpr std::string_view query_title("Already exists");
-                           constexpr std::string_view query_body("Directory already exists. Do you wish to replace it?");
-
-                           const auto reply_button = QMessageBox::question(this,query_title.data(),query_body.data());
+                  if(QFileInfo::exists(*dir_path)){
+                           const auto reply_button = QMessageBox::question(this,"Already exists","Directory already exists. Do you wish to replace it?");
 
                            if(reply_button == QMessageBox::No){
                                     return;
@@ -154,14 +159,12 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
                            assert(torrent_size > 0);
                            
                            if(QStorageInfo storage_info(path_line_.text());storage_info.bytesFree() < torrent_size){
-                                    constexpr std::string_view error_title("Not enough space");
-                                    constexpr std::string_view error_body("Not enough space available in the specified directory. Choose another path and retry");
-                                    QMessageBox::critical(this,error_title.data(),error_body.data());
+                                    QMessageBox::critical(this,"Not enough space","Not enough space available. Choose another path and retry");
                                     return;
                            }
                   }
 
                   accept();
-                  emit new_request_received(dir_path,std::move(*torrent_metadata));
+                  emit new_request_received(*dir_path,std::move(*torrent_metadata));
          });
 }

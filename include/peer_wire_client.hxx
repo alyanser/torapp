@@ -55,7 +55,6 @@ signals:
          void download_finished() const;
          void send_requests() const;
          void request_rejected(util::Packet_metadata request_metadata) const;
-         void min_peer_threshold_reached() const;
          void valid_block_received(util::Packet_metadata packet_metadata) const;
 private:
          struct Piece {
@@ -122,8 +121,9 @@ private:
          static QSet<std::int32_t> generate_allowed_fast_set(std::uint32_t peer_ip,std::int32_t total_piece_cnt) noexcept;
          void clear_piece(std::int32_t piece_idx) noexcept;
          void configure_default_connections() noexcept;
-         void update_target_piece_indexes() noexcept;
+         void fill_target_piece_indexes() noexcept;
          ///
+         constexpr static std::string_view protocol_tag{"BitTorrent protocol"};
          constexpr static std::string_view keep_alive_msg{"00000000"};
          constexpr static std::string_view choke_msg{"0000000100"};
          constexpr static std::string_view unchoke_msg{"0000000101"};
@@ -143,7 +143,7 @@ private:
          QString dl_path_;
          QBitArray bitfield_;
          QTimer settings_timer_;
-         QTimer refresh_timer_;
+         QTimer request_timer_;
          bencode::Metadata torrent_metadata_;
          Download_tracker * tracker_ = nullptr;
          std::int64_t dled_byte_cnt_ = 0;
@@ -157,7 +157,6 @@ private:
          std::int32_t average_block_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
          State state_ = State::Verification;
-
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;
 };

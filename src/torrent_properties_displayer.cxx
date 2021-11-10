@@ -97,9 +97,7 @@ QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file
          connect(open_button,&QPushButton::clicked,&file_info_tab_,[file_path]{
 
                   if(!QDesktopServices::openUrl(QUrl::fromLocalFile(file_path))){
-                           constexpr std::string_view error_title("Could not open");
-                           constexpr std::string_view error_body("Could not open the file. It may have been deleted or corrupted");
-                           QMessageBox::critical(nullptr,error_title.data(),error_body.data());
+                           QMessageBox::critical(nullptr,"Could not open","Could not open the file");
                   }
          });
 

@@ -51,9 +51,7 @@ Download_tracker::Download_tracker(const QString & dl_path,const Download_Type d
          auto open_url = [this](const QString & path){
 
                   if(!QDesktopServices::openUrl(QUrl::fromLocalFile(path))){
-                           constexpr std::string_view error_title("Open error");
-                           constexpr std::string_view error_body("Given path could not be opened");
-                           QMessageBox::critical(this,error_title.data(),error_body.data());
+                           QMessageBox::critical(this,"Open error","Given path could not be opened");
                   }
          };
 
@@ -335,10 +333,7 @@ void Download_tracker::configure_default_connections() noexcept {
 
          connect(&cancel_button_,&QPushButton::clicked,this,[this]{
                   constexpr auto buttons = QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No;
-                  constexpr std::string_view query_title("Cancel Download");
-                  constexpr std::string_view query_body("Are you sure you want to cancel the download&?");
-
-                  const auto reply = QMessageBox::question(this,query_title.data(),query_body.data(),buttons);
+                  const auto reply = QMessageBox::question(this,"Cancel download","Are you sure you want to cancel the download?",buttons);
 
                   if(reply == QMessageBox::StandardButton::Yes){
                            session_timer_.stop();

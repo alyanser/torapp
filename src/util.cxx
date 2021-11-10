@@ -114,7 +114,7 @@ QString convert_to_percent_format(const numeric_type_x dividend,const numeric_ty
 }
 
 template<typename ... arith_types>
-constexpr auto instantiate_arithmetic_types(){
+constexpr auto instantiate_arithmetic_types_types(){
          static_assert((std::is_arithmetic_v<arith_types> && ...));
 
          return std::tuple_cat(
@@ -125,7 +125,7 @@ constexpr auto instantiate_arithmetic_types(){
          );
 }
 
-auto numeric_ins = instantiate_arithmetic_types<std::int32_t,std::uint32_t,std::int16_t,std::uint16_t,std::int64_t,std::uint16_t,std::uint8_t,std::int8_t>();
+extern const auto numeric_ins = instantiate_arithmetic_types_types<std::int32_t,std::uint32_t,std::int16_t,std::uint16_t,std::int64_t,std::uint16_t,std::uint8_t,std::int8_t>();
 
 template QString convert_to_percent_format<std::int64_t,std::int32_t>(std::int64_t,std::int32_t) noexcept;
 

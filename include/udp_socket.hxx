@@ -22,9 +22,10 @@ public :
          void start_interval_timer(std::chrono::seconds interval_timeout) noexcept;
          void send_initial_request(const QByteArray & request,State state) noexcept;
          void send_request(const QByteArray & request) noexcept;
+         void set_requests(QByteArray announce_request,QByteArray scrape_request) noexcept;
+         const QByteArray & announce_request() const noexcept;
+         const QByteArray & scrape_request() const noexcept;
          ///
-         QByteArray announce_request;
-         QByteArray scrape_request;
          std::int32_t txn_id = 0;
 signals:
          void connection_timed_out() const;
@@ -35,6 +36,8 @@ private:
          void reset_time_specs() noexcept;
          ///
          QByteArray connect_request_;
+         QByteArray announce_request_;
+         QByteArray scrape_request_;
          QTimer connection_timer_;
          QTimer interval_timer_;
          std::chrono::seconds interval_time_{};

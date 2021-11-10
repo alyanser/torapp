@@ -26,6 +26,27 @@ void Udp_socket::send_request(const QByteArray & request) noexcept {
          state_ != State::Connect && !connection_id_valid_ ? send_initial_request(connect_request_,State::Connect) : send_packet(request);
 }
 
+void Udp_socket::set_requests(QByteArray announce_request,QByteArray scrape_request) noexcept {
+         announce_request_ = std::move(announce_request);
+         scrape_request_ = std::move(scrape_request);
+
+         connection_id_valid_ = true;
+
+         QTimer::singleShot(std::chrono::minutes(1),this,[&connection_id_valid_ = connection_id_valid_]{
+                  connection_id_valid_ = false;
+         });
+}
+
+[[nodiscard]]
+const QByteArray & Udp_socket::announce_request() const noexcept {
+         return announce_request_;
+}
+
+[[nodiscard]]
+const QByteArray & Udp_socket::scrape_request() const noexcept {
+         return scrape_request_;
+}
+
 void Udp_socket::configure_default_connections() noexcept {
          connect(this,&Udp_socket::disconnected,&Udp_socket::deleteLater);
          connect(this,&Udp_socket::readyRead,&connection_timer_,&QTimer::stop);
@@ -35,7 +56,7 @@ void Udp_socket::configure_default_connections() noexcept {
          });
 
          interval_timer_.callOnTimeout(this,[this]{
-                  send_request(announce_request);
+                  send_request(announce_request_);
          });
 
          connection_timer_.callOnTimeout(this,[this]{
@@ -51,12 +72,12 @@ void Udp_socket::configure_default_connections() noexcept {
                                     }
 
                                     case State::Scrape : { 
-                                             send_request(scrape_request);
+                                             send_request(scrape_request_);
                                              break;
                                     }
 
                                     case State::Announce : {
-                                             send_request(announce_request);
+                                             send_request(announce_request_);
                                              break;
                                     }
                            }
@@ -73,13 +94,6 @@ void Udp_socket::configure_default_connections() noexcept {
 void Udp_socket::reset_time_specs() noexcept {
          timeout_factor_ = 0;
          connection_timer_.start(get_timeout());
-         connection_id_valid_ = true;
-
-         constexpr std::chrono::minutes protocol_validity_timeout(1);
-
-         QTimer::singleShot(protocol_validity_timeout,this,[&connection_id_valid_ = connection_id_valid_]{
-                  connection_id_valid_ = false;
-         });
 }
 
 void Udp_socket::send_packet(const QByteArray & hex_packet) noexcept {
