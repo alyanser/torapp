@@ -1,6 +1,8 @@
 # torapp
 A torrent client<br>
 
+<p align="center"><img src="https://raw.githubusercontent.com/alyanser/torapp/master/resources/app_icon.png" height="240" width="240"></p>
+
 <b>Build:</b>
 <pre>
 git clone https://github.com/alyanser/torapp
