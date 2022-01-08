@@ -41,8 +41,8 @@ private:
          ///
          QSystemTrayIcon tray_{QIcon(":app_icon.png"),this};
          QScrollArea scroll_area_;
-         QWidget central_widget_;
-         QVBoxLayout central_layout_{&central_widget_};
+         QWidget scroll_area_widget_{&scroll_area_};
+         QVBoxLayout central_layout_{&scroll_area_widget_};
          QToolBar tool_bar_;
          QMenu file_menu_{"File",menuBar()};
          Network_manager network_manager_;

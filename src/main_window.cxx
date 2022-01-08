@@ -26,8 +26,8 @@ Main_window::Main_window(){
 
          central_layout_.setSpacing(20);
          central_layout_.setAlignment(Qt::AlignTop);
-         assert(central_widget_.layout());
-         scroll_area_.setWidget(&central_widget_);
+         assert(scroll_area_widget_.layout());
+         scroll_area_.setWidget(&scroll_area_widget_);
          scroll_area_.setWidgetResizable(true);
 }
 
@@ -36,17 +36,22 @@ Main_window::~Main_window(){
 }
 
 void Main_window::configure_tray_icon() noexcept {
-         tray_.show();
 
          {
-                  auto * const tray_icon_menu = new QMenu(this);
-                  auto * const quit_action = new QAction("Quit Torapp",tray_icon_menu);
+                  auto * const tray_menu = new QMenu(this);
+                  auto * const show_action = new QAction("Show Torapp",tray_menu);
+                  auto * const quit_action = new QAction("Quit Torapp",tray_menu);
 
-                  tray_icon_menu->addAction(quit_action);
-                  tray_.setContextMenu(tray_icon_menu);
+                  tray_menu->addAction(show_action);
+                  tray_menu->addAction(quit_action);
 
+                  tray_.setContextMenu(tray_menu);
+
+                  connect(show_action,&QAction::triggered,this,&Main_window::show); // ! doesn't always work
                   connect(quit_action,&QAction::triggered,this,&Main_window::closed);
          }
+
+         tray_.show();
 }
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -92,7 +97,7 @@ void Main_window::add_top_actions() noexcept {
          url_action->setToolTip("Download a file from custom url");
          exit_action->setToolTip("Exit Torapp");
 
-         connect(exit_action,&QAction::triggered,this,&Main_window::close);
+         connect(exit_action,&QAction::triggered,this,&Main_window::closed);
 
          connect(torrent_action,&QAction::triggered,this,[this]{
 
@@ -137,7 +142,7 @@ template<typename dl_metadata_type>
 void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_metadata) noexcept {
          static_assert(!std::is_reference_v<dl_metadata_type>);
 
-         auto * const tracker = new Download_tracker(dl_path,dl_metadata,&central_widget_);
+         auto * const tracker = new Download_tracker(dl_path,dl_metadata,&scroll_area_widget_);
          central_layout_.addWidget(tracker);
 
          {
