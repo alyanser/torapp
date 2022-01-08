@@ -3,6 +3,7 @@
 #include "util.hxx"
 
 #include <QFormLayout>
+#include <QScrollArea>
 #include <QPushButton>
 #include <QToolButton>
 #include <QGridLayout>
@@ -27,6 +28,7 @@ private:
          void setup_display(const bencode::Metadata & metadata) noexcept;
          void configure_default_connections() noexcept;
          ///
+         QScrollArea file_info_scroll_area_;
          QLabel torrent_name_label_;
          QLabel created_by_label_;
          QLabel creation_time_label_;

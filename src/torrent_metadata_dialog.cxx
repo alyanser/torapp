@@ -19,6 +19,8 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
          file_info_label_.setFrameShadow(QFrame::Shadow::Sunken);
          file_info_label_.setFrameShape(QFrame::Shape::Box);
          file_info_label_.setLineWidth(3);
+         file_info_scroll_area_.setWidget(&file_info_label_);
+         file_info_scroll_area_.setWidgetResizable(true);
 
          auto make_label_text_selectable = [](const QList<std::reference_wrapper<QLabel>> & labels){
 
@@ -57,7 +59,7 @@ void Torrent_metadata_dialog::setup_layout() noexcept {
          central_form_layout_.addRow("Encoding",&encoding_label_);
          central_form_layout_.addRow("Piece Size",&piece_length_label_);
          central_form_layout_.addRow("Download Directory",&path_layout_);
-         central_form_layout_.addRow("Files",&file_info_label_);
+         central_form_layout_.addRow("Files",&file_info_scroll_area_);
          central_form_layout_.addRow(&button_layout_);
 
          button_layout_.addWidget(&begin_download_button_);
