@@ -21,6 +21,7 @@ Main_window::Main_window(){
          assert(menuBar());
          menuBar()->addMenu(&file_menu_);
          add_top_actions();
+         configure_tray_icon();
          read_settings();
 
          central_layout_.setSpacing(20);
@@ -32,6 +33,20 @@ Main_window::Main_window(){
 
 Main_window::~Main_window(){
          write_settings();
+}
+
+void Main_window::configure_tray_icon() noexcept {
+         tray_.show();
+
+         {
+                  auto * const tray_icon_menu = new QMenu(this);
+                  auto * const quit_action = new QAction("Quit Torapp",tray_icon_menu);
+
+                  tray_icon_menu->addAction(quit_action);
+                  tray_.setContextMenu(tray_icon_menu);
+
+                  connect(quit_action,&QAction::triggered,this,&Main_window::closed);
+         }
 }
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
@@ -82,7 +97,7 @@ void Main_window::add_top_actions() noexcept {
          connect(torrent_action,&QAction::triggered,this,[this]{
 
                   auto file_path = [this]{
-                           return QFileDialog::getOpenFileName(this,"Choose a torren tfile",QDir::currentPath(),"Torrent (*.torrent);; All files (*.*)");
+                           return QFileDialog::getOpenFileName(this,"Choose a torrent file",QDir::currentPath(),"Torrent (*.torrent);; All files (*.*)");
                   }();
 
                   if(file_path.isEmpty()){
@@ -150,24 +165,28 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
                            network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata));
+                           tray_.showMessage("Download started","Download has successfully started");
                            break;
                   }
 
                   case File_allocator::Error::Invalid_Request : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::Invalid_Request);
+                           tray_.showMessage("Download start failed","Invalid download request");
                            break;
                   }
 
                   case File_allocator::Error::File_Lock : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
+                           tray_.showMessage("Download start failed","Download could not be started due to a file lock");
                            break;
                   }
 
                   case File_allocator::Error::Permissions : {
                            assert(!file_handles);
                            tracker->set_error_and_finish(Download_tracker::Error::File_Write);
+                           tray_.showMessage("Download start failed","You do not have enough permissions to save files in the given path");
                            break;
                   }
          }

@@ -3,6 +3,7 @@
 #include "network_manager.hxx"
 #include "file_allocator.hxx"
 
+#include <QSystemTrayIcon>
 #include <QScrollArea>
 #include <QMainWindow>
 #include <QVBoxLayout>
@@ -36,7 +37,9 @@ private:
          void write_settings() const noexcept;
          void add_top_actions() noexcept;
          void read_settings() noexcept;
+         void configure_tray_icon() noexcept;
          ///
+         QSystemTrayIcon tray_{QIcon(":app_icon.png"),this};
          QScrollArea scroll_area_;
          QWidget central_widget_;
          QVBoxLayout central_layout_{&central_widget_};
