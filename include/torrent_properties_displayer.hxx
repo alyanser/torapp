@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QScrollArea>
 #include <QTableWidget>
 #include <QFormLayout>
 #include <QTabWidget>
@@ -26,6 +27,7 @@ private:
          void setup_peer_table() noexcept;
          QWidget * get_new_file_widget(const QString & file_path,std::int64_t total_file_size) noexcept;
          ///
+         QScrollArea file_info_scroll_area_;
          QWidget general_info_tab_;
          QWidget file_info_tab_;
          QTableWidget peer_table_;

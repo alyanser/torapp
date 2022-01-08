@@ -19,11 +19,14 @@ Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metada
 
          setUsesScrollButtons(false);
          addTab(&general_info_tab_,"General");
-         addTab(&file_info_tab_,"Files");
+         addTab(&file_info_scroll_area_,"Files");
          addTab(&peer_table_,"Peers");
 
          setup_general_info_widget(torrent_metadata);
          setup_peer_table();
+
+         file_info_scroll_area_.setWidget(&file_info_tab_);
+         file_info_scroll_area_.setWidgetResizable(true);
 }
 
 void Torrent_properties_displayer::setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept {
