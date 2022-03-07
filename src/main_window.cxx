@@ -2,6 +2,7 @@
 #include "torrent_metadata_dialog.hxx"
 #include "url_input_dialog.hxx"
 #include "download_tracker.hxx"
+#include "magnet_url_parser.hxx"
 #include "util.hxx"
 
 #include <bencode_parser.hxx>
@@ -85,15 +86,20 @@ void Main_window::read_settings() noexcept {
 }
 
 void Main_window::add_top_actions() noexcept {
-         auto * const torrent_action = tool_bar_.addAction("Torrent");
-         auto * const url_action = tool_bar_.addAction("Url");
+         auto * const magnet_action = tool_bar_.addAction("Torrent (magnet)");
+         auto * const torrent_action = tool_bar_.addAction("Torrent (file)");
+         auto * const url_action = tool_bar_.addAction("Custom url");
          auto * const exit_action = new QAction("Exit",&file_menu_);
 
+	assert(magnet_action->parent() && torrent_action->parent() && url_action->parent() && exit_action->parent());
+
+	file_menu_.addAction(magnet_action);
          file_menu_.addAction(torrent_action);
          file_menu_.addAction(url_action);
          file_menu_.addAction(exit_action);
 
-         torrent_action->setToolTip("Download a torrent file");
+	magnet_action->setToolTip("Download a torrent using magnet url");
+         torrent_action->setToolTip("Download a torrent using .torrent file");
          url_action->setToolTip("Download a file from custom url");
          exit_action->setToolTip("Exit Torapp");
 
@@ -136,6 +142,27 @@ void Main_window::add_top_actions() noexcept {
 
                   url_dialog.exec();
          });
+
+	connect(magnet_action,&QAction::triggered,this,[this]{
+		Url_input_dialog magnet_dialog(this);
+
+		connect(&magnet_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl magnet_url){
+			const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
+
+			if(!torrent_metadata){
+				qDebug() << "magnet url parsing failed" << magnet_url;
+				return;
+			}
+
+			if(torrent_metadata->tracker_urls.empty()){
+				// todo: implement DHT protocol
+				qDebug() << "torrent requires DHT protocol";
+				return;
+			}
+		});
+
+		magnet_dialog.exec();
+	});
 }
 
 template<typename dl_metadata_type>
