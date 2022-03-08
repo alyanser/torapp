@@ -91,14 +91,14 @@ void Main_window::add_top_actions() noexcept {
          auto * const url_action = tool_bar_.addAction("Custom url");
          auto * const exit_action = new QAction("Exit",&file_menu_);
 
-	assert(magnet_action->parent() && torrent_action->parent() && url_action->parent() && exit_action->parent());
+         assert(magnet_action->parent() && torrent_action->parent() && url_action->parent() && exit_action->parent());
 
-	file_menu_.addAction(magnet_action);
+         file_menu_.addAction(magnet_action);
          file_menu_.addAction(torrent_action);
          file_menu_.addAction(url_action);
          file_menu_.addAction(exit_action);
 
-	magnet_action->setToolTip("Download a torrent using magnet url");
+         magnet_action->setToolTip("Download a torrent using magnet url");
          torrent_action->setToolTip("Download a torrent using .torrent file");
          url_action->setToolTip("Download a file from custom url");
          exit_action->setToolTip("Exit Torapp");
@@ -143,26 +143,33 @@ void Main_window::add_top_actions() noexcept {
                   url_dialog.exec();
          });
 
-	connect(magnet_action,&QAction::triggered,this,[this]{
-		Url_input_dialog magnet_dialog(this);
+         connect(magnet_action,&QAction::triggered,this,[this]{
+                  Url_input_dialog magnet_dialog(this);
 
-		connect(&magnet_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl magnet_url){
-			const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
+                  connect(&magnet_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl magnet_url){
+                           const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
 
-			if(!torrent_metadata){
-				qDebug() << "magnet url parsing failed" << magnet_url;
-				return;
-			}
+                           if(!torrent_metadata){
+                                    QMessageBox::critical(this,"Invalid magnet url","Given magnet url could not be parsed.");
+                                    tray_.showMessage("Download start failed","Download could not be started due to invalid magnet url");
+                                    return;
+                           }
 
-			if(torrent_metadata->tracker_urls.empty()){
-				// todo: implement DHT protocol
-				qDebug() << "torrent requires DHT protocol";
-				return;
-			}
-		});
+                           if(torrent_metadata->tracker_urls.empty()){
+                                    // todo: implement DHT protocol
+                                    qDebug() << "torrent requires DHT protocol";
+                                    return;
+                           }
 
-		magnet_dialog.exec();
-	});
+                           auto * const tracker = new Download_tracker(file_path,magnet_url,&scroll_area_widget_);
+
+                           central_layout_.addWidget(tracker);
+                           network_manager_.download(file_path,*torrent_metadata,tracker);
+                           tray_.showMessage("Metadata retrieval started","Torapp is trying to retrieve torrent metadata from peers. Please wait");
+                  });
+
+                  magnet_dialog.exec();
+         });
 }
 
 template<typename dl_metadata_type>

@@ -1,6 +1,7 @@
 #include "udp_torrent_client.hxx"
 #include "peer_wire_client.hxx"
 #include "download_tracker.hxx"
+#include "magnet_url_parser.hxx"
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>
@@ -40,6 +41,33 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
          if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
                   tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
          }
+}
+
+Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent) 
+         : QObject(parent)
+         , info_sha1_hash_(torrent_metadata.info_hash)
+         , peer_client_(torrent_metadata,{std::move(resources.dl_path),{},resources.tracker},id)
+         , tracker_(resources.tracker)
+{
+         assert(resources.file_handles.isEmpty());
+         assert(tracker_);
+         configure_default_connections();
+
+         // auto * const temp_socket = new Udp_socket(torrent_metadata.tracker_urls.front(),craft_connect_request(),this);
+
+         // connect(temp_socket,&Udp_socket::readyRead,this,[this,temp_socket]{
+         //          on_socket_ready_read(temp_socket);
+         // });
+
+         std::for_each(torrent_metadata.tracker_urls.cbegin(),torrent_metadata.tracker_urls.cend(),[this](const auto & tracker_url){
+                  assert(tracker_url.isValid());
+
+                  auto * const socket = new Udp_socket(tracker_url,craft_connect_request(),this);
+
+                  connect(socket,&Udp_socket::readyRead,this,[this,socket]{
+                           on_socket_ready_read(socket);
+                  });
+         });
 }
 
 void Udp_torrent_client::configure_default_connections() noexcept {
@@ -91,10 +119,7 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
          auto * const socket = new Udp_socket(QUrl(tracker_url.data()),craft_connect_request(),this);
 
          connect(socket,&Udp_socket::readyRead,this,[this,socket]{
-
-                  if(socket->state() == Udp_socket::SocketState::ConnectedState){
-                           on_socket_ready_read(socket);
-                  }
+                  on_socket_ready_read(socket);
          });
 
          if(tracker_url_idx + 1 < static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())){

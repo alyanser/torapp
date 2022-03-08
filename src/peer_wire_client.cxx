@@ -1,6 +1,7 @@
 #include "peer_wire_client.hxx"
 #include "download_tracker.hxx"
 #include "tcp_socket.hxx"
+#include "magnet_url_parser.hxx"
 
 #include <QCryptographicHash>
 #include <QMessageBox>
@@ -43,6 +44,15 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
          configure_default_connections();
          read_settings();
          verify_existing_pieces();
+}
+
+Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QByteArray id)
+         : id_(std::move(id))
+         , info_sha1_hash_(torrent_metadata.info_hash)
+         , handshake_msg_(craft_handshake_message())
+         , dl_path_(std::move(resources.dl_path))
+         , tracker_(resources.tracker)
+{
 }
 
 [[nodiscard]]
@@ -118,6 +128,7 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
          std::for_each(peer_urls.cbegin(),peer_urls.cend(),[this](const auto & peer_url){
 
                   if(!active_peers_.contains(peer_url)){
+                           qDebug() << peer_url.host() << peer_url.port() << peer_url.isValid();
                            auto * const socket = new Tcp_socket(peer_url,torrent_piece_size_,this);
 
                            connect(socket,&Tcp_socket::connected,this,[this,socket]{
@@ -1075,7 +1086,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket,con
          auto & [peer_info_hash,peer_id] = *peer_info;
 
          if(info_sha1_hash_ != peer_info_hash){
-                  qDebug() << "peer info hash doesn't match";
+                  qDebug() << "peer info hash doesn't match" << info_sha1_hash_ << peer_info_hash;
                   return socket->abort();
          }
 

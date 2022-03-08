@@ -5,7 +5,15 @@
 #include <QNetworkAccessManager>
 
 namespace bencode {
-	struct Metadata;
+
+struct Metadata;
+
+}
+
+namespace magnet {
+
+struct Metadata;
+
 }
 
 class QUrl;
@@ -15,4 +23,5 @@ class Network_manager : public QNetworkAccessManager {
 public:
          void download(util::Download_resources resources,QUrl url) noexcept;
          void download(util::Download_resources resources,bencode::Metadata torrent_metadata) noexcept;
+         void download(QString dl_path,magnet::Metadata torrent_metadata,Download_tracker * tracker) noexcept;
 };

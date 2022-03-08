@@ -15,6 +15,7 @@ class QFile;
 class Torrent_properties_displayer : public QTabWidget {
          Q_OBJECT
 public:
+         Torrent_properties_displayer() = default;
          explicit Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * parent = nullptr);
          
          void add_peer(const Tcp_socket * socket) noexcept;

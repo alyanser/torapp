@@ -10,6 +10,12 @@
 #include <QSet>
 #include <random>
 
+namespace magnet {
+
+struct Metadata;
+
+}
+
 class Tcp_socket;
 
 class Peer_wire_client : public QObject {
@@ -43,6 +49,7 @@ public:
          Q_ENUM(State);
 
          Peer_wire_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
+         Peer_wire_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QByteArray id);
 
          std::int64_t downloaded_byte_count() const noexcept;
          std::int64_t uploaded_byte_count() const noexcept;

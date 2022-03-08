@@ -1,6 +1,7 @@
 #include "network_manager.hxx"
 #include "udp_torrent_client.hxx"
 #include "download_tracker.hxx"
+#include "magnet_url_parser.hxx"
 
 #include <QNetworkReply>
 #include <QNetworkProxy>
@@ -65,4 +66,11 @@ void Network_manager::download(util::Download_resources resources,bencode::Metad
 
                   QMessageBox::critical(nullptr,"No support","Torapp doesn't support TCP trackers yet :(");
          }
+}
+
+void Network_manager::download(QString dl_path,magnet::Metadata torrent_metadata,Download_tracker * const tracker) noexcept {
+         assert(tracker);
+         assert(!torrent_metadata.tracker_urls.empty());
+         assert(!dl_path.isEmpty());
+         [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),{std::move(dl_path),{},tracker},this);
 }

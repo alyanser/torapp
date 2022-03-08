@@ -3,6 +3,7 @@
 #include "peer_wire_client.hxx"
 #include "udp_socket.hxx"
 #include "util.hxx"
+#include "magnet_url_parser.hxx"
 
 #include <bencode_parser.hxx>
 #include <QCryptographicHash>
@@ -43,6 +44,7 @@ public:
          };
 
          Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * parent = nullptr);
+         Udp_torrent_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QObject * parent = nullptr);
 
          void send_connect_request(qsizetype tracker_url_idx = 0) noexcept;
 signals:
@@ -69,7 +71,7 @@ private:
          inline static std::uniform_int_distribution<std::int32_t> random_id_range;
          inline const static auto id = QByteArray("-TORAP0-AXT134ZXCLLZ").toHex();
 
-         bencode::Metadata torrent_metadata_;
+bencode::Metadata torrent_metadata_;
          QByteArray info_sha1_hash_;
          Peer_wire_client peer_client_;
          Download_tracker * tracker_ = nullptr;
