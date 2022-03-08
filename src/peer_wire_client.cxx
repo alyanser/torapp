@@ -47,7 +47,8 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
 }
 
 Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QByteArray id)
-         : id_(std::move(id))
+         : properties_displayer_(torrent_metadata)
+         , id_(std::move(id))
          , info_sha1_hash_(torrent_metadata.info_hash)
          , handshake_msg_(craft_handshake_message())
          , dl_path_(std::move(resources.dl_path))

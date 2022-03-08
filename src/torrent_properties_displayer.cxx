@@ -11,22 +11,32 @@
 #include <QLabel>
 #include <QFile>
 
-Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
+Torrent_properties_displayer::Torrent_properties_displayer(QWidget * const parent)
          : QTabWidget(parent)
 {
          setMinimumSize(200,200); // totally well thought
-         setWindowTitle(QString("Torrent Information") + (torrent_metadata.name.empty() ? "" : '(' + QString(torrent_metadata.name.data()) + ')'));
+         setWindowTitle("Torrent Information");
+         setUsesScrollButtons(false);         
+         setup_peer_table();
+}
 
-         setUsesScrollButtons(false);
+Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
+         : QTabWidget(parent)
+{
          addTab(&general_info_tab_,"General");
          addTab(&file_info_scroll_area_,"Files");
          addTab(&peer_table_,"Peers");
 
          setup_general_info_widget(torrent_metadata);
-         setup_peer_table();
 
          file_info_scroll_area_.setWidget(&file_info_tab_);
          file_info_scroll_area_.setWidgetResizable(true);
+}
+
+Torrent_properties_displayer::Torrent_properties_displayer(const magnet::Metadata & /* torrent_metadata */,QWidget * const parent)
+         : Torrent_properties_displayer(parent)
+{
+         addTab(&peer_table_,"Peers");
 }
 
 void Torrent_properties_displayer::setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept {
@@ -199,14 +209,11 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
                   return ret_peer_id_label;
          }();
 
-         constexpr auto peer_id_col_idx = 0;
-         constexpr auto dled_byte_col_idx = 1;
-         constexpr auto uled_byte_col_idx = 2;
-         constexpr auto dl_speed_col_idx = 3;
          const auto row_idx = peer_table_.rowCount() - 1;
+         enum class Col_idx { peer_id, dled_byte, uled_byte, dl_speed };
 
-         peer_table_.setCellWidget(row_idx,peer_id_col_idx,peer_id_label);
-         peer_table_.setCellWidget(row_idx,dled_byte_col_idx,dled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,uled_byte_col_idx,uled_byte_cnt_label);
-         peer_table_.setCellWidget(row_idx,dl_speed_col_idx,dl_speed_label);
+         peer_table_.setCellWidget(row_idx,static_cast<std::int32_t>(Col_idx::peer_id),peer_id_label);
+         peer_table_.setCellWidget(row_idx,static_cast<std::int32_t>(Col_idx::dled_byte),dled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,static_cast<std::int32_t>(Col_idx::uled_byte),uled_byte_cnt_label);
+         peer_table_.setCellWidget(row_idx,static_cast<std::int32_t>(Col_idx::dl_speed),dl_speed_label);
 }

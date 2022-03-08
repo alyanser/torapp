@@ -6,7 +6,15 @@
 #include <QTabWidget>
 
 namespace bencode {
-         struct Metadata;
+
+struct Metadata;
+
+}
+
+namespace magnet {
+
+struct Metadata;
+
 }
 
 class Tcp_socket;
@@ -15,7 +23,7 @@ class QFile;
 class Torrent_properties_displayer : public QTabWidget {
          Q_OBJECT
 public:
-         Torrent_properties_displayer() = default;
+         explicit Torrent_properties_displayer(const magnet::Metadata & torrent_metadata,QWidget * parent = nullptr);
          explicit Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * parent = nullptr);
          
          void add_peer(const Tcp_socket * socket) noexcept;
@@ -24,6 +32,8 @@ public:
          void setup_file_info_widget(const bencode::Metadata & torrent_metadata,const QList<std::pair<QFile *,std::int64_t>> & file_handles) noexcept;
          void display_file_bar() noexcept;
 private:
+         Torrent_properties_displayer(QWidget * parent = nullptr);
+
          void setup_general_info_widget(const bencode::Metadata & torrent_metadata) noexcept;
          void setup_peer_table() noexcept;
          QWidget * get_new_file_widget(const QString & file_path,std::int64_t total_file_size) noexcept;

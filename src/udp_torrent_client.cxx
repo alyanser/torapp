@@ -53,12 +53,6 @@ Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata,util::D
          assert(tracker_);
          configure_default_connections();
 
-         // auto * const temp_socket = new Udp_socket(torrent_metadata.tracker_urls.front(),craft_connect_request(),this);
-
-         // connect(temp_socket,&Udp_socket::readyRead,this,[this,temp_socket]{
-         //          on_socket_ready_read(temp_socket);
-         // });
-
          std::for_each(torrent_metadata.tracker_urls.cbegin(),torrent_metadata.tracker_urls.cend(),[this](const auto & tracker_url){
                   assert(tracker_url.isValid());
 
