@@ -35,7 +35,8 @@ public:
                   Have_All,
                   Have_None,
                   Reject_Request,
-                  Allowed_Fast
+                  Allowed_Fast,
+                  Extended_Protocol = 20
          };
 
          Q_ENUM(Message_Id);
@@ -104,7 +105,7 @@ private:
          void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
          void on_piece_verified(std::int32_t verified_piece_idx) noexcept;
 
-         static std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply);
+         std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply) const noexcept;
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
 
@@ -138,7 +139,7 @@ private:
          constexpr static std::string_view uninterested_msg{"0000000103"};
          constexpr static std::string_view have_all_msg{"000000010e"};
          constexpr static std::string_view have_none_msg{"000000010f"};
-         constexpr static std::string_view reserved_bytes{"0000000000000004"};
+         constexpr static std::string_view reserved_bytes{"0000000000100004"};
          constexpr static std::int16_t max_block_size = 1 << 14;
          QList<std::pair<QFile *,std::int64_t>> file_handles_; // {file_handle,count of bytes downloaded}
          QList<QUrl> active_peers_;
@@ -163,6 +164,7 @@ private:
          std::int32_t spare_piece_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
+         bool has_metadata_ = false;
          State state_ = State::Verification;
          QList<std::int32_t> peer_additive_bitfield_;
          QList<Piece> pieces_;

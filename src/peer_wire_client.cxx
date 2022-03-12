@@ -22,6 +22,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
          , total_piece_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(total_byte_cnt_) / static_cast<double>(torrent_piece_size_))))
          , spare_piece_cnt_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0)
          , average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(torrent_piece_size_) / max_block_size)))
+         , has_metadata_(true)
          , peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_,0)
          , pieces_(total_piece_cnt_)
 {
@@ -49,7 +50,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
 Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QByteArray id)
          : properties_displayer_(torrent_metadata)
          , id_(std::move(id))
-         , info_sha1_hash_(torrent_metadata.info_hash)
+         , info_sha1_hash_(std::move(torrent_metadata.info_hash))
          , handshake_msg_(craft_handshake_message())
          , dl_path_(std::move(resources.dl_path))
          , tracker_(resources.tracker)
@@ -411,7 +412,7 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 }
 
 [[nodiscard]]
-std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handshake_reply(Tcp_socket * const socket,const QByteArray & reply){
+std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handshake_reply(Tcp_socket * const socket,const QByteArray & reply) const noexcept {
          constexpr auto expected_reply_size = 68;
 
          if(reply.size() != expected_reply_size){
@@ -448,10 +449,14 @@ std::optional<std::pair<QByteArray,QByteArray>> Peer_wire_client::verify_handsha
                   }();
 
                   const auto peer_reserved_bits = util::conversion::convert_to_bits(peer_reserved_bytes);
-                  assert(peer_reserved_bytes.size() * 8 == peer_reserved_bits.size());
+                  assert(peer_reserved_bits.size() == 64);
 
                   if(constexpr auto fast_ext_bit_idx = 61;peer_reserved_bits[fast_ext_bit_idx]){
                            socket->fast_extension_enabled = true;
+                  }
+
+                  if(constexpr auto extension_protocol_bit_idx = 43;!has_metadata_ && peer_reserved_bits[extension_protocol_bit_idx]){
+                           socket->extension_protocol_enabled = true;
                   }
          }
 
@@ -764,7 +769,7 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
 
 [[nodiscard]]
 bool Peer_wire_client::is_valid_reply(Tcp_socket * const socket,const QByteArray & reply,const Message_Id received_msg_id) noexcept {
-         constexpr auto max_msg_id = 17;
+         constexpr auto max_msg_id = 20;
 
          if(static_cast<std::int32_t>(received_msg_id) > max_msg_id){
                   qDebug() << "peer sent out of range id" << received_msg_id;
@@ -801,6 +806,11 @@ bool Peer_wire_client::is_valid_reply(Tcp_socket * const socket,const QByteArray
                   case Message_Id::Piece : {
                            constexpr auto min_piece_msg_size = 9;
                            return reply.size() >= min_piece_msg_size;
+                  }
+
+                  case Message_Id::Extended_Protocol : {
+                           constexpr auto min_extended_msg_size = 1;
+                           return reply.size() >= min_extended_msg_size;
                   }
 
                   default : {
@@ -866,6 +876,7 @@ QSet<std::int32_t> Peer_wire_client::generate_allowed_fast_set(const std::uint32
 
                   for(std::int32_t offset = 0;allowed_fast_set.size() < allowed_fast_set_size && offset < allowed_fast_set_size;offset += 4){
                            assert(offset + 4 < rand_bytes.size());
+                           assert(total_piece_cnt);
                            const auto allowed_fast_idx = util::extract_integer<std::uint32_t>(rand_bytes,offset) % static_cast<std::uint32_t>(total_piece_cnt);
                            allowed_fast_set.insert(static_cast<std::int32_t>(allowed_fast_idx));
                   }
@@ -902,7 +913,7 @@ void Peer_wire_client::on_have_message_received(Tcp_socket * const socket,const 
                   socket->peer_bitfield[peer_have_piece_idx] = true;
                   ++peer_additive_bitfield_[peer_have_piece_idx];
          }else{
-                  qDebug() << "Peer sent have duplicate have msg";
+                  qDebug() << "Peer sent duplicate 'have' msg";
                   // ? consider as error?
          }
 }
@@ -1097,6 +1108,10 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket,con
          active_peers_.emplace_back(socket->peer_url());
          properties_displayer_.add_peer(socket);
 
+         if(!has_metadata_){
+                  return;
+         }
+
          connect(this,&Peer_wire_client::valid_block_received,socket,[socket](const util::Packet_metadata request_metadata){
                   socket->remove_request({request_metadata.piece_idx,request_metadata.piece_offset,request_metadata.byte_cnt});
          });
@@ -1206,7 +1221,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
          if(!socket->handshake_done){
                   return on_handshake_reply_received(socket,*reply);
          }
- 
+
          const auto received_msg_id = [&reply = reply]{
                   constexpr auto msg_id_offset = 0;
                   return static_cast<Message_Id>(util::extract_integer<std::int8_t>(*reply,msg_id_offset));
@@ -1217,9 +1232,19 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                   return socket->abort();
          }
 
-         qDebug() << received_msg_id << "[ Active peers:" << active_peers_.size() << "]";
+         qDebug() << received_msg_id << "[ Active peers:" << active_peers_.size() << ']';
          constexpr auto msg_begin_offset = 1;
 
+         {
+                  if(socket->extension_protocol_enabled && received_msg_id == Message_Id::Extended_Protocol){
+                           // todo: make parse_this_stuff
+                  }
+         }
+
+         if(!has_metadata_){
+                  return;
+         }
+         
          switch(received_msg_id){
 
                   case Message_Id::Choke : {

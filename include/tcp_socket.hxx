@@ -40,6 +40,7 @@ public:
          bool am_interested = false;
          bool peer_interested = false;
          bool fast_extension_enabled = false;
+         bool extension_protocol_enabled = false;
 signals:
          void got_choked() const;
          void uploaded_byte_count_changed(std::int64_t uled_byte_cnt) const;
