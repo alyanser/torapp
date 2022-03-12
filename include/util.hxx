@@ -37,7 +37,7 @@ constexpr std::size_t qHash(const Packet_metadata packet_metadata,const std::siz
 }
 
 template<typename result_type,typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
-result_type extract_integer(const QByteArray & raw_data,qsizetype offset);
+result_type extract_integer(const QByteArray & raw_data,qsizetype offset = 0);
 
 template<typename dl_metadata_type>
 void begin_setting_group(QSettings & settings) noexcept;

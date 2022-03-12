@@ -32,8 +32,9 @@ public:
          QSet<std::int32_t> peer_allowed_fast_set;
          QSet<std::int32_t> allowed_fast_set;
          QSet<util::Packet_metadata> rejected_requests;
-         QTimer request_timer_;
-         std::int64_t uled_byte_threshold_ = 0;
+         QTimer request_timer;
+         std::int64_t uled_byte_threshold = 0;
+         std::int64_t peer_ut_metadata_id = -1;
          bool handshake_done = false;
          bool am_choking = true;
          bool peer_choked = true;

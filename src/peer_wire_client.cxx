@@ -1237,7 +1237,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
 
          {
                   if(socket->extension_protocol_enabled && received_msg_id == Message_Id::Extended_Protocol){
-                           // todo: make parse_this_stuff
+                           on_extension_message_received(socket,reply->sliced(1) /* skip standard bit. '20' for extension protocol */);
                   }
          }
 
@@ -1385,6 +1385,49 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                            on_suggest_piece_received(socket,util::extract_integer<std::int32_t>(*reply,msg_begin_offset));
                            break;
                   }
+         }
+}
+
+void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket,QByteArray message){
+         assert(socket);
+         assert(socket->extension_protocol_enabled);
+         assert(!message.isEmpty());
+
+         if(const auto msg_type = util::extract_integer<std::int8_t>(message);!msg_type){ // extension handshake message
+
+                  {        //! hacky message fix. improve later
+
+                           message.removeIf([](const char c){
+                                    return c == '"';
+                           });
+
+                           message.replace("\\x","%");
+                           message = QByteArray::fromPercentEncoding(message.sliced(1) /* skip the msg id */);
+                  }
+
+                  try {
+                           for(const auto & [key,value] : bencode::parse_content(message,"")){
+                                    constexpr std::string_view standard_dict_name("m");
+
+                                    if(key != standard_dict_name){
+                                             continue;
+                                    }
+
+                                    for(const auto & [peer_label_heading,peer_label_idx] : std::any_cast<bencode::dictionary>(value)){
+
+                                             if(constexpr std::string_view metadata_key("ut_metadata");peer_label_heading == metadata_key){
+                                                      socket->peer_ut_metadata_id = std::any_cast<std::int64_t>(peer_label_idx);
+                                             }
+                                    }
+                           }
+
+                  }catch(const std::exception & exception){
+                           qDebug() << "error in the extension dictionary. aborting connection" << exception.what();
+                           return socket->abort();
+                  }
+
+         }else if(socket->peer_ut_metadata_id != -1){ // peer supports sharing torrent metadata
+                  // todo : craft request
          }
 }
 

@@ -104,6 +104,7 @@ private:
          void on_socket_connected(Tcp_socket * socket) noexcept;
          void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
          void on_piece_verified(std::int32_t verified_piece_idx) noexcept;
+         static void on_extension_message_received(Tcp_socket * socket,QByteArray message);
 
          std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply) const noexcept;
          void verify_existing_pieces() noexcept;
