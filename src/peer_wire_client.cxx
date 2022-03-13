@@ -1109,6 +1109,22 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket,con
          properties_displayer_.add_peer(socket);
 
          if(!has_metadata_){
+
+                  if(socket->extension_protocol_enabled){
+                           using util::conversion::convert_to_hex;
+
+                           const static auto extended_handshake = []{
+                                    constexpr std::int32_t handshake_size = extended_handshake_dict.size() + 2;
+                                    constexpr std::int8_t ext_msg_id = 20;
+                                    constexpr std::int8_t handshake_msg_id = 0;
+
+                                    return convert_to_hex(handshake_size) + convert_to_hex(ext_msg_id) + convert_to_hex(handshake_msg_id) + 
+                                             QByteArray(extended_handshake_dict.data()).toHex();
+                           }();
+
+                           socket->send_packet(extended_handshake);
+                  }
+
                   return;
          }
 
@@ -1211,7 +1227,9 @@ QByteArray Peer_wire_client::craft_generic_message(const util::Packet_metadata p
 }
 
 void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
+         assert(socket);
          assert(socket->bytesAvailable());
+
          const auto reply = socket->receive_packet();
 
          if(!reply){
@@ -1233,11 +1251,12 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
          }
 
          qDebug() << received_msg_id << "[ Active peers:" << active_peers_.size() << ']';
+
          constexpr auto msg_begin_offset = 1;
 
          {
                   if(socket->extension_protocol_enabled && received_msg_id == Message_Id::Extended_Protocol){
-                           on_extension_message_received(socket,reply->sliced(1) /* skip standard bit. '20' for extension protocol */);
+                           on_extension_message_received(socket,reply->sliced(msg_begin_offset) /* skip standard bit. '20' for extension protocol */);
                   }
          }
 
@@ -1393,42 +1412,131 @@ void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket,Q
          assert(socket->extension_protocol_enabled);
          assert(!message.isEmpty());
 
-         if(const auto msg_type = util::extract_integer<std::int8_t>(message);!msg_type){ // extension handshake message
+         const auto msg_type = util::extract_integer<std::int8_t>(message);
 
-                  {        //! hacky message fix. improve later
+         {        //! hacky message fix. to be improved
 
-                           message.removeIf([](const char c){
-                                    return c == '"';
-                           });
+                  message.removeIf([](const char c){
+                           return c == '"';
+                  });
 
-                           message.replace("\\x","%");
-                           message = QByteArray::fromPercentEncoding(message.sliced(1) /* skip the msg id */);
+                  message.replace("\\x","%");
+                  message = QByteArray::fromPercentEncoding(message.sliced(1) /* skip the msg id */);
+         }
+
+         switch(msg_type){
+
+                  case 0 : {
+                           return on_extension_handshake_received(socket,message);
                   }
 
-                  try {
-                           for(const auto & [key,value] : bencode::parse_content(message,"")){
-                                    constexpr std::string_view standard_dict_name("m");
+                  case 1 : {
+                           return on_extension_metadata_message_received(socket,message);
+                  }
 
-                                    if(key != standard_dict_name){
-                                             continue;
+         }
+
+         qDebug() << "peer sent invalid extension msg type ids" << msg_type;
+         socket->on_peer_fault();
+}
+
+void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket,const QByteArray & message){
+         assert(socket);
+         assert(!message.isEmpty());
+
+         const auto received_dict = bencode::parse_content(message,"");
+
+         const auto metadata_size_itr = received_dict.find("metadata_size");
+
+         if(metadata_size_itr == received_dict.end()){
+                  return socket->on_peer_fault();
+         }
+         
+         const auto m_heading_itr = received_dict.find("m");
+
+         if(m_heading_itr == received_dict.end()){
+                  return socket->on_peer_fault();
+         }
+
+         socket->metadata_size = std::any_cast<std::int64_t>(metadata_size_itr->second);
+
+         for(const auto & [peer_label_heading,peer_label_idx] : std::any_cast<bencode::dictionary>(m_heading_itr->second)){
+
+                  if(constexpr std::string_view metadata_key("ut_metadata");peer_label_heading == metadata_key){
+                           socket->peer_ut_metadata_id = std::any_cast<std::int64_t>(peer_label_idx);
+                  }
+         }
+
+         assert(socket->peer_ut_metadata_id != -1);
+         assert(socket->metadata_size != -1);
+
+         send_metadata_requests(socket);
+}
+
+void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const socket,const QByteArray & message){
+         assert(socket);
+         assert(!message.isEmpty());
+         const auto received_dict = bencode::parse_content(message,"");
+
+         if(const auto msg_type_itr = received_dict.find("msg_type");msg_type_itr != received_dict.end()){
+                  const auto msg_type = std::any_cast<std::int64_t>(msg_type_itr->second);
+
+                  switch(msg_type){
+
+                           case Metadata_Id::Data : {
+                                    const auto piece_itr = received_dict.find("piece");
+
+                                    if(piece_itr == received_dict.end()){
+                                             return socket->on_peer_fault();
                                     }
 
-                                    for(const auto & [peer_label_heading,peer_label_idx] : std::any_cast<bencode::dictionary>(value)){
+                                    const auto piece_size_itr = received_dict.find("total_size");
 
-                                             if(constexpr std::string_view metadata_key("ut_metadata");peer_label_heading == metadata_key){
-                                                      socket->peer_ut_metadata_id = std::any_cast<std::int64_t>(peer_label_idx);
-                                             }
+                                    if(piece_size_itr == received_dict.end()){
+                                             return socket->on_peer_fault();
                                     }
+
+                                    const auto piece_idx = std::any_cast<std::int64_t>(piece_itr->second);
+                                    const auto piece_size = std::any_cast<std::int64_t>(piece_size_itr->second);
+
+                                    qDebug() << piece_idx << piece_size;
+                                    break;
                            }
 
-                  }catch(const std::exception & exception){
-                           qDebug() << "error in the extension dictionary. aborting connection" << exception.what();
-                           return socket->abort();
-                  }
+                           case Metadata_Id::Reject : {
+                                    return socket->disconnectFromHost(); // bad peer :(
+                           }
 
-         }else if(socket->peer_ut_metadata_id != -1){ // peer supports sharing torrent metadata
-                  // todo : craft request
+                           case Metadata_Id::Request : {
+                                    // todo
+                           } 
+                  }
          }
+}
+
+void Peer_wire_client::send_metadata_requests(Tcp_socket * const socket) noexcept {
+         assert(socket);
+         assert(socket->peer_ut_metadata_id != -1 && socket->metadata_size != -1);
+         static_assert(max_block_size);
+
+         const auto num_blocks = static_cast<std::int64_t>(std::ceil(static_cast<double>(socket->metadata_size) / static_cast<double>(max_block_size)));
+
+         for(std::int64_t block_idx = 0;block_idx < num_blocks;++block_idx){
+                  socket->send_packet(craft_metadata_request(block_idx,socket->peer_ut_metadata_id));
+         }
+}
+
+[[nodiscard]]
+QByteArray Peer_wire_client::craft_metadata_request(const std::int64_t block_idx,const std::int8_t peer_ut_metadata_idx) noexcept {
+         assert(block_idx >= 0);
+         assert(peer_ut_metadata_idx > 0);
+         using util::conversion::convert_to_hex;
+
+         const auto dictionary = "d8:msg_typei0e5:piecei" + QByteArray::number(block_idx) + "ee";
+         const auto request_size = static_cast<std::int32_t>(dictionary.size()) + 2;
+         constexpr std::int8_t protocol_prefix = 20;
+
+         return convert_to_hex(request_size) + convert_to_hex(protocol_prefix) + convert_to_hex(peer_ut_metadata_idx) + dictionary.toHex();
 }
 
 template QByteArray Peer_wire_client::craft_generic_message<Peer_wire_client::Message_Id::Reject_Request>(util::Packet_metadata) noexcept;

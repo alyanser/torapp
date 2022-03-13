@@ -49,6 +49,14 @@ public:
 
          Q_ENUM(State);
 
+         enum Metadata_Id {
+                  Request,
+                  Data,
+                  Reject
+         };
+
+         Q_ENUM(Metadata_Id);
+
          Peer_wire_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QByteArray id,QByteArray info_sha1_hash);
          Peer_wire_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QByteArray id);
 
@@ -90,6 +98,7 @@ private:
          static QByteArray craft_piece_message(const QByteArray & piece_data,std::int32_t piece_idx,std::int32_t piece_offset) noexcept;
          static QByteArray craft_bitfield_message(const QBitArray & bitfield) noexcept;
          static QByteArray craft_allowed_fast_message(std::int32_t piece_idx) noexcept;
+         static QByteArray craft_metadata_request(std::int64_t block_idx,std::int8_t peer_ut_metadata_idx) noexcept;
          QByteArray craft_handshake_message() const noexcept;
 
          void on_socket_ready_read(Tcp_socket * socket) noexcept;
@@ -100,11 +109,14 @@ private:
          void on_piece_downloaded(Piece & dled_piece,std::int32_t dled_piece_idx) noexcept;
          void on_block_request_received(Tcp_socket * socket,const QByteArray & request) noexcept;
          void on_suggest_piece_received(Tcp_socket * socket,std::int32_t suggested_piece_idx) noexcept;
-         void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
          void on_socket_connected(Tcp_socket * socket) noexcept;
          void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
          void on_piece_verified(std::int32_t verified_piece_idx) noexcept;
+         void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
+         static void send_metadata_requests(Tcp_socket * socket) noexcept;
          static void on_extension_message_received(Tcp_socket * socket,QByteArray message);
+         static void on_extension_handshake_received(Tcp_socket * socket,const QByteArray & message);
+         static void on_extension_metadata_message_received(Tcp_socket * socket,const QByteArray & message);
 
          std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply) const noexcept;
          void verify_existing_pieces() noexcept;
@@ -141,6 +153,7 @@ private:
          constexpr static std::string_view have_all_msg{"000000010e"};
          constexpr static std::string_view have_none_msg{"000000010f"};
          constexpr static std::string_view reserved_bytes{"0000000000100004"};
+         constexpr static std::string_view extended_handshake_dict{"d1:md11:ut_metadatai1eee"};
          constexpr static std::int16_t max_block_size = 1 << 14;
          QList<std::pair<QFile *,std::int64_t>> file_handles_; // {file_handle,count of bytes downloaded}
          QList<QUrl> active_peers_;
@@ -149,6 +162,7 @@ private:
          QByteArray id_;
          QByteArray info_sha1_hash_;
          QByteArray handshake_msg_;
+         QByteArray raw_metadata_;
          QString dl_path_;
          QBitArray bitfield_;
          QTimer settings_timer_;
