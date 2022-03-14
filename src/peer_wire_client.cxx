@@ -26,7 +26,6 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
          , peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_,0)
          , pieces_(total_piece_cnt_)
 {
-         qDebug() << info_sha1_hash_;
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
