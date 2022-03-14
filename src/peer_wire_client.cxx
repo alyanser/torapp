@@ -55,6 +55,29 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Downl
          , dl_path_(std::move(resources.dl_path))
          , tracker_(resources.tracker)
 {
+
+         connect(this,&Peer_wire_client::metadata_received,[this,torrent_metadata = std::move(torrent_metadata)]{
+                  assert(metadata_size_ > 0);
+                  assert(raw_metadata_.size() == metadata_size_);
+                  assert(obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_);
+
+                  try {
+                           bencode::impl::extract_info_dictionary(bencode::parse_content(raw_metadata_,""),torrent_metadata_);
+                  }catch(const std::exception & exception){
+                           qDebug() << "error while parsing received metadata" << exception.what();
+                           return;
+                  }
+
+                  const auto & tracker_urls = torrent_metadata.tracker_urls;
+
+                  std::transform(tracker_urls.cbegin(),tracker_urls.cend(),std::back_inserter(torrent_metadata_.announce_url_list),[](const QUrl & tracker_url){
+                           qDebug() << tracker_url;
+                           return tracker_url.toString().toStdString();
+                  });
+
+                  emit new_download_requested(std::move(dl_path_),std::move(torrent_metadata_));
+                  emit tracker_->request_satisfied();
+         });
 }
 
 [[nodiscard]]
@@ -1539,7 +1562,7 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
                                     metadata_field_[piece_idx] = true;
 
                                     if(++obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_){
-                                             on_metadata_received();
+                                             emit metadata_received();
                                     }
 
                                     assert(obtained_metadata_piece_cnt_ <= total_metadata_piece_cnt_);
@@ -1560,12 +1583,6 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
                            }
                   }
          }
-}
-
-void Peer_wire_client::on_metadata_received() const noexcept {
-         assert(metadata_size_ > 0);
-         assert(raw_metadata_.size() == metadata_size_);
-         assert(obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_);
 }
 
 [[nodiscard]]

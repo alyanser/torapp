@@ -51,6 +51,7 @@ signals:
          void announce_reply_received(const Announce_reply & announce_reply) const;
          void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
          void error_received(const QByteArray & array) const;
+         void new_download_requested(QString dl_path,bencode::Metadata torrent_metadata) const;
 private:
          static QByteArray craft_connect_request() noexcept;
          QByteArray craft_scrape_request(std::int64_t tracker_connection_id) const noexcept;

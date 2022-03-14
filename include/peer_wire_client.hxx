@@ -72,6 +72,8 @@ signals:
          void send_requests() const;
          void request_rejected(util::Packet_metadata request_metadata) const;
          void valid_block_received(util::Packet_metadata packet_metadata) const;
+         void metadata_received() const;
+         void new_download_requested(QString dl_path,bencode::Metadata torrent_metadata) const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;
@@ -116,7 +118,6 @@ private:
          void on_extension_message_received(Tcp_socket * socket,QByteArray message);
          void on_extension_handshake_received(Tcp_socket * socket,const QByteArray & message);
          void on_extension_metadata_message_received(Tcp_socket * socket,const QByteArray & message);
-         void on_metadata_received() const noexcept;
          void send_metadata_requests(Tcp_socket * socket) const noexcept;
 
          std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply) const noexcept;

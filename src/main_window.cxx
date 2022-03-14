@@ -30,6 +30,8 @@ Main_window::Main_window(){
          assert(scroll_area_widget_.layout());
          scroll_area_.setWidget(&scroll_area_widget_);
          scroll_area_.setWidgetResizable(true);
+
+         connect(&network_manager_,&Network_manager::new_download_requested,this,&Main_window::initiate_download<bencode::Metadata>);
 }
 
 Main_window::~Main_window(){

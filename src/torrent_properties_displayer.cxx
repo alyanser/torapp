@@ -21,7 +21,7 @@ Torrent_properties_displayer::Torrent_properties_displayer(QWidget * const paren
 }
 
 Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata,QWidget * const parent)
-         : QTabWidget(parent)
+         : Torrent_properties_displayer(parent)
 {
          addTab(&general_info_tab_,"General");
          addTab(&file_info_scroll_area_,"Files");
@@ -79,7 +79,7 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
          peer_table_.horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::Stretch);
 
          const static QList<QString> peer_table_headings {"Peer Id","Downloaded","Uploaded","Download Speed"};
-         
+
          peer_table_.setColumnCount(static_cast<std::int32_t>(peer_table_headings.size()));
          peer_table_.setHorizontalHeaderLabels(peer_table_headings);
 }

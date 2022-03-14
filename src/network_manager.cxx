@@ -54,8 +54,18 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
 }
 
 void Network_manager::download(util::Download_resources resources,bencode::Metadata torrent_metadata) noexcept {
-         
-         if(const auto protocol = QUrl(torrent_metadata.announce_url.data()).scheme();protocol == "udp"){
+         qDebug() << torrent_metadata.pieces.data();
+         auto & tracker_urls = torrent_metadata.announce_url_list;
+
+         if(std::find(tracker_urls.cbegin(),tracker_urls.cend(),torrent_metadata.announce_url) == tracker_urls.cend()){
+                  tracker_urls.insert(tracker_urls.begin(),torrent_metadata.announce_url);
+         }
+
+         tracker_urls.erase(std::remove_if(tracker_urls.begin(),tracker_urls.end(),[](const std::string & tracker_url){
+                  return QUrl(tracker_url.data()).scheme() != "udp";
+         }),tracker_urls.end());
+
+         if(!tracker_urls.empty()){
                   [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),std::move(resources),this);
          }else{
                   emit resources.tracker->download_dropped();
@@ -73,4 +83,6 @@ void Network_manager::download(QString dl_path,magnet::Metadata torrent_metadata
          assert(!torrent_metadata.tracker_urls.empty());
          assert(!dl_path.isEmpty());
          [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),{std::move(dl_path),{},tracker},this);
+
+         connect(udp_client,&Udp_torrent_client::new_download_requested,this,&Network_manager::new_download_requested);
 }

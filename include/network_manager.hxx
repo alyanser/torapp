@@ -24,4 +24,6 @@ public:
          void download(util::Download_resources resources,QUrl url) noexcept;
          void download(util::Download_resources resources,bencode::Metadata torrent_metadata) noexcept;
          void download(QString dl_path,magnet::Metadata torrent_metadata,Download_tracker * tracker) noexcept;
+signals:
+         void new_download_requested(QString dl_path,bencode::Metadata torrent_metadata) const;
 };

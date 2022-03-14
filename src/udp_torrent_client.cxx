@@ -34,13 +34,6 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::
                            },Qt::SingleShotConnection);
                   }
          });
-         
-         assert(!torrent_metadata_.announce_url.empty());
-         auto & tracker_urls = torrent_metadata_.announce_url_list;
-
-         if(std::find(tracker_urls.begin(),tracker_urls.end(),torrent_metadata_.announce_url) == tracker_urls.end()){
-                  tracker_urls.insert(tracker_urls.begin(),torrent_metadata_.announce_url);
-         }
 }
 
 Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent) 
@@ -75,6 +68,7 @@ void Udp_torrent_client::configure_default_connections() noexcept {
          });
 
          connect(tracker_,&Download_tracker::request_satisfied,this,&Udp_torrent_client::deleteLater);
+         connect(&peer_client_,&Peer_wire_client::new_download_requested,this,&Udp_torrent_client::new_download_requested);
 }
 
 void Udp_torrent_client::on_socket_ready_read(Udp_socket * const socket) noexcept {
