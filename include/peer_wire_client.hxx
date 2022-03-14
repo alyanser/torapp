@@ -73,7 +73,7 @@ signals:
          void request_rejected(util::Packet_metadata request_metadata) const;
          void valid_block_received(util::Packet_metadata packet_metadata) const;
          void metadata_received() const;
-         void new_download_requested(QString dl_path,bencode::Metadata torrent_metadata) const;
+         void new_download_requested(QString dl_path,bencode::Metadata torrent_metadata,QByteArray info_sha1_hash) const;
 private:
          struct Piece {
                   QList<std::int8_t> requested_blocks;

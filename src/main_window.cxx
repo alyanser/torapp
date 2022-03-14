@@ -175,14 +175,14 @@ void Main_window::add_top_actions() noexcept {
 }
 
 template<typename dl_metadata_type>
-void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_metadata) noexcept {
+void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_metadata,QByteArray info_sha1_hash) noexcept {
          static_assert(!std::is_reference_v<dl_metadata_type>);
 
          auto * const tracker = new Download_tracker(dl_path,dl_metadata,&scroll_area_widget_);
          central_layout_.addWidget(tracker);
 
          {
-                  const auto tracker_signal = qOverload<decltype(dl_path),dl_metadata_type>(&Download_tracker::retry_download);
+                  const auto tracker_signal = qOverload<decltype(dl_path),dl_metadata_type,decltype(info_sha1_hash)>(&Download_tracker::retry_download);
                   connect(tracker,tracker_signal,this,&Main_window::initiate_download<dl_metadata_type>);
          }
 
@@ -205,7 +205,13 @@ void Main_window::initiate_download(const QString & dl_path,dl_metadata_type dl_
                   case File_allocator::Error::Null : {
                            assert(file_handles);
                            assert(!file_handles->isEmpty());
-                           network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata));
+
+                           if constexpr (std::is_same_v<std::remove_const_t<dl_metadata_type>,QUrl>){
+                                    network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata));
+                           }else{
+                                    network_manager_.download({dl_path,std::move(*file_handles),tracker},std::move(dl_metadata),std::move(info_sha1_hash));
+                           }
+
                            tray_.showMessage("Download started","Download has successfully started");
                            break;
                   }
@@ -302,8 +308,8 @@ void Main_window::restore_downloads() noexcept {
          });
 }
 
-template void Main_window::initiate_download<bencode::Metadata>(const QString &,bencode::Metadata) noexcept;
-template void Main_window::initiate_download<QUrl>(const QString &,QUrl) noexcept;
+template void Main_window::initiate_download<bencode::Metadata>(const QString &,bencode::Metadata,QByteArray) noexcept;
+template void Main_window::initiate_download<QUrl>(const QString &,QUrl,QByteArray) noexcept;
 template void Main_window::add_download_to_settings<QUrl>(const QString &,QUrl &&) const noexcept;
 template void Main_window::add_download_to_settings<QString>(const QString &,QString &&) const noexcept;
 template void Main_window::remove_download_from_settings<bencode::Metadata>(const QString &) const noexcept;

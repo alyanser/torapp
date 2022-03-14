@@ -46,8 +46,8 @@ public:
          void set_upload_byte_count(std::int64_t uled_byte_cnt) noexcept;
          void on_verification_completed() noexcept;
 signals:
-         void retry_download(const QString & file_path,QUrl url) const;
-         void retry_download(const QString & file_path,bencode::Metadata torrent_metadata) const;
+         void retry_download(const QString & file_path,QUrl url,QByteArray info_sha1_hash = "") const;
+         void retry_download(const QString & file_path,bencode::Metadata torrent_metadata,QByteArray info_sha1_hash = "") const;
          void restored_download_paused() const;
          void torrent_open_button_clicked() const;
          void delete_files_permanently() const;

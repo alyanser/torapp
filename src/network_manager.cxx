@@ -53,8 +53,7 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
          connect(tracker,&Download_tracker::move_files_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
 }
 
-void Network_manager::download(util::Download_resources resources,bencode::Metadata torrent_metadata) noexcept {
-         qDebug() << torrent_metadata.pieces.data();
+void Network_manager::download(util::Download_resources resources,bencode::Metadata torrent_metadata,QByteArray info_sha1_hash) noexcept {
          auto & tracker_urls = torrent_metadata.announce_url_list;
 
          if(std::find(tracker_urls.cbegin(),tracker_urls.cend(),torrent_metadata.announce_url) == tracker_urls.cend()){
@@ -66,7 +65,7 @@ void Network_manager::download(util::Download_resources resources,bencode::Metad
          }),tracker_urls.end());
 
          if(!tracker_urls.empty()){
-                  [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),std::move(resources),this);
+                  [[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata),std::move(resources),std::move(info_sha1_hash),this);
          }else{
                   emit resources.tracker->download_dropped();
 

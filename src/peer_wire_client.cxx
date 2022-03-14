@@ -26,6 +26,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata,util::Down
          , peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_,0)
          , pieces_(total_piece_cnt_)
 {
+         qDebug() << info_sha1_hash_;
          assert(torrent_piece_size_ > 0);
          assert(!info_sha1_hash_.isEmpty());
          assert(!id_.isEmpty());
@@ -61,6 +62,13 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Downl
                   assert(raw_metadata_.size() == metadata_size_);
                   assert(obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_);
 
+                  if(QCryptographicHash::hash(raw_metadata_,QCryptographicHash::Algorithm::Sha1).toHex() != info_sha1_hash_){
+                           qDebug() << "hash of received metadata doesn't match - metadata flushed";
+                           metadata_field_.fill(false);
+                           obtained_metadata_piece_cnt_ = 0;
+                           return;
+                  }
+
                   try {
                            bencode::impl::extract_info_dictionary(bencode::parse_content(raw_metadata_,""),torrent_metadata_);
                   }catch(const std::exception & exception){
@@ -71,11 +79,10 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Downl
                   const auto & tracker_urls = torrent_metadata.tracker_urls;
 
                   std::transform(tracker_urls.cbegin(),tracker_urls.cend(),std::back_inserter(torrent_metadata_.announce_url_list),[](const QUrl & tracker_url){
-                           qDebug() << tracker_url;
                            return tracker_url.toString().toStdString();
                   });
 
-                  emit new_download_requested(std::move(dl_path_),std::move(torrent_metadata_));
+                  emit new_download_requested(std::move(dl_path_),std::move(torrent_metadata_),std::move(info_sha1_hash_));
                   emit tracker_->request_satisfied();
          });
 }
@@ -153,7 +160,6 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
          std::for_each(peer_urls.cbegin(),peer_urls.cend(),[this](const auto & peer_url){
 
                   if(!active_peers_.contains(peer_url)){
-                           qDebug() << peer_url.host() << peer_url.port() << peer_url.isValid();
                            auto * const socket = new Tcp_socket(peer_url,torrent_piece_size_,this);
 
                            connect(socket,&Tcp_socket::connected,this,[this,socket]{
@@ -1587,7 +1593,6 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
 
 [[nodiscard]]
 bool Peer_wire_client::validate_metadata_piece_info(const std::int64_t piece_idx,const std::int64_t received_raw_dict_size) const noexcept {
-         qDebug() << received_raw_dict_size;
          
          if(piece_idx < 0 || piece_idx >= total_metadata_piece_cnt_){
                   qDebug() << "peer sent invalid metadata piece idx" << piece_idx << total_metadata_piece_cnt_;

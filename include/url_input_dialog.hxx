@@ -13,7 +13,7 @@ class Url_input_dialog : public QDialog {
 public:
          explicit Url_input_dialog(QWidget * parent = nullptr);
 signals:
-         void new_request_received(const QString & file_path,QUrl url) const;
+         void new_request_received(const QString & file_path,QUrl url,QByteArray info_sha1_hash = "") const;
 private:
          void configure_default_connections() noexcept;
          void reset_lines() noexcept;

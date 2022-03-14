@@ -8,10 +8,10 @@
 #include <QSettings>
 #include <QPointer>
 
-Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QObject * const parent)
+Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata,util::Download_resources resources,QByteArray info_sha1_hash,QObject * const parent)
          : QObject(parent)
          , torrent_metadata_(std::move(torrent_metadata))
-         , info_sha1_hash_(calculate_info_sha1_hash(torrent_metadata_))
+         , info_sha1_hash_(info_sha1_hash.isEmpty() ? calculate_info_sha1_hash(torrent_metadata_) : std::move(info_sha1_hash))
          , peer_client_(torrent_metadata_,{resources.dl_path,std::move(resources.file_handles),resources.tracker},id,info_sha1_hash_)
          , tracker_(resources.tracker)
 {
