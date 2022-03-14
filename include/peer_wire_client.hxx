@@ -113,14 +113,16 @@ private:
          void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
          void on_piece_verified(std::int32_t verified_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
-         static void send_metadata_requests(Tcp_socket * socket) noexcept;
-         static void on_extension_message_received(Tcp_socket * socket,QByteArray message);
-         static void on_extension_handshake_received(Tcp_socket * socket,const QByteArray & message);
-         static void on_extension_metadata_message_received(Tcp_socket * socket,const QByteArray & message);
+         void on_extension_message_received(Tcp_socket * socket,QByteArray message);
+         void on_extension_handshake_received(Tcp_socket * socket,const QByteArray & message);
+         void on_extension_metadata_message_received(Tcp_socket * socket,const QByteArray & message);
+         void on_metadata_received() const noexcept;
+         void send_metadata_requests(Tcp_socket * socket) const noexcept;
 
          std::optional<std::pair<QByteArray,QByteArray>> verify_handshake_reply(Tcp_socket * socket,const QByteArray & reply) const noexcept;
          void verify_existing_pieces() noexcept;
          bool verify_piece_hash(const QByteArray & received_piece,std::int32_t piece_idx) const noexcept;
+         bool validate_metadata_piece_info(std::int64_t piece_idx,std::int64_t received_raw_dict_size) const noexcept;
 
          static util::Packet_metadata extract_packet_metadata(const QByteArray & reply);
          void communicate_with_peer(Tcp_socket * socket);
@@ -165,6 +167,7 @@ private:
          QByteArray raw_metadata_;
          QString dl_path_;
          QBitArray bitfield_;
+         QBitArray metadata_field_;
          QTimer settings_timer_;
          QTimer request_timer_;
          bencode::Metadata torrent_metadata_;
@@ -175,10 +178,13 @@ private:
          std::int64_t session_uled_byte_cnt_ = 0;
          std::int64_t total_byte_cnt_ = 0;
          std::int64_t torrent_piece_size_ = 0;
+         std::int64_t metadata_size_ = 0;
+         std::int64_t total_metadata_piece_cnt_ = 0;
          std::int32_t total_piece_cnt_ = 0;
          std::int32_t spare_piece_cnt_ = 0;
          std::int32_t average_block_cnt_ = 0;
          std::int32_t dled_piece_cnt_ = 0;
+         std::int32_t obtained_metadata_piece_cnt_ = 0;
          bool has_metadata_ = false;
          State state_ = State::Verification;
          QList<std::int32_t> peer_additive_bitfield_;

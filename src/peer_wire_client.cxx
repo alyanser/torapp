@@ -1404,40 +1404,36 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
                            on_suggest_piece_received(socket,util::extract_integer<std::int32_t>(*reply,msg_begin_offset));
                            break;
                   }
+
+                  case Message_Id::Extended_Protocol : {
+                           // handled above - here for 'Wswitch'
+                           break;
+                  }
          }
 }
+
+#include <iostream>
 
 void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket,QByteArray message){
          assert(socket);
          assert(socket->extension_protocol_enabled);
          assert(!message.isEmpty());
 
-         const auto msg_type = util::extract_integer<std::int8_t>(message);
-
-         {        //! hacky message fix. to be improved
-
-                  message.removeIf([](const char c){
-                           return c == '"';
-                  });
-
-                  message.replace("\\x","%");
-                  message = QByteArray::fromPercentEncoding(message.sliced(1) /* skip the msg id */);
-         }
-
-         switch(msg_type){
+         switch(const auto msg_type = util::extract_integer<std::int8_t>(message);msg_type){
 
                   case 0 : {
-                           return on_extension_handshake_received(socket,message);
+                           return on_extension_handshake_received(socket,message.sliced(1));
                   }
 
                   case 1 : {
-                           return on_extension_metadata_message_received(socket,message);
+                           return on_extension_metadata_message_received(socket,message.sliced(1));
                   }
 
+                  default : {
+                           qDebug() << "peer sent invalid extension msg type ids" << msg_type;
+                           return socket->on_peer_fault();
+                  }
          }
-
-         qDebug() << "peer sent invalid extension msg type ids" << msg_type;
-         socket->on_peer_fault();
 }
 
 void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket,const QByteArray & message){
@@ -1445,7 +1441,6 @@ void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket
          assert(!message.isEmpty());
 
          const auto received_dict = bencode::parse_content(message,"");
-
          const auto metadata_size_itr = received_dict.find("metadata_size");
 
          if(metadata_size_itr == received_dict.end()){
@@ -1458,17 +1453,35 @@ void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket
                   return socket->on_peer_fault();
          }
 
-         socket->metadata_size = std::any_cast<std::int64_t>(metadata_size_itr->second);
+         const auto m_dict = std::any_cast<bencode::dictionary>(m_heading_itr->second);
 
-         for(const auto & [peer_label_heading,peer_label_idx] : std::any_cast<bencode::dictionary>(m_heading_itr->second)){
+         if(const auto m_key_itr = m_dict.find("ut_metadata");m_key_itr != m_dict.end()){
+                  socket->peer_ut_metadata_id = std::any_cast<std::int64_t>(m_key_itr->second);
 
-                  if(constexpr std::string_view metadata_key("ut_metadata");peer_label_heading == metadata_key){
-                           socket->peer_ut_metadata_id = std::any_cast<std::int64_t>(peer_label_idx);
+                  if(socket->peer_ut_metadata_id <= 0 || socket->peer_ut_metadata_id > std::numeric_limits<std::int8_t>::max()){
+                           qDebug() << "peer sent invalid metadat id" << socket->peer_ut_metadata_id;
+                           return socket->disconnectFromHost();
                   }
+         }else{
+                  return socket->on_peer_fault();
          }
 
-         assert(socket->peer_ut_metadata_id != -1);
-         assert(socket->metadata_size != -1);
+         if(metadata_size_ < 1){
+                  metadata_size_ = std::any_cast<std::int64_t>(metadata_size_itr->second);
+
+                  if(metadata_size_ < 1){
+                           return socket->on_peer_fault();
+                  }
+
+                  total_metadata_piece_cnt_ = static_cast<std::int64_t>(std::ceil(static_cast<double>(metadata_size_) / static_cast<double>(max_block_size)));
+
+                  assert(raw_metadata_.isEmpty());
+                  assert(metadata_field_.isEmpty());
+                  assert(!obtained_metadata_piece_cnt_);
+
+                  raw_metadata_.resize(metadata_size_);
+                  metadata_field_.resize(total_metadata_piece_cnt_);
+         }
 
          send_metadata_requests(socket);
 }
@@ -1497,9 +1510,39 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
                                     }
 
                                     const auto piece_idx = std::any_cast<std::int64_t>(piece_itr->second);
-                                    const auto piece_size = std::any_cast<std::int64_t>(piece_size_itr->second);
+                                    const auto metadata_size = std::any_cast<std::int64_t>(piece_size_itr->second);
 
-                                    qDebug() << piece_idx << piece_size;
+                                    if(metadata_size != metadata_size_){
+                                             //! out of sync. consider reaction again
+                                             qDebug() << "peer sent different total metadata size than currently set" << metadata_size << metadata_size_;
+                                             return;
+                                    }
+
+                                    const auto dict_begin_offset = 39 + QByteArray::number(piece_idx).size() + QByteArray::number(metadata_size).size();
+                                    const auto received_dict_size = message.size() - dict_begin_offset;
+
+                                    if(!validate_metadata_piece_info(piece_idx,received_dict_size)){
+                                             qDebug() << "peer sent invalid metadata info";
+                                             return socket->on_peer_fault();
+                                    }
+
+                                    assert(!metadata_field_.isEmpty());
+
+                                    if(metadata_field_[piece_idx]){
+                                             qDebug() << "already have metadata piece_idx" << piece_idx;
+                                             return;
+                                    }
+
+                                    assert(raw_metadata_.size() >= piece_idx * max_block_size + received_dict_size);
+                                    std::copy_n(message.data() + dict_begin_offset,received_dict_size,raw_metadata_.begin() + piece_idx * max_block_size);
+
+                                    metadata_field_[piece_idx] = true;
+
+                                    if(++obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_){
+                                             on_metadata_received();
+                                    }
+
+                                    assert(obtained_metadata_piece_cnt_ <= total_metadata_piece_cnt_);
                                     break;
                            }
 
@@ -1509,20 +1552,47 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
 
                            case Metadata_Id::Request : {
                                     // todo
-                           } 
+                                    break;
+                           }
+
+                           default : {
+                                    socket->on_peer_fault();
+                           }
                   }
          }
 }
 
-void Peer_wire_client::send_metadata_requests(Tcp_socket * const socket) noexcept {
+void Peer_wire_client::on_metadata_received() const noexcept {
+         assert(metadata_size_ > 0);
+         assert(raw_metadata_.size() == metadata_size_);
+         assert(obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_);
+}
+
+[[nodiscard]]
+bool Peer_wire_client::validate_metadata_piece_info(const std::int64_t piece_idx,const std::int64_t received_raw_dict_size) const noexcept {
+         qDebug() << received_raw_dict_size;
+         
+         if(piece_idx < 0 || piece_idx >= total_metadata_piece_cnt_){
+                  qDebug() << "peer sent invalid metadata piece idx" << piece_idx << total_metadata_piece_cnt_;
+                  return false;
+         }
+
+         if(piece_idx == total_metadata_piece_cnt_ - 1){
+                  const auto last_piece_size = metadata_size_ % max_block_size == 0 ? max_block_size : metadata_size_ % max_block_size;
+                  return received_raw_dict_size == last_piece_size;
+         }
+
+         return received_raw_dict_size == max_block_size;
+}
+
+void Peer_wire_client::send_metadata_requests(Tcp_socket * const socket) const noexcept {
          assert(socket);
-         assert(socket->peer_ut_metadata_id != -1 && socket->metadata_size != -1);
+         assert(socket->peer_ut_metadata_id > 0);
+         assert(socket->peer_ut_metadata_id <= std::numeric_limits<std::int8_t>::max());
          static_assert(max_block_size);
 
-         const auto num_blocks = static_cast<std::int64_t>(std::ceil(static_cast<double>(socket->metadata_size) / static_cast<double>(max_block_size)));
-
-         for(std::int64_t block_idx = 0;block_idx < num_blocks;++block_idx){
-                  socket->send_packet(craft_metadata_request(block_idx,socket->peer_ut_metadata_id));
+         for(std::int64_t piece_idx = 0;piece_idx < total_metadata_piece_cnt_;++piece_idx){
+                  socket->send_packet(craft_metadata_request(piece_idx,static_cast<std::int8_t>(socket->peer_ut_metadata_id)));
          }
 }
 
