@@ -13,7 +13,9 @@ cmake --build build
 
 <b>Planned updates:</b>
 <pre>
-Support for magnet links, TCP trackers & extension protocol
+<strike>Support for magnet links</strike> - Added
+<strike>Support for extension protocol</strike> - Added
+Support for TCP trackers
 Ability to choose which files to target first / file priorities
 Making the visuals less ugly
 </pre>
