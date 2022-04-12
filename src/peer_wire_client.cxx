@@ -1440,9 +1440,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket){
          }
 }
 
-#include <iostream>
-
-void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket,QByteArray message){
+void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket,const QByteArray & message){
          assert(socket);
          assert(socket->extension_protocol_enabled);
          assert(!message.isEmpty());

@@ -115,7 +115,7 @@ private:
          void on_handshake_reply_received(Tcp_socket * socket,const QByteArray & reply);
          void on_piece_verified(std::int32_t verified_piece_idx) noexcept;
          void send_block_requests(Tcp_socket * socket,std::int32_t piece_idx) noexcept;
-         void on_extension_message_received(Tcp_socket * socket,QByteArray message);
+         void on_extension_message_received(Tcp_socket * socket,const QByteArray & message);
          void on_extension_handshake_received(Tcp_socket * socket,const QByteArray & message);
          void on_extension_metadata_message_received(Tcp_socket * socket,const QByteArray & message);
          void send_metadata_requests(Tcp_socket * socket) const noexcept;
