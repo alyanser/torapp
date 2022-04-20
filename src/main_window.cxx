@@ -136,7 +136,7 @@ void Main_window::add_top_actions() noexcept {
 
                   connect(&url_dialog,&Url_input_dialog::new_request_received,this,&Main_window::initiate_download<QUrl>);
 
-                  connect(&url_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl url){
+                  connect(&url_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl & url){
                            assert(!file_path.isEmpty());
                            assert(!url.isEmpty());
                            add_download_to_settings(file_path,url);
@@ -148,7 +148,7 @@ void Main_window::add_top_actions() noexcept {
          connect(magnet_action,&QAction::triggered,this,[this]{
                   Url_input_dialog magnet_dialog(this);
 
-                  connect(&magnet_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl magnet_url){
+                  connect(&magnet_dialog,&Url_input_dialog::new_request_received,this,[this](const QString & file_path,const QUrl & magnet_url){
                            const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
 
                            if(!torrent_metadata){

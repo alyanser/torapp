@@ -19,7 +19,7 @@ public:
          ~Main_window() override;
 
          template<typename dl_metadata_type>
-         void initiate_download(const QString & path,dl_metadata_type dl_metadata,QByteArray info_sha1_bash = "") noexcept;
+         void initiate_download(const QString & dl_path,dl_metadata_type dl_metadata,QByteArray info_sha1_hash = "") noexcept;
 signals:
          void closed() const;
 protected:
