@@ -49,8 +49,8 @@ void Network_manager::download(util::Download_resources resources,const QUrl url
 
          connect(network_reply,&QNetworkReply::downloadProgress,tracker,&Download_tracker::download_progress_update);
          connect(network_reply,&QNetworkReply::uploadProgress,tracker,&Download_tracker::set_upload_byte_count);
-         connect(tracker,&Download_tracker::delete_files_permanently,file_handle,qOverload<>(&QFile::remove));
-         connect(tracker,&Download_tracker::move_files_to_trash,file_handle,qOverload<>(&QFile::moveToTrash));
+         connect(tracker,&Download_tracker::delete_files_permanently,file_handle,static_cast<bool (QFile::*)()>(&QFile::remove));
+         connect(tracker,&Download_tracker::move_files_to_trash,file_handle,static_cast<bool (QFile::*)()>(&QFile::moveToTrash));
 }
 
 void Network_manager::download(util::Download_resources resources,bencode::Metadata torrent_metadata,QByteArray info_sha1_hash) noexcept {
