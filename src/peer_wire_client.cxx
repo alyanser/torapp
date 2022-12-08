@@ -75,6 +75,10 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata,util::Downl
                            return;
                   }
 
+                  if(torrent_metadata_.single_file){
+                           torrent_metadata_.file_info.push_back({torrent_metadata_.name, torrent_metadata_.single_file_size});
+                  }
+
                   const auto & tracker_urls = torrent_metadata.tracker_urls;
 
                   std::transform(tracker_urls.cbegin(),tracker_urls.cend(),std::back_inserter(torrent_metadata_.announce_url_list),[](const QUrl & tracker_url){
