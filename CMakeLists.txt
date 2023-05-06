@@ -6,33 +6,33 @@ set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 set(SOURCES
-         src/main.cxx
-         src/main_window.cxx
-         src/network_manager.cxx
-         src/url_input_dialog.cxx
-         src/download_tracker.cxx
-         src/torrent_metadata_dialog.cxx
-         src/udp_torrent_client.cxx
-         src/peer_wire_client.cxx
-         src/udp_socket.cxx
-         src/torrent_properties_displayer.cxx
-         src/tcp_socket.cxx
-         src/file_allocator.cxx
-         src/util.cxx
+         src/main.cc
+         src/main_window.cc
+         src/network_manager.cc
+         src/url_input_dialog.cc
+         src/download_tracker.cc
+         src/torrent_metadata_dialog.cc
+         src/udp_torrent_client.cc
+         src/peer_wire_client.cc
+         src/udp_socket.cc
+         src/torrent_properties_displayer.cc
+         src/tcp_socket.cc
+         src/file_allocator.cc
+         src/util.cc
 )
 
 set(MOC_INCLUDES
-         include/main_window.hxx
-         include/url_input_dialog.hxx
-         include/network_manager.hxx
-         include/download_tracker.hxx
-         include/torrent_metadata_dialog.hxx
-         include/peer_wire_client.hxx
-         include/udp_torrent_client.hxx
-         include/udp_socket.hxx
-         include/tcp_socket.hxx
-         include/file_allocator.hxx
-         include/torrent_properties_displayer.hxx
+         include/main_window.h
+         include/url_input_dialog.h
+         include/network_manager.h
+         include/download_tracker.h
+         include/torrent_metadata_dialog.h
+         include/peer_wire_client.h
+         include/udp_torrent_client.h
+         include/udp_socket.h
+         include/tcp_socket.h
+         include/file_allocator.h
+         include/torrent_properties_displayer.h
          src/resources.qrc
 )
 

@@ -1,11 +1,11 @@
-#include "main_window.hxx"
-#include "torrent_metadata_dialog.hxx"
-#include "url_input_dialog.hxx"
-#include "download_tracker.hxx"
-#include "magnet_url_parser.hxx"
-#include "util.hxx"
+#include "main_window.h"
+#include "torrent_metadata_dialog.h"
+#include "url_input_dialog.h"
+#include "download_tracker.h"
+#include "magnet_url_parser.h"
+#include "util.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QFileDialog>

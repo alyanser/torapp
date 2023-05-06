@@ -1,8 +1,8 @@
-#include "torrent_properties_displayer.hxx"
-#include "tcp_socket.hxx"
-#include "util.hxx"
+#include "torrent_properties_displayer.h"
+#include "tcp_socket.h"
+#include "util.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QDesktopServices>
 #include <QProgressBar>
 #include <QMessageBox>

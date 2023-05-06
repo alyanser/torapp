@@ -1,8 +1,8 @@
 #pragma once
 
-#include "util.hxx"
+#include "util.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QStackedWidget>
 #include <QProgressBar>
 #include <QFormLayout>

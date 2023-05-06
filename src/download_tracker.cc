@@ -1,6 +1,6 @@
-#include "download_tracker.hxx"
+#include "download_tracker.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QSettings>

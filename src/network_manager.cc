@@ -1,7 +1,7 @@
-#include "network_manager.hxx"
-#include "udp_torrent_client.hxx"
-#include "download_tracker.hxx"
-#include "magnet_url_parser.hxx"
+#include "network_manager.h"
+#include "udp_torrent_client.h"
+#include "download_tracker.h"
+#include "magnet_url_parser.h"
 
 #include <QNetworkReply>
 #include <QNetworkProxy>

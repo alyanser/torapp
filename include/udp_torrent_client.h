@@ -1,11 +1,11 @@
 #pragma once
 
-#include "peer_wire_client.hxx"
-#include "udp_socket.hxx"
-#include "util.hxx"
-#include "magnet_url_parser.hxx"
+#include "peer_wire_client.h"
+#include "udp_socket.h"
+#include "util.h"
+#include "magnet_url_parser.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QCryptographicHash>
 #include <random>
 

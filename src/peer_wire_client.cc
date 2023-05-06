@@ -1,7 +1,7 @@
-#include "peer_wire_client.hxx"
-#include "download_tracker.hxx"
-#include "tcp_socket.hxx"
-#include "magnet_url_parser.hxx"
+#include "peer_wire_client.h"
+#include "download_tracker.h"
+#include "tcp_socket.h"
+#include "magnet_url_parser.h"
 
 #include <QCryptographicHash>
 #include <QMessageBox>

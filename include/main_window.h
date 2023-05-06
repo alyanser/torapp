@@ -1,7 +1,7 @@
 #pragma once
 
-#include "network_manager.hxx"
-#include "file_allocator.hxx"
+#include "network_manager.h"
+#include "file_allocator.h"
 
 #include <QSystemTrayIcon>
 #include <QScrollArea>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util.hxx"
+#include "util.h"
 
 #include <QTcpSocket>
 #include <QBitArray>

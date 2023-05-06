@@ -1,4 +1,4 @@
-#include "main_window.hxx"
+#include "main_window.h"
 
 #include <QApplication>
 #include <QFile>

@@ -1,6 +1,6 @@
-#include "util.hxx"
+#include "util.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QBigEndianStorageType>
 #include <QSettings>
 #include <QBitArray>

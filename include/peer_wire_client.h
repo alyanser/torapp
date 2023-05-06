@@ -1,9 +1,9 @@
 #pragma once
 
-#include "torrent_properties_displayer.hxx"
-#include "util.hxx"
+#include "torrent_properties_displayer.h"
+#include "util.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QBitArray>
 #include <QObject>
 #include <QTimer>

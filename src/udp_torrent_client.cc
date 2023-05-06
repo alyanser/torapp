@@ -1,7 +1,7 @@
-#include "udp_torrent_client.hxx"
-#include "peer_wire_client.hxx"
-#include "download_tracker.hxx"
-#include "magnet_url_parser.hxx"
+#include "udp_torrent_client.h"
+#include "peer_wire_client.h"
+#include "download_tracker.h"
+#include "magnet_url_parser.h"
 
 #include <QBigEndianStorageType>
 #include <QNetworkDatagram>

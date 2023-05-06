@@ -1,6 +1,6 @@
-#include "file_allocator.hxx"
+#include "file_allocator.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QMessageBox>
 #include <QFile>
 #include <QUrl>

@@ -1,6 +1,6 @@
-#include "torrent_metadata_dialog.hxx"
+#include "torrent_metadata_dialog.h"
 
-#include <bencode_parser.hxx>
+#include <bencode_parser.h>
 #include <QStorageInfo>
 #include <QFileDialog>
 #include <QMessageBox>

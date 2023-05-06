@@ -1,4 +1,4 @@
-#include "tcp_socket.hxx"
+#include "tcp_socket.h"
 
 #include <QHostAddress>
 
