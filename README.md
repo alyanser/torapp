@@ -1,7 +1,6 @@
-# torapp
-A torrent client (no it doesn't use tor. bad name i know)<br>
-
 <p align="center"><img src="https://raw.githubusercontent.com/alyanser/torapp/master/resources/app_icon.png" height="240" width="240"></p>
+A torrent client (no it doesn't use tor. bad name i know)<br><br>
+
 
 <b>Build:</b>
 <pre>
