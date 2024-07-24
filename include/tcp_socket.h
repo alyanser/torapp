@@ -9,7 +9,7 @@
 
 class Tcp_socket : public QTcpSocket {
 	Q_OBJECT
-    public:
+public:
 	explicit Tcp_socket(QUrl peer_url, std::int64_t uled_byte_threshold, QObject * parent = nullptr);
 
 	bool is_good_ratio() const noexcept;
@@ -42,12 +42,12 @@ class Tcp_socket : public QTcpSocket {
 	bool peer_interested = false;
 	bool fast_extension_enabled = false;
 	bool extension_protocol_enabled = false;
-    signals:
+signals:
 	void got_choked() const;
 	void uploaded_byte_count_changed(std::int64_t uled_byte_cnt) const;
 	void downloaded_byte_count_changed(std::int64_t uled_byte_cnt) const;
 
-    private:
+private:
 	void configure_default_connections() noexcept;
 	///
 	std::pair<std::optional<std::int32_t>, QByteArray> receive_buffer_;

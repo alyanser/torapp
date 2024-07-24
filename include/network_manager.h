@@ -20,10 +20,10 @@ class QUrl;
 
 class Network_manager : public QNetworkAccessManager {
 	Q_OBJECT
-    public:
+public:
 	void download(util::Download_resources resources, QUrl url) noexcept;
 	void download(util::Download_resources resources, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash) noexcept;
 	void download(QString dl_path, magnet::Metadata torrent_metadata, Download_tracker * tracker) noexcept;
-    signals:
+signals:
 	void new_download_requested(QString dl_path, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash) const;
 };

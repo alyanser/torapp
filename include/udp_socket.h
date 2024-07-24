@@ -8,8 +8,12 @@
 
 class Udp_socket : public QUdpSocket {
 	Q_OBJECT
-    public:
-	enum class State { Connect, Scrape, Announce };
+public:
+	enum class State {
+		Connect,
+		Scrape,
+		Announce
+	};
 
 	Q_ENUM(State);
 
@@ -22,10 +26,10 @@ class Udp_socket : public QUdpSocket {
 	void set_requests(QByteArray announce_request, QByteArray scrape_request) noexcept;
 	const QByteArray & announce_request() const noexcept;
 	const QByteArray & scrape_request() const noexcept;
-    signals:
+signals:
 	void connection_timed_out() const;
 
-    private:
+private:
 	std::chrono::seconds get_timeout() const noexcept;
 	void configure_default_connections() noexcept;
 	void send_packet(const QByteArray & packet) noexcept;

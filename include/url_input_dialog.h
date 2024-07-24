@@ -10,12 +10,12 @@
 
 class Url_input_dialog : public QDialog {
 	Q_OBJECT
-    public:
+public:
 	explicit Url_input_dialog(QWidget * parent = nullptr);
-    signals:
+signals:
 	void new_request_received(const QString & file_path, QUrl url, QByteArray info_sha1_hash = "") const;
 
-    private:
+private:
 	void configure_default_connections() noexcept;
 	void reset_lines() noexcept;
 	void setup_tab_order() noexcept;

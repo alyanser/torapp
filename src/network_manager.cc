@@ -58,14 +58,19 @@ void Network_manager::download(util::Download_resources resources, bencode::Meta
 		tracker_urls.insert(tracker_urls.begin(), torrent_metadata.announce_url);
 	}
 
-	tracker_urls.erase(std::remove_if(tracker_urls.begin(), tracker_urls.end(), [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; }), tracker_urls.end());
+	tracker_urls.erase(std::remove_if(tracker_urls.begin(), tracker_urls.end(),
+						    [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; }),
+				 tracker_urls.end());
 
 	if(!tracker_urls.empty()) {
-		[[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata), std::move(resources), std::move(info_sha1_hash), this);
+		[[maybe_unused]]
+		auto * const udp_client =
+		    new Udp_torrent_client(std::move(torrent_metadata), std::move(resources), std::move(info_sha1_hash), this);
 	} else {
 		emit resources.tracker->download_dropped();
 
-		std::for_each(resources.file_handles.cbegin(), resources.file_handles.cend(), [](auto * const file_handle) { file_handle->deleteLater(); });
+		std::for_each(resources.file_handles.cbegin(), resources.file_handles.cend(),
+				  [](auto * const file_handle) { file_handle->deleteLater(); });
 
 		QMessageBox::critical(nullptr, "No support", "Torapp doesn't support TCP trackers yet :(");
 	}
@@ -75,7 +80,8 @@ void Network_manager::download(QString dl_path, magnet::Metadata torrent_metadat
 	assert(tracker);
 	assert(!torrent_metadata.tracker_urls.empty());
 	assert(!dl_path.isEmpty());
-	[[maybe_unused]] auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata), {std::move(dl_path), {}, tracker}, this);
+	[[maybe_unused]]
+	auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata), {std::move(dl_path), {}, tracker}, this);
 
 	connect(udp_client, &Udp_torrent_client::new_download_requested, this, &Network_manager::new_download_requested);
 }

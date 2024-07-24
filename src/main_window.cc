@@ -34,7 +34,9 @@ Main_window::Main_window() {
 	connect(&network_manager_, &Network_manager::new_download_requested, this, &Main_window::initiate_download<bencode::Metadata>);
 }
 
-Main_window::~Main_window() { write_settings(); }
+Main_window::~Main_window() {
+	write_settings();
+}
 
 void Main_window::configure_tray_icon() noexcept {
 
@@ -56,8 +58,9 @@ void Main_window::configure_tray_icon() noexcept {
 }
 
 void Main_window::closeEvent(QCloseEvent * const event) noexcept {
-	const auto reply_button = QMessageBox::question(this, "Quit", "Are you sure you want to quit? All of the downloads (if any) will be stopped.");
-	reply_button == QMessageBox::Yes ? event->accept(), emit closed() : event->ignore();
+	const auto reply_button =
+	    QMessageBox::question(this, "Quit", "Are you sure you want to quit? All of the downloads (if any) will be stopped.");
+	reply_button == QMessageBox::Yes ? event->accept(), emit closed() : event -> ignore();
 }
 
 void Main_window::write_settings() const noexcept {
@@ -106,7 +109,10 @@ void Main_window::add_top_actions() noexcept {
 	connect(exit_action, &QAction::triggered, this, &Main_window::closed);
 
 	connect(torrent_action, &QAction::triggered, this, [this] {
-		auto file_path = [this] { return QFileDialog::getOpenFileName(this, "Choose a torrent file", QDir::currentPath(), "Torrent (*.torrent);; All files (*.*)"); }();
+		auto file_path = [this] {
+			return QFileDialog::getOpenFileName(this, "Choose a torrent file", QDir::currentPath(),
+									"Torrent (*.torrent);; All files (*.*)");
+		}();
 
 		if(file_path.isEmpty()) {
 			return;
@@ -114,13 +120,15 @@ void Main_window::add_top_actions() noexcept {
 
 		Torrent_metadata_dialog torrent_dialog(file_path, this);
 
-		connect(&torrent_dialog, &Torrent_metadata_dialog::new_request_received, this, [this, file_path = std::move(file_path)](const QString & dl_dir) {
-			if(QFile torrent_file(file_path); torrent_file.open(QFile::ReadOnly)) {
-				add_download_to_settings(dl_dir, torrent_file.readAll());
-			}
-		});
+		connect(&torrent_dialog, &Torrent_metadata_dialog::new_request_received, this,
+			  [this, file_path = std::move(file_path)](const QString & dl_dir) {
+				  if(QFile torrent_file(file_path); torrent_file.open(QFile::ReadOnly)) {
+					  add_download_to_settings(dl_dir, torrent_file.readAll());
+				  }
+			  });
 
-		connect(&torrent_dialog, &Torrent_metadata_dialog::new_request_received, this, &Main_window::initiate_download<bencode::Metadata>);
+		connect(&torrent_dialog, &Torrent_metadata_dialog::new_request_received, this,
+			  &Main_window::initiate_download<bencode::Metadata>);
 
 		torrent_dialog.exec();
 	});
@@ -142,40 +150,44 @@ void Main_window::add_top_actions() noexcept {
 	connect(magnet_action, &QAction::triggered, this, [this] {
 		Url_input_dialog magnet_dialog(this);
 
-		connect(&magnet_dialog, &Url_input_dialog::new_request_received, this, [this](const QString & file_path, const QUrl & magnet_url) {
-			const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
+		connect(&magnet_dialog, &Url_input_dialog::new_request_received, this,
+			  [this](const QString & file_path, const QUrl & magnet_url) {
+				  const auto torrent_metadata = magnet::parse(magnet_url.toString().toLatin1());
 
-			if(!torrent_metadata) {
-				QMessageBox::critical(this, "Invalid magnet url", "Given magnet url could not be parsed.");
-				tray_.showMessage("Download start failed", "Download could not be started due to invalid magnet url");
-				return;
-			}
+				  if(!torrent_metadata) {
+					  QMessageBox::critical(this, "Invalid magnet url", "Given magnet url could not be parsed.");
+					  tray_.showMessage("Download start failed", "Download could not be started due to invalid magnet url");
+					  return;
+				  }
 
-			if(torrent_metadata->tracker_urls.empty()) {
-				// todo: implement DHT protocol
-				qDebug() << "torrent requires DHT protocol";
-				return;
-			}
+				  if(torrent_metadata->tracker_urls.empty()) {
+					  // todo: implement DHT protocol
+					  qDebug() << "torrent requires DHT protocol";
+					  return;
+				  }
 
-			auto * const tracker = new Download_tracker(file_path, magnet_url, &scroll_area_widget_);
+				  auto * const tracker = new Download_tracker(file_path, magnet_url, &scroll_area_widget_);
 
-			central_layout_.addWidget(tracker);
-			network_manager_.download(file_path, *torrent_metadata, tracker);
-			tray_.showMessage("Metadata retrieval started", "Torapp is trying to retrieve torrent metadata from peers. Please wait");
-		});
+				  central_layout_.addWidget(tracker);
+				  network_manager_.download(file_path, *torrent_metadata, tracker);
+				  tray_.showMessage("Metadata retrieval started",
+							  "Torapp is trying to retrieve torrent metadata from peers. Please wait");
+			  });
 
 		magnet_dialog.exec();
 	});
 }
 
-template <typename dl_metadata_type> void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl_metadata, QByteArray info_sha1_hash) noexcept {
+template <typename dl_metadata_type>
+void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl_metadata, QByteArray info_sha1_hash) noexcept {
 	static_assert(!std::is_reference_v<dl_metadata_type>);
 
 	auto * const tracker = new Download_tracker(dl_path, dl_metadata, &scroll_area_widget_);
 	central_layout_.addWidget(tracker);
 
 	{
-		const auto tracker_signal = qOverload<decltype(dl_path), dl_metadata_type, decltype(info_sha1_hash)>(&Download_tracker::retry_download);
+		const auto tracker_signal =
+		    qOverload<decltype(dl_path), dl_metadata_type, decltype(info_sha1_hash)>(&Download_tracker::retry_download);
 		connect(tracker, tracker_signal, this, &Main_window::initiate_download<dl_metadata_type>);
 	}
 
@@ -200,7 +212,8 @@ template <typename dl_metadata_type> void Main_window::initiate_download(const Q
 		if constexpr(std::is_same_v<std::remove_const_t<dl_metadata_type>, QUrl>) {
 			network_manager_.download({dl_path, std::move(*file_handles), tracker}, std::move(dl_metadata));
 		} else {
-			network_manager_.download({dl_path, std::move(*file_handles), tracker}, std::move(dl_metadata), std::move(info_sha1_hash));
+			network_manager_.download({dl_path, std::move(*file_handles), tracker}, std::move(dl_metadata),
+							  std::move(info_sha1_hash));
 		}
 
 		tray_.showMessage("Download started", "Download has successfully started");
@@ -230,7 +243,8 @@ template <typename dl_metadata_type> void Main_window::initiate_download(const Q
 	}
 }
 
-template <typename dl_metadata_type> void Main_window::add_download_to_settings(const QString & path, dl_metadata_type && dl_metadata) const noexcept {
+template <typename dl_metadata_type>
+void Main_window::add_download_to_settings(const QString & path, dl_metadata_type && dl_metadata) const noexcept {
 	QSettings settings;
 	util::begin_setting_group<dl_metadata_type>(settings);
 	settings.beginGroup(QString(path).replace('/', '\x20'));
@@ -238,7 +252,8 @@ template <typename dl_metadata_type> void Main_window::add_download_to_settings(
 	settings.setValue("download_metadata", std::forward<dl_metadata_type>(dl_metadata));
 }
 
-template <typename dl_metadata_type> void Main_window::remove_download_from_settings(const QString & file_path) const noexcept {
+template <typename dl_metadata_type>
+void Main_window::remove_download_from_settings(const QString & file_path) const noexcept {
 	QSettings settings;
 	util::begin_setting_group<dl_metadata_type>(settings);
 	settings.beginGroup(QString(file_path).replace('/', '\x20'));
@@ -246,7 +261,8 @@ template <typename dl_metadata_type> void Main_window::remove_download_from_sett
 	assert(settings.childKeys().isEmpty());
 }
 
-template <typename dl_metadata_type> void Main_window::restore_downloads() noexcept {
+template <typename dl_metadata_type>
+void Main_window::restore_downloads() noexcept {
 	QSettings settings;
 	util::begin_setting_group<dl_metadata_type>(settings);
 
@@ -275,18 +291,21 @@ template <typename dl_metadata_type> void Main_window::restore_downloads() noexc
 			if constexpr(is_url_download) {
 				dl_metadata.isValid() ? initiate_download(path, std::move(dl_metadata)) : remove_download_from_settings<QUrl>(path);
 			} else {
-				const auto torrent_metadata = [&path, dl_metadata = std::move(dl_metadata)]() mutable -> std::optional<bencode::Metadata> {
+				const auto torrent_metadata = [&path,
+									 dl_metadata = std::move(dl_metadata)]() mutable -> std::optional<bencode::Metadata> {
 					const auto compl_file_content = dl_metadata.toStdString();
 
 					try {
-						return bencode::extract_metadata(bencode::parse_content(compl_file_content, path.toStdString()), compl_file_content);
+						return bencode::extract_metadata(bencode::parse_content(compl_file_content, path.toStdString()),
+											   compl_file_content);
 					} catch(const std::exception & exception) {
 						qDebug() << exception.what();
 						return {};
 					}
 				}();
 
-				torrent_metadata ? initiate_download(path, std::move(*torrent_metadata)) : remove_download_from_settings<bencode::Metadata>(path);
+				torrent_metadata ? initiate_download(path, std::move(*torrent_metadata))
+						     : remove_download_from_settings<bencode::Metadata>(path);
 			}
 		});
 

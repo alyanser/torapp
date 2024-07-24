@@ -18,12 +18,12 @@ struct Metadata;
 
 class Torrent_metadata_dialog : public QDialog {
 	Q_OBJECT
-    public:
+public:
 	explicit Torrent_metadata_dialog(const QString & torrent_file_path, QWidget * parent = nullptr);
-    signals:
+signals:
 	void new_request_received(const QString & dir_path, bencode::Metadata metadata, QByteArray info_sha1_hash = "") const;
 
-    private:
+private:
 	void extract_metadata(const QString & torrent_file_path) noexcept;
 	void setup_layout() noexcept;
 	void setup_display(const bencode::Metadata & metadata) noexcept;

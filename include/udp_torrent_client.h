@@ -11,7 +11,7 @@
 
 class Udp_torrent_client : public QObject {
 	Q_OBJECT
-    public:
+public:
 	enum class Action_Code {
 		Connect,
 		Announce,
@@ -21,7 +21,12 @@ class Udp_torrent_client : public QObject {
 
 	Q_ENUM(Action_Code);
 
-	enum class Event { None, Started, Stopped, Completed };
+	enum class Event {
+		None,
+		Started,
+		Stopped,
+		Completed
+	};
 
 	Q_ENUM(Event);
 
@@ -38,17 +43,18 @@ class Udp_torrent_client : public QObject {
 		std::int32_t seed_cnt = 0;
 	};
 
-	Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash, QObject * parent = nullptr);
+	Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
+				 QObject * parent = nullptr);
 	Udp_torrent_client(magnet::Metadata torrent_metadata, util::Download_resources resources, QObject * parent = nullptr);
 
 	void send_connect_request(qsizetype tracker_url_idx = 0) noexcept;
-    signals:
+signals:
 	void announce_reply_received(const Announce_reply & announce_reply) const;
 	void swarm_metadata_received(const Swarm_metadata & swarm_metadata) const;
 	void error_received(const QByteArray & array) const;
 	void new_download_requested(QString dl_path, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash) const;
 
-    private:
+private:
 	static QByteArray craft_connect_request() noexcept;
 	QByteArray craft_scrape_request(std::int64_t tracker_connection_id) const noexcept;
 	QByteArray craft_announce_request(std::int64_t tracker_connection_id) const noexcept;

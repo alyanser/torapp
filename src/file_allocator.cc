@@ -6,7 +6,9 @@
 #include <QUrl>
 #include <QDir>
 
-[[nodiscard]] File_allocator::handle_return_type File_allocator::open_file_handles(const QString & dir_path, const bencode::Metadata & torrent_metadata) noexcept {
+[[nodiscard]]
+File_allocator::handle_return_type File_allocator::open_file_handles(const QString & dir_path,
+											   const bencode::Metadata & torrent_metadata) noexcept {
 
 	if(torrent_metadata.file_info.empty() || dir_path.isEmpty()) {
 		return {Error::Invalid_Request, {}};
@@ -34,12 +36,14 @@
 
 	QList<QFile *> file_handles(static_cast<qsizetype>(temp_file_handles.size()));
 
-	std::transform(temp_file_handles.begin(), temp_file_handles.end(), file_handles.begin(), [](auto & file_handle) { return file_handle.release(); });
+	std::transform(temp_file_handles.begin(), temp_file_handles.end(), file_handles.begin(),
+			   [](auto & file_handle) { return file_handle.release(); });
 
 	return {Error::Null, std::move(file_handles)};
 }
 
-[[nodiscard]] File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path, const QUrl url) noexcept {
+[[nodiscard]]
+File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path, const QUrl url) noexcept {
 
 	if(file_path.isEmpty() || !url.isValid()) {
 		return {Error::Invalid_Request, {}};

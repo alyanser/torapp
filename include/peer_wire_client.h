@@ -20,7 +20,7 @@ class Tcp_socket;
 
 class Peer_wire_client : public QObject {
 	Q_OBJECT
-    public:
+public:
 	enum class Message_Id {
 		Choke,
 		Unchoke,
@@ -41,11 +41,19 @@ class Peer_wire_client : public QObject {
 
 	Q_ENUM(Message_Id);
 
-	enum State { Verification, Leecher, Seed };
+	enum State {
+		Verification,
+		Leecher,
+		Seed
+	};
 
 	Q_ENUM(State);
 
-	enum Metadata_Id { Request, Data, Reject };
+	enum Metadata_Id {
+		Request,
+		Data,
+		Reject
+	};
 
 	Q_ENUM(Metadata_Id);
 
@@ -57,7 +65,7 @@ class Peer_wire_client : public QObject {
 	std::int64_t remaining_byte_count() const noexcept;
 
 	void connect_to_peers(const QList<QUrl> & peer_urls) noexcept;
-    signals:
+signals:
 	void piece_verified(std::int32_t piece_idx) const;
 	void existing_pieces_verified() const;
 	void download_finished() const;
@@ -67,7 +75,7 @@ class Peer_wire_client : public QObject {
 	void metadata_received() const;
 	void new_download_requested(QString dl_path, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash) const;
 
-    private:
+private:
 	struct Piece {
 		QList<std::int8_t> requested_blocks;
 		QBitArray received_blocks;
@@ -86,7 +94,8 @@ class Peer_wire_client : public QObject {
 		std::int64_t dled_byte_cnt;
 	};
 
-	template <Message_Id message_id> static QByteArray craft_generic_message(util::Packet_metadata packet_metadata) noexcept;
+	template <Message_Id message_id>
+	static QByteArray craft_generic_message(util::Packet_metadata packet_metadata) noexcept;
 
 	static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
 	static QByteArray craft_piece_message(const QByteArray & piece_data, std::int32_t piece_idx, std::int32_t piece_offset) noexcept;

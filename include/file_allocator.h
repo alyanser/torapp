@@ -10,8 +10,13 @@ struct Metadata;
 
 class File_allocator : public QObject {
 	Q_OBJECT
-    public:
-	enum class Error { Null, File_Lock, Permissions, Invalid_Request };
+public:
+	enum class Error {
+		Null,
+		File_Lock,
+		Permissions,
+		Invalid_Request
+	};
 
 	Q_ENUM(Error);
 

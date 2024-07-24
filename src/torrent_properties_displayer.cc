@@ -18,7 +18,8 @@ Torrent_properties_displayer::Torrent_properties_displayer(QWidget * const paren
 	setup_peer_table();
 }
 
-Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata, QWidget * const parent) : Torrent_properties_displayer(parent) {
+Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata, QWidget * const parent)
+    : Torrent_properties_displayer(parent) {
 	addTab(&general_info_tab_, "General");
 	addTab(&file_info_scroll_area_, "Files");
 	addTab(&peer_table_, "Peers");
@@ -29,7 +30,8 @@ Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metada
 	file_info_scroll_area_.setWidgetResizable(true);
 }
 
-Torrent_properties_displayer::Torrent_properties_displayer(const magnet::Metadata & /* torrent_metadata */, QWidget * const parent) : Torrent_properties_displayer(parent) {
+Torrent_properties_displayer::Torrent_properties_displayer(const magnet::Metadata & /* torrent_metadata */, QWidget * const parent)
+    : Torrent_properties_displayer(parent) {
 	addTab(&peer_table_, "Peers");
 }
 
@@ -38,7 +40,8 @@ void Torrent_properties_displayer::setup_general_info_widget(const bencode::Meta
 	general_info_layout_.setSpacing(15);
 
 	auto get_new_label = [&general_info_tab_ = general_info_tab_](const std::string & label_text) {
-		auto * const label = new QLabel(label_text.empty() ? "N/A" : QByteArray(label_text.data(), static_cast<qsizetype>(label_text.size())), &general_info_tab_);
+		auto * const label = new QLabel(
+		    label_text.empty() ? "N/A" : QByteArray(label_text.data(), static_cast<qsizetype>(label_text.size())), &general_info_tab_);
 
 		label->setAlignment(Qt::AlignCenter);
 		label->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -78,7 +81,8 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
 	peer_table_.setHorizontalHeaderLabels(peer_table_headings);
 }
 
-[[nodiscard]] QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file_path, const std::int64_t total_file_size) noexcept {
+[[nodiscard]]
+QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file_path, const std::int64_t total_file_size) noexcept {
 	auto * const file_widget = new QWidget(&file_info_tab_);
 	auto * const file_layout = new QHBoxLayout(file_widget);
 	auto * const file_dl_progress_bar = new QProgressBar(&file_info_tab_);
@@ -108,7 +112,8 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
 	return file_widget;
 }
 
-void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadata & torrent_metadata, const QList<std::pair<QFile *, std::int64_t>> & file_handles) noexcept {
+void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadata & torrent_metadata,
+									    const QList<std::pair<QFile *, std::int64_t>> & file_handles) noexcept {
 	assert(file_handles.size() == static_cast<qsizetype>(torrent_metadata.file_info.size()));
 
 	for(qsizetype file_idx = 0; file_idx < file_handles.size(); ++file_idx) {
@@ -123,7 +128,8 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx, co
 	assert(file_idx >= 0 && file_idx < file_info_layout_.rowCount());
 
 	auto * const file_dl_progress_bar = [&file_info_layout_ = file_info_layout_, file_idx] {
-		auto * const progress_bar_item = file_info_layout_.itemAt(static_cast<std::int32_t>(file_idx), QFormLayout::ItemRole::FieldRole);
+		auto * const progress_bar_item =
+		    file_info_layout_.itemAt(static_cast<std::int32_t>(file_idx), QFormLayout::ItemRole::FieldRole);
 
 		assert(progress_bar_item);
 		assert(progress_bar_item->widget());
@@ -138,7 +144,8 @@ void Torrent_properties_displayer::update_file_info(const qsizetype file_idx, co
 	assert(file_dl_progress_bar->maximum() > 0);
 
 	file_dl_progress_bar->setValue(static_cast<std::int32_t>(file_dled_byte_cnt));
-	file_dl_progress_bar->setFormat("Downloaded: " + util::conversion::convert_to_percent_format(file_dled_byte_cnt, file_dl_progress_bar->maximum()));
+	file_dl_progress_bar->setFormat("Downloaded: " +
+						  util::conversion::convert_to_percent_format(file_dled_byte_cnt, file_dl_progress_bar->maximum()));
 }
 
 void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noexcept {
@@ -157,8 +164,9 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 		auto * const ret_dled_byte_cnt_label = new QLabel(get_cell_label_text(0, util::conversion::Format::Memory));
 		ret_dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
-		connect(socket, &Tcp_socket::downloaded_byte_count_changed, ret_dled_byte_cnt_label,
-			  [=](const auto dled_byte_cnt) { ret_dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt, util::conversion::Format::Memory)); });
+		connect(socket, &Tcp_socket::downloaded_byte_count_changed, ret_dled_byte_cnt_label, [=](const auto dled_byte_cnt) {
+			ret_dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt, util::conversion::Format::Memory));
+		});
 
 		return ret_dled_byte_cnt_label;
 	}();
@@ -167,8 +175,9 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 		auto * const ret_uled_byte_cnt_label = new QLabel(get_cell_label_text(0, util::conversion::Format::Memory));
 		ret_uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
-		connect(socket, &Tcp_socket::uploaded_byte_count_changed, ret_uled_byte_cnt_label,
-			  [=](const auto uled_byte_cnt) { ret_uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt, util::conversion::Format::Memory)); });
+		connect(socket, &Tcp_socket::uploaded_byte_count_changed, ret_uled_byte_cnt_label, [=](const auto uled_byte_cnt) {
+			ret_uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt, util::conversion::Format::Memory));
+		});
 
 		return ret_uled_byte_cnt_label;
 	}();
@@ -182,7 +191,8 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 			speed_refresh_timer->setInterval(std::chrono::seconds(1));
 
 			speed_refresh_timer->callOnTimeout(socket, [=, seconds_elapsed = 0LL]() mutable {
-				ret_dl_speed_label->setText(get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed, util::conversion::Format::Speed));
+				ret_dl_speed_label->setText(
+				    get_cell_label_text(socket->downloaded_byte_count() / ++seconds_elapsed, util::conversion::Format::Speed));
 			});
 
 			speed_refresh_timer->start();
@@ -199,7 +209,12 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 	}();
 
 	const auto row_idx = peer_table_.rowCount() - 1;
-	enum class Col_idx { peer_id, dled_byte, uled_byte, dl_speed };
+	enum class Col_idx {
+		peer_id,
+		dled_byte,
+		uled_byte,
+		dl_speed
+	};
 
 	peer_table_.setCellWidget(row_idx, static_cast<std::int32_t>(Col_idx::peer_id), peer_id_label);
 	peer_table_.setCellWidget(row_idx, static_cast<std::int32_t>(Col_idx::dled_byte), dled_byte_cnt_label);

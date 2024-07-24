@@ -17,10 +17,21 @@
 
 class Download_tracker : public QFrame {
 	Q_OBJECT
-    public:
-	enum class Error { Null, File_Write, File_Lock, Network, Space, Invalid_Request, Custom };
+public:
+	enum class Error {
+		Null,
+		File_Write,
+		File_Lock,
+		Network,
+		Space,
+		Invalid_Request,
+		Custom
+	};
 
-	enum class State { Download, Verification };
+	enum class State {
+		Download,
+		Verification
+	};
 
 	Download_tracker(const QString & dl_path, QUrl url, QWidget * parent = nullptr);
 	Download_tracker(const QString & dl_path, bencode::Metadata torrent_metadata, QWidget * parent = nullptr);
@@ -34,7 +45,7 @@ class Download_tracker : public QFrame {
 	void verification_progress_update(std::int32_t verified_asset_cnt, std::int32_t total_asset_cnt) noexcept;
 	void set_upload_byte_count(std::int64_t uled_byte_cnt) noexcept;
 	void on_verification_completed() noexcept;
-    signals:
+signals:
 	void retry_download(const QString & file_path, QUrl url, QByteArray info_sha1_hash = "") const;
 	void retry_download(const QString & file_path, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash = "") const;
 	void restored_download_paused() const;
@@ -48,8 +59,11 @@ class Download_tracker : public QFrame {
 	void properties_button_clicked() const;
 	void url_download_finished() const;
 
-    private:
-	enum class Download_Type { Url, Torrent };
+private:
+	enum class Download_Type {
+		Url,
+		Torrent
+	};
 
 	Download_tracker(const QString & dl_path, Download_Type dl_type, QWidget * parent = nullptr);
 

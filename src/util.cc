@@ -8,7 +8,9 @@
 
 namespace util {
 
-template <typename result_type, typename> [[nodiscard]] result_type extract_integer(const QByteArray & raw_data, const qsizetype offset) {
+template <typename result_type, typename>
+[[nodiscard]]
+result_type extract_integer(const QByteArray & raw_data, const qsizetype offset) {
 	constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
 	if(offset + byte_cnt > raw_data.size()) {
@@ -31,7 +33,8 @@ template <typename result_type, typename> [[nodiscard]] result_type extract_inte
 	return result;
 }
 
-template <typename dl_metadata_type> void begin_setting_group(QSettings & settings) noexcept {
+template <typename dl_metadata_type>
+void begin_setting_group(QSettings & settings) noexcept {
 
 	if constexpr(std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>, QUrl>) {
 		settings.beginGroup("url_downloads");
@@ -42,7 +45,8 @@ template <typename dl_metadata_type> void begin_setting_group(QSettings & settin
 
 namespace conversion {
 
-[[nodiscard]] QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
+[[nodiscard]]
+QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	constexpr auto bits_in_byte = 8;
 	QBitArray bits(bytes.size() * bits_in_byte, false);
 
@@ -56,7 +60,8 @@ namespace conversion {
 	return bits;
 }
 
-[[nodiscard]] QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
+[[nodiscard]]
+QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
 	constexpr auto bits_in_byte = 8;
 	assert(bits.size() % bits_in_byte == 0);
 
@@ -69,7 +74,9 @@ namespace conversion {
 	return bytes.toHex();
 }
 
-template <typename numeric_type, typename> [[nodiscard]] QByteArray convert_to_hex(const numeric_type num) noexcept {
+template <typename numeric_type, typename>
+[[nodiscard]]
+QByteArray convert_to_hex(const numeric_type num) noexcept {
 	using unsigned_type = std::make_unsigned_t<numeric_type>;
 
 	constexpr auto hex_base = 16;
@@ -83,7 +90,9 @@ template <typename numeric_type, typename> [[nodiscard]] QByteArray convert_to_h
 	return QByteArray(fin_hex_size - hex_fmt.size(), '0') + hex_fmt;
 }
 
-template <typename byte_type, typename> [[nodiscard]] QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total_byte_cnt) noexcept {
+template <typename byte_type, typename>
+[[nodiscard]]
+QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total_byte_cnt) noexcept {
 	std::string_view total_bytes_postfix("inf");
 	double converted_total_byte_cnt = 0;
 
@@ -91,25 +100,32 @@ template <typename byte_type, typename> [[nodiscard]] QString stringify_bytes(co
 		std::tie(converted_total_byte_cnt, total_bytes_postfix) = stringify_bytes(static_cast<double>(total_byte_cnt), Format::Memory);
 	}
 
-	const auto [converted_received_byte_cnt, received_bytes_postfix] = stringify_bytes(static_cast<double>(received_byte_cnt), Format::Memory);
+	const auto [converted_received_byte_cnt, received_bytes_postfix] =
+	    stringify_bytes(static_cast<double>(received_byte_cnt), Format::Memory);
 
 	return QString::number(converted_received_byte_cnt, 'f', 2) + ' ' + received_bytes_postfix.data() + " / " +
 		 (total_bytes_postfix == "inf" ? "inf" : QString::number(converted_total_byte_cnt, 'f', 2) + ' ' + total_bytes_postfix.data());
 }
 
-template <typename numeric_type_x, typename numeric_type_y, typename> [[nodiscard]] QString convert_to_percent_format(const numeric_type_x dividend, const numeric_type_y divisor) noexcept {
+template <typename numeric_type_x, typename numeric_type_y, typename>
+[[nodiscard]]
+QString convert_to_percent_format(const numeric_type_x dividend, const numeric_type_y divisor) noexcept {
 	assert(divisor);
 	return QString::number(static_cast<double>(dividend) / static_cast<double>(divisor) * 100, 'f', 0) + " %";
 }
 
-template <typename... arith_types> constexpr auto instantiate_arithmetic_types() {
+template <typename... arith_types>
+constexpr auto instantiate_arithmetic_types() {
 	static_assert((std::is_arithmetic_v<arith_types> && ...));
 
-	return std::tuple_cat(std::make_tuple(&convert_to_hex<arith_types>)..., std::make_tuple(static_cast<QString (*)(arith_types, arith_types)>(&stringify_bytes<arith_types>))...,
-				    std::make_tuple(&convert_to_percent_format<arith_types, arith_types>)..., std::make_tuple(&extract_integer<arith_types>)...);
+	return std::tuple_cat(std::make_tuple(&convert_to_hex<arith_types>)...,
+				    std::make_tuple(static_cast<QString (*)(arith_types, arith_types)>(&stringify_bytes<arith_types>))...,
+				    std::make_tuple(&convert_to_percent_format<arith_types, arith_types>)...,
+				    std::make_tuple(&extract_integer<arith_types>)...);
 }
 
-extern const auto arithmetic_ins = instantiate_arithmetic_types<std::int32_t, std::uint32_t, std::int16_t, std::uint16_t, std::int64_t, std::uint16_t, std::uint8_t, std::int8_t>();
+extern const auto arithmetic_ins = instantiate_arithmetic_types<std::int32_t, std::uint32_t, std::int16_t, std::uint16_t, std::int64_t,
+										    std::uint16_t, std::uint8_t, std::int8_t>();
 
 template QString convert_to_percent_format<std::int64_t, std::int32_t>(std::int64_t, std::int32_t) noexcept;
 

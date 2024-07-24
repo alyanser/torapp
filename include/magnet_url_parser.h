@@ -15,11 +15,13 @@ struct Metadata {
 	std::vector<QUrl> tracker_urls;
 };
 
-[[nodiscard]] inline std::optional<Metadata> parse(const QByteArray & magnet_url) noexcept {
+[[nodiscard]]
+inline std::optional<Metadata> parse(const QByteArray & magnet_url) noexcept {
 	constexpr static std::string_view required_header("magnet:?xt=urn:btih:");
 	constexpr auto hash_size = 40;
 
-	if(magnet_url.size() < static_cast<qsizetype>(hash_size + required_header.size()) || magnet_url.sliced(0, required_header.size()) != required_header.data()) {
+	if(magnet_url.size() < static_cast<qsizetype>(hash_size + required_header.size()) ||
+	   magnet_url.sliced(0, required_header.size()) != required_header.data()) {
 		return {};
 	}
 

@@ -13,24 +13,28 @@
 
 class Main_window : public QMainWindow {
 	Q_OBJECT
-    public:
+public:
 	Main_window();
 	Q_DISABLE_COPY_MOVE(Main_window)
 	~Main_window() override;
 
-	template <typename dl_metadata_type> void initiate_download(const QString & dl_path, dl_metadata_type dl_metadata, QByteArray info_sha1_hash = "") noexcept;
-    signals:
+	template <typename dl_metadata_type>
+	void initiate_download(const QString & dl_path, dl_metadata_type dl_metadata, QByteArray info_sha1_hash = "") noexcept;
+signals:
 	void closed() const;
 
-    protected:
+protected:
 	void closeEvent(QCloseEvent * event) noexcept override;
 
-    private:
-	template <typename dl_metadata_type> void add_download_to_settings(const QString & path, dl_metadata_type && dl_metadata) const noexcept;
+private:
+	template <typename dl_metadata_type>
+	void add_download_to_settings(const QString & path, dl_metadata_type && dl_metadata) const noexcept;
 
-	template <typename dl_metadata_type> void remove_download_from_settings(const QString & file_path) const noexcept;
+	template <typename dl_metadata_type>
+	void remove_download_from_settings(const QString & file_path) const noexcept;
 
-	template <typename dl_metadata_type> void restore_downloads() noexcept;
+	template <typename dl_metadata_type>
+	void restore_downloads() noexcept;
 
 	void write_settings() const noexcept;
 	void add_top_actions() noexcept;
