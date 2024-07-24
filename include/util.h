@@ -3,6 +3,7 @@
 #include <QHashFunctions>
 #include <QString>
 #include <QList>
+#include <concepts>
 
 class Download_tracker;
 class QSettings;
@@ -36,7 +37,8 @@ constexpr std::size_t qHash(const Packet_metadata packet_metadata, const std::si
 	return ::qHashMulti(seed, packet_metadata.byte_cnt, packet_metadata.piece_idx, packet_metadata.piece_offset);
 }
 
-template <typename result_type, typename = std::enable_if_t<std::is_arithmetic_v<result_type>>>
+template <typename result_type>
+requires std::integral<result_type>
 result_type extract_integer(const QByteArray & raw_data, qsizetype offset = 0);
 
 template <typename dl_metadata_type>
@@ -53,17 +55,20 @@ QBitArray convert_to_bits(QByteArrayView bytes) noexcept;
 
 QByteArray convert_to_bytes(const QBitArray & bits) noexcept;
 
-template <typename numeric_type, typename = std::enable_if_t<std::is_arithmetic_v<numeric_type>>>
+template <typename numeric_type>
+requires std::integral<numeric_type>
 QByteArray convert_to_hex(numeric_type num) noexcept;
 
-template <typename numeric_type_x, typename numeric_type_y,
-	    typename = std::enable_if_t<std::is_arithmetic_v<std::common_type_t<numeric_type_x, numeric_type_y>>>>
+template <typename numeric_type_x, typename numeric_type_y>
+requires std::integral<std::common_type_t<numeric_type_x, numeric_type_y>>
 QString convert_to_percent_format(numeric_type_x dividend, numeric_type_y divisor) noexcept;
 
-template <typename byte_type, typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
+template <typename byte_type>
+requires std::integral<byte_type> || std::floating_point<byte_type>
 QString stringify_bytes(byte_type received_byte_cnt, byte_type total_byte_cnt) noexcept;
 
-template <typename byte_type, typename = std::enable_if_t<std::is_arithmetic_v<byte_type>>>
+template <typename byte_type>
+requires std::integral<byte_type> || std::floating_point<byte_type>
 [[nodiscard]]
 constexpr std::pair<double, std::string_view> stringify_bytes(const byte_type byte_cnt, const Format conversion_fmt) noexcept {
 	constexpr auto kb_byte_cnt = 1024;

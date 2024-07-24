@@ -8,7 +8,8 @@
 
 namespace util {
 
-template <typename result_type, typename>
+template <typename result_type>
+requires std::integral<result_type>
 [[nodiscard]]
 result_type extract_integer(const QByteArray & raw_data, const qsizetype offset) {
 	constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
@@ -74,7 +75,8 @@ QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
 	return bytes.toHex();
 }
 
-template <typename numeric_type, typename>
+template <typename numeric_type>
+requires std::integral<numeric_type>
 [[nodiscard]]
 QByteArray convert_to_hex(const numeric_type num) noexcept {
 	using unsigned_type = std::make_unsigned_t<numeric_type>;
@@ -90,7 +92,8 @@ QByteArray convert_to_hex(const numeric_type num) noexcept {
 	return QByteArray(fin_hex_size - hex_fmt.size(), '0') + hex_fmt;
 }
 
-template <typename byte_type, typename>
+template <typename byte_type>
+requires std::integral<byte_type> || std::floating_point<byte_type>
 [[nodiscard]]
 QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total_byte_cnt) noexcept {
 	std::string_view total_bytes_postfix("inf");
@@ -107,7 +110,8 @@ QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total
 		 (total_bytes_postfix == "inf" ? "inf" : QString::number(converted_total_byte_cnt, 'f', 2) + ' ' + total_bytes_postfix.data());
 }
 
-template <typename numeric_type_x, typename numeric_type_y, typename>
+template <typename numeric_type_x, typename numeric_type_y>
+requires std::integral<std::common_type_t<numeric_type_x, numeric_type_y>>
 [[nodiscard]]
 QString convert_to_percent_format(const numeric_type_x dividend, const numeric_type_y divisor) noexcept {
 	assert(divisor);
@@ -116,7 +120,7 @@ QString convert_to_percent_format(const numeric_type_x dividend, const numeric_t
 
 template <typename... arith_types>
 constexpr auto instantiate_arithmetic_types() {
-	static_assert((std::is_arithmetic_v<arith_types> && ...));
+	static_assert((std::integral<arith_types> && ...));
 
 	return std::tuple_cat(std::make_tuple(&convert_to_hex<arith_types>)...,
 				    std::make_tuple(static_cast<QString (*)(arith_types, arith_types)>(&stringify_bytes<arith_types>))...,
