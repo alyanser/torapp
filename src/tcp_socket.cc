@@ -17,7 +17,7 @@ QUrl Tcp_socket::peer_url() const noexcept {
 
 void Tcp_socket::on_peer_fault() noexcept {
 
-	if(constexpr auto peer_fault_threshold = 5; ++peer_fault_cnt_ > peer_fault_threshold) {
+	if(constexpr auto peer_fault_threshold = 50; ++peer_fault_cnt_ > peer_fault_threshold) {
 		qDebug() << "well someone couldn't even implement this trivial protocol correctly";
 		abort();
 	}
