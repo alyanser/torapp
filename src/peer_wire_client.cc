@@ -16,8 +16,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata, util::Dow
 	tracker_(resources.tracker),
 	total_byte_cnt_(torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size),
 	torrent_piece_size_(torrent_metadata.piece_length),
-	total_piece_cnt_(
-	    static_cast<std::int32_t>(std::ceil(static_cast<double>(total_byte_cnt_) / static_cast<double>(torrent_piece_size_)))),
+	total_piece_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(total_byte_cnt_) / static_cast<double>(torrent_piece_size_)))),
 	spare_piece_cnt_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0),
 	average_block_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(torrent_piece_size_) / max_block_size))),
 	has_metadata_(true), peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_, 0), pieces_(total_piece_cnt_) {
@@ -27,12 +26,11 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata, util::Dow
 
 	file_handles_.resize(resources.file_handles.size());
 
-	std::transform(resources.file_handles.cbegin(), resources.file_handles.cend(), file_handles_.begin(),
-			   [this](auto * const file_handle) {
-				   assert(file_handle->parent()); // main_window::file_allocator_
-				   file_handle->setParent(this);
-				   return std::make_pair(file_handle, 0);
-			   });
+	std::ranges::transform(std::as_const(resources.file_handles), file_handles_.begin(), [this](auto * const file_handle) {
+		assert(file_handle->parent()); // main_window::file_allocator_
+		file_handle->setParent(this);
+		return std::make_pair(file_handle, 0);
+	});
 
 	resources.file_handles.clear();
 	resources.file_handles.squeeze();
@@ -72,7 +70,7 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata, util::Down
 
 		const auto & tracker_urls = torrent_metadata.tracker_urls;
 
-		std::transform(tracker_urls.cbegin(), tracker_urls.cend(), std::back_inserter(torrent_metadata_.announce_url_list),
+		std::ranges::transform(std::as_const(tracker_urls), std::back_inserter(torrent_metadata_.announce_url_list),
 				   [](const QUrl & tracker_url) { return tracker_url.toString().toStdString(); });
 
 		emit new_download_requested(std::move(dl_path_), std::move(torrent_metadata_), std::move(info_sha1_hash_));
@@ -115,11 +113,11 @@ void Peer_wire_client::configure_default_connections() noexcept {
 	connect(&settings_timer_, &QTimer::timeout, this, &Peer_wire_client::write_settings);
 
 	connect(tracker_, &Download_tracker::move_files_to_trash, this, [&file_handles_ = file_handles_]() {
-		std::for_each(file_handles_.cbegin(), file_handles_.cend(), [](const auto file_info) { file_info.first->moveToTrash(); });
+		std::ranges::for_each(std::as_const(file_handles_), [](const auto file_info) { file_info.first->moveToTrash(); });
 	});
 
 	connect(tracker_, &Download_tracker::delete_files_permanently, this, [&file_handles_ = file_handles_] {
-		std::for_each(file_handles_.cbegin(), file_handles_.cend(), [](const auto file_info) { file_info.first->remove(); });
+		std::ranges::for_each(std::as_const(file_handles_), [](const auto file_info) { file_info.first->remove(); });
 	});
 
 	connect(this, &Peer_wire_client::piece_verified, [&properties_displayer_ = properties_displayer_, &file_handles_ = file_handles_] {
@@ -144,7 +142,7 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
 	assert(!peer_urls.isEmpty());
 	qDebug() << "peers sent from the tracker" << peer_urls.size();
 
-	std::for_each(peer_urls.cbegin(), peer_urls.cend(), [this](const auto & peer_url) {
+	std::ranges::for_each(std::as_const(peer_urls), [this](const auto & peer_url) {
 		if(!active_peers_.contains(peer_url)) {
 			auto * const socket = new Tcp_socket(peer_url, torrent_piece_size_, this);
 
@@ -1196,8 +1194,9 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket, co
 
 			socket->allowed_fast_set = generate_allowed_fast_set(socket->peerAddress().toIPv4Address(), total_piece_cnt_);
 
-			std::for_each(socket->allowed_fast_set.cbegin(), socket->allowed_fast_set.cend(),
-					  [socket](const auto fast_piece_idx) { socket->send_packet(craft_allowed_fast_message(fast_piece_idx)); });
+			std::ranges::for_each(std::as_const(socket->allowed_fast_set), [socket](const auto fast_piece_idx) {
+				socket->send_packet(craft_allowed_fast_message(fast_piece_idx));
+			});
 		});
 	}
 

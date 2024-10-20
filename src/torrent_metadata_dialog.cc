@@ -21,7 +21,7 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
 	file_info_scroll_area_.setWidgetResizable(true);
 
 	auto make_label_text_selectable = [](const QList<std::reference_wrapper<QLabel>> & labels) {
-		std::for_each(labels.cbegin(), labels.cend(), [](QLabel & label) {
+		std::ranges::for_each(labels, [](QLabel & label) {
 			label.setTextInteractionFlags(Qt::TextSelectableByMouse);
 			label.setCursor(QCursor(Qt::IBeamCursor));
 		});
@@ -91,7 +91,7 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
 		size_label_.setText(QString::number(converted_size) + ' ' + postfix.data());
 	}
 
-	std::for_each(torrent_metadata.file_info.cbegin(), torrent_metadata.file_info.cend(), [this](const auto & file_info) {
+	std::ranges::for_each(torrent_metadata.file_info, [this](const auto & file_info) {
 		const auto & [file_path, file_size] = file_info;
 		const auto [converted_size, postfix] = util::conversion::stringify_bytes(file_size, util::conversion::Format::Memory);
 		const auto file_label_text = QString(file_path.data()) + "\t( " + QString::number(converted_size) + ' ' + postfix.data() + " )";

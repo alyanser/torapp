@@ -268,7 +268,7 @@ void Main_window::restore_downloads() noexcept {
 
 	const auto child_groups = settings.childGroups();
 
-	std::for_each(child_groups.cbegin(), child_groups.cend(), [this, &settings](const auto & dl_group) {
+	std::ranges::for_each(std::as_const(child_groups), [this, &settings](const auto & dl_group) {
 		settings.beginGroup(dl_group);
 
 		constexpr auto is_url_download = std::is_same_v<std::remove_cv_t<std::remove_reference_t<dl_metadata_type>>, QUrl>;

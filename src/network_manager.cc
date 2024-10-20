@@ -69,8 +69,7 @@ void Network_manager::download(util::Download_resources resources, bencode::Meta
 	} else {
 		emit resources.tracker->download_dropped();
 
-		std::for_each(resources.file_handles.cbegin(), resources.file_handles.cend(),
-				  [](auto * const file_handle) { file_handle->deleteLater(); });
+		std::ranges::for_each(resources.file_handles, [](auto * const file_handle) { file_handle->deleteLater(); });
 
 		QMessageBox::critical(nullptr, "No support", "Torapp doesn't support TCP trackers yet :(");
 	}

@@ -36,8 +36,9 @@ File_allocator::handle_return_type File_allocator::open_file_handles(const QStri
 
 	QList<QFile *> file_handles(static_cast<qsizetype>(temp_file_handles.size()));
 
-	std::transform(temp_file_handles.begin(), temp_file_handles.end(), file_handles.begin(),
-			   [](auto & file_handle) { return file_handle.release(); });
+	std::ranges::transform(temp_file_handles, file_handles.begin(), [](auto & file_handle) {
+		return file_handle.release();
+	});
 
 	return {Error::Null, std::move(file_handles)};
 }

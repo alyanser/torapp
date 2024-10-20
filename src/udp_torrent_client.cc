@@ -8,6 +8,8 @@
 #include <QSettings>
 #include <QPointer>
 
+#include <ranges>
+
 Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
 						   QObject * const parent)
     : QObject(parent), torrent_metadata_(std::move(torrent_metadata)),
@@ -40,7 +42,7 @@ Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata, util::
 	assert(tracker_);
 	configure_default_connections();
 
-	std::for_each(torrent_metadata.tracker_urls.cbegin(), torrent_metadata.tracker_urls.cend(), [this](const auto & tracker_url) {
+	std::ranges::for_each(torrent_metadata.tracker_urls, [this](const auto & tracker_url) {
 		assert(tracker_url.isValid());
 
 		auto * const socket = new Udp_socket(tracker_url, craft_connect_request(), this);
