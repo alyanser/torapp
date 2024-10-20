@@ -8,8 +8,6 @@
 #include <QSettings>
 #include <QPointer>
 
-#include <ranges>
-
 Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
 						   QObject * const parent)
     : QObject(parent), torrent_metadata_(std::move(torrent_metadata)),
