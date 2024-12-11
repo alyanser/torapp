@@ -329,9 +329,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 				socket->set_requests(craft_announce_request(*connection_id), craft_scrape_request(*connection_id));
 
 				if(event_ != Event::Stopped) {
-
-					QTimer::singleShot(0, socket,
-								 [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
+					QTimer::singleShot(0, socket, [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
 				}
 			};
 
@@ -339,8 +337,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 
 			connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] { update_event_and_request(Event::Stopped); });
 
-			connect(&peer_client_, &Peer_wire_client::download_finished, this,
-				  [update_event_and_request] { update_event_and_request(Event::Completed); });
+			connect(&peer_client_, &Peer_wire_client::download_finished, this, [update_event_and_request] { update_event_and_request(Event::Completed); });
 
 			return;
 		}
@@ -383,7 +380,7 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 		}
 
 		default: {
-			return socket->abort();
+			std::unreachable();
 		}
 	}
 }
