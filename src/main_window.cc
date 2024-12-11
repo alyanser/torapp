@@ -201,12 +201,9 @@ void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl
 		}
 	}
 
-	auto [file_error, file_handles] = file_manager_.open_file_handles(dl_path, dl_metadata);
+	auto file_handles = file_manager_.open_file_handles(dl_path, dl_metadata);
 
-	switch(file_error) {
-
-	case File_allocator::Error::Null: {
-		assert(file_handles);
+	if(file_handles.has_value()) {
 		assert(!file_handles->isEmpty());
 
 		if constexpr(std::is_same_v<std::remove_const_t<dl_metadata_type>, QUrl>) {
@@ -217,25 +214,24 @@ void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl
 		}
 
 		tray_.showMessage("Download started", "Download has successfully started");
-		break;
+		return;
 	}
 
+	switch(file_handles.error()) {
+
 	case File_allocator::Error::Invalid_Request: {
-		assert(!file_handles);
 		tracker->set_error_and_finish(Download_tracker::Error::Invalid_Request);
 		tray_.showMessage("Download start failed", "Invalid download request");
 		break;
 	}
 
 	case File_allocator::Error::File_Lock: {
-		assert(!file_handles);
 		tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
 		tray_.showMessage("Download start failed", "Download could not be started due to a file lock");
 		break;
 	}
 
 	case File_allocator::Error::Permissions: {
-		assert(!file_handles);
 		tracker->set_error_and_finish(Download_tracker::Error::File_Write);
 		tray_.showMessage("Download start failed", "You do not have enough permissions to save files in the given path");
 		break;

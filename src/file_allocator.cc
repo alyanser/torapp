@@ -7,17 +7,16 @@
 #include <QDir>
 
 [[nodiscard]]
-File_allocator::handle_return_type File_allocator::open_file_handles(const QString & dir_path,
-											   const bencode::Metadata & torrent_metadata) noexcept {
+auto File_allocator::open_file_handles(const QString & dir_path, const bencode::Metadata & torrent_metadata) noexcept -> std::expected<File_pointers, Error> {
 
 	if(torrent_metadata.file_info.empty() || dir_path.isEmpty()) {
-		return {Error::Invalid_Request, {}};
+		return std::unexpected(Error::Invalid_Request);
 	}
 
 	QDir dir(dir_path);
 
 	if(!dir.mkpath(dir.path())) {
-		return {Error::Permissions, {}};
+		return std::unexpected(Error::Permissions);
 	}
 
 	std::vector<std::unique_ptr<QFile>> temp_file_handles;
@@ -30,7 +29,7 @@ File_allocator::handle_return_type File_allocator::open_file_handles(const QStri
 		auto & file_handle = temp_file_handles.emplace_back(std::make_unique<QFile>(file_info.absoluteFilePath(), this));
 
 		if(!file_handle->open(QFile::ReadWrite)) {
-			return {Error::Permissions, {}};
+			return std::unexpected(Error::Permissions);
 		}
 	}
 
@@ -40,21 +39,21 @@ File_allocator::handle_return_type File_allocator::open_file_handles(const QStri
 		return file_handle.release();
 	});
 
-	return {Error::Null, std::move(file_handles)};
+	return file_handles;
 }
 
 [[nodiscard]]
-File_allocator::handle_return_type File_allocator::open_file_handles(const QString & file_path, const QUrl url) noexcept {
+auto File_allocator::open_file_handles(const QString & file_path, const QUrl url) noexcept -> std::expected<File_pointers, Error> {
 
 	if(file_path.isEmpty() || !url.isValid()) {
-		return {Error::Invalid_Request, {}};
+		return std::unexpected(Error::Invalid_Request);
 	}
 
 	auto file_handle = std::make_unique<QFile>(file_path, this);
 
 	if(!file_handle->open(QFile::ReadWrite)) {
-		return {Error::Permissions, {}};
+		return std::unexpected(Error::Permissions);
 	}
 
-	return {Error::Null, QList{file_handle.release()}};
+	return QList{file_handle.release()};
 }

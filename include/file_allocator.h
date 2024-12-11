@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <expected>
 
 class QFile;
 
@@ -12,7 +13,6 @@ class File_allocator : public QObject {
 	Q_OBJECT
 public:
 	enum class Error {
-		Null,
 		File_Lock,
 		Permissions,
 		Invalid_Request
@@ -20,8 +20,8 @@ public:
 
 	Q_ENUM(Error);
 
-	using handle_return_type = std::pair<Error, std::optional<QList<QFile *>>>;
+	using File_pointers = QList<QFile *>;
 
-	handle_return_type open_file_handles(const QString & path, const bencode::Metadata & torrent_metadata) noexcept;
-	handle_return_type open_file_handles(const QString & path, QUrl url) noexcept;
+	std::expected<File_pointers, Error> open_file_handles(const QString & path, const bencode::Metadata & torrent_metadata) noexcept;
+	std::expected<File_pointers, Error> open_file_handles(const QString & path, QUrl url) noexcept;
 };
