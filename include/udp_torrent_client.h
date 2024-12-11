@@ -43,8 +43,7 @@ public:
 		std::int32_t seed_cnt = 0;
 	};
 
-	Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
-				 QObject * parent = nullptr);
+	Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash, QObject * parent = nullptr);
 	Udp_torrent_client(magnet::Metadata torrent_metadata, util::Download_resources resources, QObject * parent = nullptr);
 
 	void send_connect_request(qsizetype tracker_url_idx = 0) noexcept;

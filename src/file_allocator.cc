@@ -35,9 +35,7 @@ auto File_allocator::open_file_handles(const QString & dir_path, const bencode::
 
 	QList<QFile *> file_handles(static_cast<qsizetype>(temp_file_handles.size()));
 
-	std::ranges::transform(temp_file_handles, file_handles.begin(), [](auto & file_handle) {
-		return file_handle.release();
-	});
+	std::ranges::transform(temp_file_handles, file_handles.begin(), [](auto & file_handle) { return file_handle.release(); });
 
 	return file_handles;
 }

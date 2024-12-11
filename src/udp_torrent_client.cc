@@ -10,7 +10,8 @@
 
 Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
 						   QObject * const parent)
-    : QObject(parent), torrent_metadata_(std::move(torrent_metadata)),
+    : QObject(parent),
+	torrent_metadata_(std::move(torrent_metadata)),
 	info_sha1_hash_(info_sha1_hash.isEmpty() ? calculate_info_sha1_hash(torrent_metadata_) : std::move(info_sha1_hash)),
 	peer_client_(torrent_metadata_, {resources.dl_path, std::move(resources.file_handles), resources.tracker}, id, info_sha1_hash_),
 	tracker_(resources.tracker) {
@@ -27,15 +28,16 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util:
 		if(!restored_dl_paused) {
 			send_connect_request();
 		} else {
-			connect(
-			    tracker_, &Download_tracker::download_resumed, this, [this] { send_connect_request(); }, Qt::SingleShotConnection);
+			connect(tracker_, &Download_tracker::download_resumed, this, [this] { send_connect_request(); }, Qt::SingleShotConnection);
 		}
 	});
 }
 
 Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata, util::Download_resources resources, QObject * const parent)
-    : QObject(parent), info_sha1_hash_(torrent_metadata.info_hash),
-	peer_client_(torrent_metadata, {std::move(resources.dl_path), {}, resources.tracker}, id), tracker_(resources.tracker) {
+    : QObject(parent),
+	info_sha1_hash_(torrent_metadata.info_hash),
+	peer_client_(torrent_metadata, {std::move(resources.dl_path), {}, resources.tracker}, id),
+	tracker_(resources.tracker) {
 	assert(resources.file_handles.isEmpty());
 	assert(tracker_);
 	configure_default_connections();
@@ -51,14 +53,13 @@ Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata, util::
 
 void Udp_torrent_client::configure_default_connections() noexcept {
 
-	connect(this, &Udp_torrent_client::announce_reply_received,
-		  [&peer_client_ = peer_client_, &event_ = event_](const Announce_reply & reply) {
-			  event_ = Event::Started;
+	connect(this, &Udp_torrent_client::announce_reply_received, [&peer_client_ = peer_client_, &event_ = event_](const Announce_reply & reply) {
+		event_ = Event::Started;
 
-			  if(!reply.peer_urls.empty()) {
-				  peer_client_.connect_to_peers(reply.peer_urls);
-			  }
-		  });
+		if(!reply.peer_urls.empty()) {
+			peer_client_.connect_to_peers(reply.peer_urls);
+		}
+	});
 
 	connect(tracker_, &Download_tracker::request_satisfied, this, &Udp_torrent_client::deleteLater);
 	connect(&peer_client_, &Peer_wire_client::new_download_requested, this, &Udp_torrent_client::new_download_requested);
@@ -128,8 +129,7 @@ std::optional<QByteArray> Udp_torrent_client::extract_tracker_error(const QByteA
 [[nodiscard]]
 std::optional<std::int64_t> Udp_torrent_client::extract_connect_reply(const QByteArray & reply, const std::int32_t sent_txn_id) {
 	constexpr auto connection_id_offset = 8;
-	return verify_txn_id(reply, sent_txn_id) ? util::extract_integer<std::int64_t>(reply, connection_id_offset)
-							     : std::optional<std::int64_t>{};
+	return verify_txn_id(reply, sent_txn_id) ? util::extract_integer<std::int64_t>(reply, connection_id_offset) : std::optional<std::int64_t>{};
 }
 
 [[nodiscard]]
@@ -215,8 +215,7 @@ QByteArray Udp_torrent_client::craft_scrape_request(const std::int64_t tracker_c
 }
 
 [[nodiscard]]
-std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_announce_reply(const QByteArray & reply,
-															   const std::int32_t sent_txn_id) {
+std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_announce_reply(const QByteArray & reply, const std::int32_t sent_txn_id) {
 
 	if(!verify_txn_id(reply, sent_txn_id)) {
 		return {};
@@ -268,8 +267,7 @@ std::optional<Udp_torrent_client::Announce_reply> Udp_torrent_client::extract_an
 }
 
 [[nodiscard]]
-std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_scrape_reply(const QByteArray & reply,
-															 const std::int32_t sent_txn_id) {
+std::optional<Udp_torrent_client::Swarm_metadata> Udp_torrent_client::extract_scrape_reply(const QByteArray & reply, const std::int32_t sent_txn_id) {
 
 	if(!verify_txn_id(reply, sent_txn_id)) {
 		return {};
@@ -332,19 +330,15 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 
 			if(event_ != Event::Stopped) {
 
-				QTimer::singleShot(
-				    0, socket, [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
+				QTimer::singleShot(0, socket, [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
 			}
 		};
 
-		connect(tracker_, &Download_tracker::download_resumed, this,
-			  [update_event_and_request] { update_event_and_request(Event::Started); });
+		connect(tracker_, &Download_tracker::download_resumed, this, [update_event_and_request] { update_event_and_request(Event::Started); });
 
-		connect(tracker_, &Download_tracker::download_paused, this,
-			  [update_event_and_request] { update_event_and_request(Event::Stopped); });
+		connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] { update_event_and_request(Event::Stopped); });
 
-		connect(&peer_client_, &Peer_wire_client::download_finished, this,
-			  [update_event_and_request] { update_event_and_request(Event::Completed); });
+		connect(&peer_client_, &Peer_wire_client::download_finished, this, [update_event_and_request] { update_event_and_request(Event::Completed); });
 
 		return;
 	}

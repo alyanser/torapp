@@ -66,8 +66,7 @@ Download_tracker::Download_tracker(const QString & dl_path, const Download_Type 
 	});
 }
 
-Download_tracker::Download_tracker(const QString & dl_path, QUrl url, QWidget * const parent)
-    : Download_tracker(dl_path, Download_Type::Url, parent) {
+Download_tracker::Download_tracker(const QString & dl_path, QUrl url, QWidget * const parent) : Download_tracker(dl_path, Download_Type::Url, parent) {
 	assert(!url.isEmpty());
 	assert(!dl_path.isEmpty());
 
@@ -163,14 +162,11 @@ void Download_tracker::set_error_and_finish(const QString & error_desc) noexcept
 
 void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
 	assert(dl_type_ == Download_Type::Torrent);
-	const auto [converted_ul_byte_cnt, ul_byte_postfix] =
-	    util::conversion::stringify_bytes(uled_byte_cnt, util::conversion::Format::Memory);
+	const auto [converted_ul_byte_cnt, ul_byte_postfix] = util::conversion::stringify_bytes(uled_byte_cnt, util::conversion::Format::Memory);
 	ul_quantity_label_.setText(QString::number(converted_ul_byte_cnt, 'f', 2) + ' ' + ul_byte_postfix.data());
 }
 
-void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
-	restored_byte_cnt_ = restored_byte_cnt;
-}
+void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept { restored_byte_cnt_ = restored_byte_cnt; }
 
 void Download_tracker::set_ratio(const double ratio) noexcept {
 	assert(dl_type_ == Download_Type::Torrent);
@@ -215,9 +211,8 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
 
 	const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt, total_byte_cnt);
 	dl_quantity_label_.setText(text_fmt);
-	dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1
-								 ? " nan %"
-								 : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt, total_byte_cnt)));
+	dl_progress_bar_.setFormat(text_fmt +
+					   (total_byte_cnt < 1 ? " nan %" : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt, total_byte_cnt)));
 }
 
 void Download_tracker::set_state(const State state) noexcept {
@@ -401,8 +396,7 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
 		}
 
 		case Error::Invalid_Request: {
-			return QString("Invalid request. Possibly corrupted path or invalid ") +
-				 (dl_type_ == Download_Type::Torrent ? "torrent file" : "url");
+			return QString("Invalid request. Possibly corrupted path or invalid ") + (dl_type_ == Download_Type::Torrent ? "torrent file" : "url");
 		}
 
 		default: {

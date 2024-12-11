@@ -58,14 +58,13 @@ void Network_manager::download(util::Download_resources resources, bencode::Meta
 		tracker_urls.insert(tracker_urls.begin(), torrent_metadata.announce_url);
 	}
 
-	tracker_urls.erase(std::remove_if(tracker_urls.begin(), tracker_urls.end(),
-						    [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; }),
-				 tracker_urls.end());
+	tracker_urls.erase(
+	    std::remove_if(tracker_urls.begin(), tracker_urls.end(), [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; }),
+	    tracker_urls.end());
 
 	if(!tracker_urls.empty()) {
 		[[maybe_unused]]
-		auto * const udp_client =
-		    new Udp_torrent_client(std::move(torrent_metadata), std::move(resources), std::move(info_sha1_hash), this);
+		auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata), std::move(resources), std::move(info_sha1_hash), this);
 	} else {
 		emit resources.tracker->download_dropped();
 

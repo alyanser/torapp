@@ -61,18 +61,14 @@ void Tcp_socket::post_request(util::Packet_metadata request, QByteArray packet) 
 	}
 }
 
-bool Tcp_socket::remove_request(const util::Packet_metadata request) noexcept {
-	return pending_requests_.remove(request);
-}
+bool Tcp_socket::remove_request(const util::Packet_metadata request) noexcept { return pending_requests_.remove(request); }
 
 [[nodiscard]]
 bool Tcp_socket::request_sent(const util::Packet_metadata request_metadata) const noexcept {
 	return sent_requests_.contains(request_metadata);
 }
 
-void Tcp_socket::reset_disconnect_timer() noexcept {
-	disconnect_timer_.start(std::chrono::minutes(10));
-}
+void Tcp_socket::reset_disconnect_timer() noexcept { disconnect_timer_.start(std::chrono::minutes(10)); }
 
 [[nodiscard]]
 std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
@@ -134,8 +130,7 @@ std::optional<QByteArray> Tcp_socket::receive_packet() noexcept {
 bool Tcp_socket::is_good_ratio() const noexcept {
 	constexpr auto min_ratio = 1;
 	assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
-	return uled_byte_cnt_ <= uled_byte_threshold ? true
-								   : static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
+	return uled_byte_cnt_ <= uled_byte_threshold ? true : static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
 }
 
 void Tcp_socket::send_packet(const QByteArray & packet) noexcept {

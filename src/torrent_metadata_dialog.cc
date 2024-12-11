@@ -27,8 +27,8 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
 		});
 	};
 
-	make_label_text_selectable({torrent_name_label_, created_by_label_, creation_time_label_, comment_label_, encoding_label_,
-					    piece_length_label_, size_label_, announce_label_, file_info_label_});
+	make_label_text_selectable({torrent_name_label_, created_by_label_, creation_time_label_, comment_label_, encoding_label_, piece_length_label_,
+					    size_label_, announce_label_, file_info_label_});
 }
 
 void Torrent_metadata_dialog::configure_default_connections() noexcept {
@@ -79,14 +79,12 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
 	set_label_text(encoding_label_, torrent_metadata.encoding);
 
 	{
-		const auto [converted_piece_length, postfix] =
-		    util::conversion::stringify_bytes(torrent_metadata.piece_length, util::conversion::Format::Memory);
+		const auto [converted_piece_length, postfix] = util::conversion::stringify_bytes(torrent_metadata.piece_length, util::conversion::Format::Memory);
 		piece_length_label_.setText(QString::number(converted_piece_length) + ' ' + postfix.data());
 	}
 
 	{
-		const auto torrent_size =
-		    torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size;
+		const auto torrent_size = torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size;
 		const auto [converted_size, postfix] = util::conversion::stringify_bytes(torrent_size, util::conversion::Format::Memory);
 		size_label_.setText(QString::number(converted_size) + ' ' + postfix.data());
 	}
@@ -122,16 +120,14 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 		const auto dir_path = [this, &torrent_metadata = std::as_const(torrent_metadata),
 					     path_line_text = path_line_.text()]() mutable -> std::optional<QString> {
 			if(!QFileInfo::exists(path_line_text)) {
-				const auto reply_button =
-				    QMessageBox::question(this, "Path doesn't exist", "Path doesn't exist already. Do you wish to create it?");
+				const auto reply_button = QMessageBox::question(this, "Path doesn't exist", "Path doesn't exist already. Do you wish to create it?");
 
 				if(reply_button == QMessageBox::No) {
 					return {};
 				}
 
 				if(!QDir().mkpath(path_line_text)) {
-					QMessageBox::critical(this, "Path creation error",
-								    "Could not create given path. Choose a different one and try again");
+					QMessageBox::critical(this, "Path creation error", "Could not create given path. Choose a different one and try again");
 					return {};
 				}
 			}
@@ -148,8 +144,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 		}
 
 		if(QFileInfo::exists(*dir_path)) {
-			const auto reply_button =
-			    QMessageBox::question(this, "Already exists", "Directory already exists. Do you wish to replace it?");
+			const auto reply_button = QMessageBox::question(this, "Already exists", "Directory already exists. Do you wish to replace it?");
 
 			if(reply_button == QMessageBox::No) {
 				return;
@@ -157,8 +152,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 		}
 
 		{
-			const auto torrent_size =
-			    torrent_metadata->single_file ? torrent_metadata->single_file_size : torrent_metadata->multiple_files_size;
+			const auto torrent_size = torrent_metadata->single_file ? torrent_metadata->single_file_size : torrent_metadata->multiple_files_size;
 			assert(torrent_size > 0);
 
 			if(QStorageInfo storage_info(path_line_.text()); storage_info.bytesFree() < torrent_size) {

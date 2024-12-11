@@ -1,8 +1,7 @@
 #include "udp_socket.h"
 #include "util.h"
 
-Udp_socket::Udp_socket(const QUrl url, QByteArray connect_request, QObject * const parent)
-    : QUdpSocket(parent), connect_request_(std::move(connect_request)) {
+Udp_socket::Udp_socket(const QUrl url, QByteArray connect_request, QObject * const parent) : QUdpSocket(parent), connect_request_(std::move(connect_request)) {
 	assert(url.isValid());
 	assert(!connect_request_.isEmpty());
 	configure_default_connections();
@@ -21,9 +20,7 @@ std::int32_t Udp_socket::transaction_id() const noexcept {
 	return txn_id_;
 }
 
-void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept {
-	interval_timer_.start(interval_timeout);
-}
+void Udp_socket::start_interval_timer(const std::chrono::seconds interval_timeout) noexcept { interval_timer_.start(interval_timeout); }
 
 void Udp_socket::send_request(const QByteArray & request) noexcept {
 	state_ != State::Connect && !connection_id_valid_ ? send_initial_request(connect_request_, State::Connect) : send_packet(request);

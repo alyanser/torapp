@@ -94,7 +94,7 @@ private:
 		std::int64_t dled_byte_cnt;
 	};
 
-	template <Message_Id message_id>
+	template<Message_Id message_id>
 	static QByteArray craft_generic_message(util::Packet_metadata packet_metadata) noexcept;
 
 	static QByteArray craft_have_message(std::int32_t piece_idx) noexcept;
