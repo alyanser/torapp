@@ -809,36 +809,36 @@ bool Peer_wire_client::is_valid_reply(Tcp_socket * const socket, const QByteArra
 
 	switch(received_msg_id) {
 
-	case Message_Id::Bitfield: {
-		constexpr auto min_bitfield_msg_size = 1;
-		return reply.size() >= min_bitfield_msg_size;
-	}
-
-	case Message_Id::Piece: {
-		constexpr auto min_piece_msg_size = 9;
-		return reply.size() >= min_piece_msg_size;
-	}
-
-	case Message_Id::Extended_Protocol: {
-		constexpr auto min_extended_msg_size = 1;
-		return reply.size() >= min_extended_msg_size;
-	}
-
-	default: {
-		const auto expected_size = expected_reply_sizes[static_cast<std::size_t>(received_msg_id)];
-
-		if(expected_size == pseudo) {
-			qDebug() << "peer sent invalid message id" << received_msg_id;
-			return false;
+		case Message_Id::Bitfield: {
+			constexpr auto min_bitfield_msg_size = 1;
+			return reply.size() >= min_bitfield_msg_size;
 		}
 
-		if(static_cast<std::int32_t>(received_msg_id) >= static_cast<std::int32_t>(Message_Id::Suggest_Piece) && !socket->fast_extension_enabled) {
-			qDebug() << "peer sent fast extension ids without enabling the extension first";
-			return false;
+		case Message_Id::Piece: {
+			constexpr auto min_piece_msg_size = 9;
+			return reply.size() >= min_piece_msg_size;
 		}
 
-		return reply.size() == expected_size;
-	}
+		case Message_Id::Extended_Protocol: {
+			constexpr auto min_extended_msg_size = 1;
+			return reply.size() >= min_extended_msg_size;
+		}
+
+		default: {
+			const auto expected_size = expected_reply_sizes[static_cast<std::size_t>(received_msg_id)];
+
+			if(expected_size == pseudo) {
+				qDebug() << "peer sent invalid message id" << received_msg_id;
+				return false;
+			}
+
+			if(static_cast<std::int32_t>(received_msg_id) >= static_cast<std::int32_t>(Message_Id::Suggest_Piece) && !socket->fast_extension_enabled) {
+				qDebug() << "peer sent fast extension ids without enabling the extension first";
+				return false;
+			}
+
+			return reply.size() == expected_size;
+		}
 	}
 }
 
@@ -1269,149 +1269,149 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) {
 
 	switch(received_msg_id) {
 
-	case Message_Id::Choke: {
+		case Message_Id::Choke: {
 
-		if(!socket->peer_choked) {
-			socket->peer_choked = true;
-			emit socket->got_choked();
-		} else {
-			socket->on_peer_fault();
-		}
+			if(!socket->peer_choked) {
+				socket->peer_choked = true;
+				emit socket->got_choked();
+			} else {
+				socket->on_peer_fault();
+			}
 
-		break;
-	}
-
-	case Message_Id::Unchoke: {
-
-		if(socket->peer_choked) {
-			socket->peer_choked = false;
-		} else {
-			socket->on_peer_fault();
-		}
-
-		break;
-	}
-
-	case Message_Id::Interested: {
-
-		if(socket->peer_interested) {
-			socket->on_peer_fault();
 			break;
 		}
 
-		socket->peer_interested = true;
+		case Message_Id::Unchoke: {
 
-		if(socket->am_choking && socket->is_good_ratio()) {
-			socket->am_choking = false;
-			socket->send_packet(unchoke_msg.data());
-		}
+			if(socket->peer_choked) {
+				socket->peer_choked = false;
+			} else {
+				socket->on_peer_fault();
+			}
 
-		break;
-	}
-
-	case Message_Id::Uninterested: {
-
-		if(socket->peer_interested) {
-			socket->peer_interested = false;
-		} else {
-			socket->on_peer_fault();
-		}
-
-		break;
-	}
-
-	case Message_Id::Have: {
-		constexpr auto msg_offset = 1;
-		on_have_message_received(socket, util::extract_integer<std::int32_t>(*reply, msg_offset));
-		break;
-	}
-
-	case Message_Id::Bitfield: {
-
-		if(!socket->peer_bitfield.isEmpty()) {
-			socket->on_peer_fault();
 			break;
 		}
 
-		socket->peer_bitfield = util::conversion::convert_to_bits(reply->sliced(msg_begin_offset, reply->size() - 1));
-		assert(socket->peer_bitfield.size() == bitfield_.size());
-		on_bitfield_received(socket);
-		break;
-	}
+		case Message_Id::Interested: {
 
-	case Message_Id::Request: {
-		on_block_request_received(socket, *reply);
-		break;
-	}
+			if(socket->peer_interested) {
+				socket->on_peer_fault();
+				break;
+			}
 
-	case Message_Id::Piece: {
-		on_block_received(socket, *reply);
-		break;
-	}
+			socket->peer_interested = true;
 
-	case Message_Id::Cancel: {
-		// todo
-		// const auto [cancelled_piece_idx,cancelled_piece_offset,canceled_byte_cnt] = extract_piece_metadata(reply);
-		break;
-	}
+			if(socket->am_choking && socket->is_good_ratio()) {
+				socket->am_choking = false;
+				socket->send_packet(unchoke_msg.data());
+			}
 
-	case Message_Id::Have_All: {
-
-		if(!socket->peer_bitfield.isEmpty()) {
-			socket->on_peer_fault();
 			break;
 		}
 
-		assert(total_piece_cnt_ + spare_piece_cnt_ == bitfield_.size());
-		socket->peer_bitfield = QBitArray(bitfield_.size(), true);
+		case Message_Id::Uninterested: {
 
-		if(spare_piece_cnt_) {
-			assert(total_piece_cnt_ < socket->peer_bitfield.size());
-			socket->peer_bitfield.fill(false, total_piece_cnt_, socket->peer_bitfield.size());
+			if(socket->peer_interested) {
+				socket->peer_interested = false;
+			} else {
+				socket->on_peer_fault();
+			}
+
+			break;
 		}
 
-		on_bitfield_received(socket);
-		break;
-	}
-
-	case Message_Id::Have_None: {
-
-		if(!socket->peer_bitfield.isEmpty()) {
-			socket->on_peer_fault();
-		} else {
-			socket->peer_bitfield = QBitArray(bitfield_.size(), false);
+		case Message_Id::Have: {
+			constexpr auto msg_offset = 1;
+			on_have_message_received(socket, util::extract_integer<std::int32_t>(*reply, msg_offset));
+			break;
 		}
 
-		break;
-	}
+		case Message_Id::Bitfield: {
 
-	case Message_Id::Reject_Request: {
-		const auto rejected_request_metadata = extract_packet_metadata(*reply);
+			if(!socket->peer_bitfield.isEmpty()) {
+				socket->on_peer_fault();
+				break;
+			}
 
-		if(socket->request_sent(rejected_request_metadata)) {
-			socket->rejected_requests.insert(rejected_request_metadata);
-			emit request_rejected(rejected_request_metadata);
-		} else {
-			socket->abort();
+			socket->peer_bitfield = util::conversion::convert_to_bits(reply->sliced(msg_begin_offset, reply->size() - 1));
+			assert(socket->peer_bitfield.size() == bitfield_.size());
+			on_bitfield_received(socket);
+			break;
 		}
 
-		break;
-	}
+		case Message_Id::Request: {
+			on_block_request_received(socket, *reply);
+			break;
+		}
 
-	case Message_Id::Allowed_Fast: {
-		on_allowed_fast_received(socket, util::extract_integer<std::int32_t>(*reply, msg_begin_offset));
-		break;
-	}
+		case Message_Id::Piece: {
+			on_block_received(socket, *reply);
+			break;
+		}
 
-	case Message_Id::Suggest_Piece: {
-		on_suggest_piece_received(socket, util::extract_integer<std::int32_t>(*reply, msg_begin_offset));
-		break;
-	}
+		case Message_Id::Cancel: {
+			// todo
+			// const auto [cancelled_piece_idx,cancelled_piece_offset,canceled_byte_cnt] = extract_piece_metadata(reply);
+			break;
+		}
 
-	case Message_Id::Extended_Protocol: {
-		// handled above - here for 'Wswitch'
-		break;
-	}
+		case Message_Id::Have_All: {
+
+			if(!socket->peer_bitfield.isEmpty()) {
+				socket->on_peer_fault();
+				break;
+			}
+
+			assert(total_piece_cnt_ + spare_piece_cnt_ == bitfield_.size());
+			socket->peer_bitfield = QBitArray(bitfield_.size(), true);
+
+			if(spare_piece_cnt_) {
+				assert(total_piece_cnt_ < socket->peer_bitfield.size());
+				socket->peer_bitfield.fill(false, total_piece_cnt_, socket->peer_bitfield.size());
+			}
+
+			on_bitfield_received(socket);
+			break;
+		}
+
+		case Message_Id::Have_None: {
+
+			if(!socket->peer_bitfield.isEmpty()) {
+				socket->on_peer_fault();
+			} else {
+				socket->peer_bitfield = QBitArray(bitfield_.size(), false);
+			}
+
+			break;
+		}
+
+		case Message_Id::Reject_Request: {
+			const auto rejected_request_metadata = extract_packet_metadata(*reply);
+
+			if(socket->request_sent(rejected_request_metadata)) {
+				socket->rejected_requests.insert(rejected_request_metadata);
+				emit request_rejected(rejected_request_metadata);
+			} else {
+				socket->abort();
+			}
+
+			break;
+		}
+
+		case Message_Id::Allowed_Fast: {
+			on_allowed_fast_received(socket, util::extract_integer<std::int32_t>(*reply, msg_begin_offset));
+			break;
+		}
+
+		case Message_Id::Suggest_Piece: {
+			on_suggest_piece_received(socket, util::extract_integer<std::int32_t>(*reply, msg_begin_offset));
+			break;
+		}
+
+		case Message_Id::Extended_Protocol: {
+			// handled above - here for 'Wswitch'
+			break;
+		}
 	}
 }
 
@@ -1422,18 +1422,18 @@ void Peer_wire_client::on_extension_message_received(Tcp_socket * const socket, 
 
 	switch(const auto msg_type = util::extract_integer<std::int8_t>(message); msg_type) {
 
-	case 0: {
-		return on_extension_handshake_received(socket, message.sliced(1));
-	}
+		case 0: {
+			return on_extension_handshake_received(socket, message.sliced(1));
+		}
 
-	case 1: {
-		return on_extension_metadata_message_received(socket, message.sliced(1));
-	}
+		case 1: {
+			return on_extension_metadata_message_received(socket, message.sliced(1));
+		}
 
-	default: {
-		qDebug() << "peer sent invalid extension msg type ids" << msg_type;
-		return socket->on_peer_fault();
-	}
+		default: {
+			qDebug() << "peer sent invalid extension msg type ids" << msg_type;
+			return socket->on_peer_fault();
+		}
 	}
 }
 
@@ -1497,68 +1497,68 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
 
 		switch(msg_type) {
 
-		case Metadata_Id::Data: {
-			const auto piece_itr = received_dict.find("piece");
+			case Metadata_Id::Data: {
+				const auto piece_itr = received_dict.find("piece");
 
-			if(piece_itr == received_dict.end()) {
-				return socket->on_peer_fault();
+				if(piece_itr == received_dict.end()) {
+					return socket->on_peer_fault();
+				}
+
+				const auto piece_size_itr = received_dict.find("total_size");
+
+				if(piece_size_itr == received_dict.end()) {
+					return socket->on_peer_fault();
+				}
+
+				const auto piece_idx = std::any_cast<std::int64_t>(piece_itr->second);
+				const auto metadata_size = std::any_cast<std::int64_t>(piece_size_itr->second);
+
+				if(metadata_size != metadata_size_) {
+					//! out of sync. consider reaction again
+					qDebug() << "peer sent different total metadata size than currently set" << metadata_size << metadata_size_;
+					return;
+				}
+
+				const auto dict_begin_offset = 39 + QByteArray::number(piece_idx).size() + QByteArray::number(metadata_size).size();
+				const auto received_dict_size = message.size() - dict_begin_offset;
+
+				if(!validate_metadata_piece_info(piece_idx, received_dict_size)) {
+					qDebug() << "peer sent invalid metadata info";
+					return socket->on_peer_fault();
+				}
+
+				assert(!metadata_field_.isEmpty());
+
+				if(metadata_field_[piece_idx]) {
+					qDebug() << "already have metadata piece_idx" << piece_idx;
+					return;
+				}
+
+				assert(raw_metadata_.size() >= piece_idx * max_block_size + received_dict_size);
+				std::copy_n(message.data() + dict_begin_offset, received_dict_size, raw_metadata_.begin() + piece_idx * max_block_size);
+
+				metadata_field_[piece_idx] = true;
+
+				if(++obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_) {
+					emit metadata_received();
+				}
+
+				assert(obtained_metadata_piece_cnt_ <= total_metadata_piece_cnt_);
+				break;
 			}
 
-			const auto piece_size_itr = received_dict.find("total_size");
-
-			if(piece_size_itr == received_dict.end()) {
-				return socket->on_peer_fault();
+			case Metadata_Id::Reject: {
+				return socket->disconnectFromHost(); // bad peer :(
 			}
 
-			const auto piece_idx = std::any_cast<std::int64_t>(piece_itr->second);
-			const auto metadata_size = std::any_cast<std::int64_t>(piece_size_itr->second);
-
-			if(metadata_size != metadata_size_) {
-				//! out of sync. consider reaction again
-				qDebug() << "peer sent different total metadata size than currently set" << metadata_size << metadata_size_;
-				return;
+			case Metadata_Id::Request: {
+				// todo
+				break;
 			}
 
-			const auto dict_begin_offset = 39 + QByteArray::number(piece_idx).size() + QByteArray::number(metadata_size).size();
-			const auto received_dict_size = message.size() - dict_begin_offset;
-
-			if(!validate_metadata_piece_info(piece_idx, received_dict_size)) {
-				qDebug() << "peer sent invalid metadata info";
-				return socket->on_peer_fault();
+			default: {
+				socket->on_peer_fault();
 			}
-
-			assert(!metadata_field_.isEmpty());
-
-			if(metadata_field_[piece_idx]) {
-				qDebug() << "already have metadata piece_idx" << piece_idx;
-				return;
-			}
-
-			assert(raw_metadata_.size() >= piece_idx * max_block_size + received_dict_size);
-			std::copy_n(message.data() + dict_begin_offset, received_dict_size, raw_metadata_.begin() + piece_idx * max_block_size);
-
-			metadata_field_[piece_idx] = true;
-
-			if(++obtained_metadata_piece_cnt_ == total_metadata_piece_cnt_) {
-				emit metadata_received();
-			}
-
-			assert(obtained_metadata_piece_cnt_ <= total_metadata_piece_cnt_);
-			break;
-		}
-
-		case Metadata_Id::Reject: {
-			return socket->disconnectFromHost(); // bad peer :(
-		}
-
-		case Metadata_Id::Request: {
-			// todo
-			break;
-		}
-
-		default: {
-			socket->on_peer_fault();
-		}
 		}
 	}
 }

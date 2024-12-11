@@ -302,86 +302,88 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 
 	switch(tracker_action) {
 
-	case Action_Code::Connect: {
-		const auto connection_id = extract_connect_reply(reply, socket->transaction_id());
+		case Action_Code::Connect: {
+			const auto connection_id = extract_connect_reply(reply, socket->transaction_id());
 
-		if(!connection_id) {
-			qDebug() << "Invalid connect reply from tracker";
-			return socket->abort();
-		}
-
-		socket->set_requests(craft_announce_request(*connection_id), craft_scrape_request(*connection_id));
-		socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce);
-
-		auto update_event_and_request = [this, socket = QPointer(socket), connection_id](const Event event) {
-			assert(connection_id);
-
-			if(event_ == event) {
-				return;
-			}
-
-			event_ = event;
-
-			if(!socket) {
-				return;
+			if(!connection_id) {
+				qDebug() << "Invalid connect reply from tracker";
+				return socket->abort();
 			}
 
 			socket->set_requests(craft_announce_request(*connection_id), craft_scrape_request(*connection_id));
+			socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce);
 
-			if(event_ != Event::Stopped) {
+			auto update_event_and_request = [this, socket = QPointer(socket), connection_id](const Event event) {
+				assert(connection_id);
 
-				QTimer::singleShot(0, socket, [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
+				if(event_ == event) {
+					return;
+				}
+
+				event_ = event;
+
+				if(!socket) {
+					return;
+				}
+
+				socket->set_requests(craft_announce_request(*connection_id), craft_scrape_request(*connection_id));
+
+				if(event_ != Event::Stopped) {
+
+					QTimer::singleShot(0, socket,
+								 [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
+				}
+			};
+
+			connect(tracker_, &Download_tracker::download_resumed, this, [update_event_and_request] { update_event_and_request(Event::Started); });
+
+			connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] { update_event_and_request(Event::Stopped); });
+
+			connect(&peer_client_, &Peer_wire_client::download_finished, this,
+				  [update_event_and_request] { update_event_and_request(Event::Completed); });
+
+			return;
+		}
+
+		case Action_Code::Announce: {
+
+			if(const auto announce_reply = extract_announce_reply(reply, socket->transaction_id())) {
+				socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
+				emit announce_reply_received(*announce_reply);
+			} else {
+				qDebug() << "Invalid announce resposne";
+				socket->abort();
 			}
-		};
 
-		connect(tracker_, &Download_tracker::download_resumed, this, [update_event_and_request] { update_event_and_request(Event::Started); });
-
-		connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] { update_event_and_request(Event::Stopped); });
-
-		connect(&peer_client_, &Peer_wire_client::download_finished, this, [update_event_and_request] { update_event_and_request(Event::Completed); });
-
-		return;
-	}
-
-	case Action_Code::Announce: {
-
-		if(const auto announce_reply = extract_announce_reply(reply, socket->transaction_id())) {
-			socket->start_interval_timer(std::chrono::seconds(announce_reply->interval_time));
-			emit announce_reply_received(*announce_reply);
-		} else {
-			qDebug() << "Invalid announce resposne";
-			socket->abort();
+			return;
 		}
 
-		return;
-	}
+		case Action_Code::Scrape: {
 
-	case Action_Code::Scrape: {
+			if(const auto scrape_reply = extract_scrape_reply(reply, socket->transaction_id())) {
+				emit swarm_metadata_received(*scrape_reply);
+			} else {
+				qDebug() << "Invalid scrape reply";
+				socket->abort();
+			}
 
-		if(const auto scrape_reply = extract_scrape_reply(reply, socket->transaction_id())) {
-			emit swarm_metadata_received(*scrape_reply);
-		} else {
-			qDebug() << "Invalid scrape reply";
-			socket->abort();
+			return;
 		}
 
-		return;
-	}
+		case Action_Code::Error: {
 
-	case Action_Code::Error: {
+			if(const auto tracker_error = extract_tracker_error(reply, socket->transaction_id())) {
+				emit error_received(*tracker_error);
+			} else {
+				qDebug() << "tracker can't even send the error without errors";
+				socket->abort();
+			}
 
-		if(const auto tracker_error = extract_tracker_error(reply, socket->transaction_id())) {
-			emit error_received(*tracker_error);
-		} else {
-			qDebug() << "tracker can't even send the error without errors";
-			socket->abort();
+			return;
 		}
 
-		return;
-	}
-
-	default: {
-		return socket->abort();
-	}
+		default: {
+			return socket->abort();
+		}
 	}
 }

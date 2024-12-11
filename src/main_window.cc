@@ -207,23 +207,23 @@ void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl
 
 	switch(file_handles.error()) {
 
-	case File_allocator::Error::Invalid_Request: {
-		tracker->set_error_and_finish(Download_tracker::Error::Invalid_Request);
-		tray_.showMessage("Download start failed", "Invalid download request");
-		break;
-	}
+		case File_allocator::Error::Invalid_Request: {
+			tracker->set_error_and_finish(Download_tracker::Error::Invalid_Request);
+			tray_.showMessage("Download start failed", "Invalid download request");
+			break;
+		}
 
-	case File_allocator::Error::File_Lock: {
-		tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
-		tray_.showMessage("Download start failed", "Download could not be started due to a file lock");
-		break;
-	}
+		case File_allocator::Error::File_Lock: {
+			tracker->set_error_and_finish(Download_tracker::Error::File_Lock);
+			tray_.showMessage("Download start failed", "Download could not be started due to a file lock");
+			break;
+		}
 
-	case File_allocator::Error::Permissions: {
-		tracker->set_error_and_finish(Download_tracker::Error::File_Write);
-		tray_.showMessage("Download start failed", "You do not have enough permissions to save files in the given path");
-		break;
-	}
+		case File_allocator::Error::Permissions: {
+			tracker->set_error_and_finish(Download_tracker::Error::File_Write);
+			tray_.showMessage("Download start failed", "You do not have enough permissions to save files in the given path");
+			break;
+		}
 	}
 }
 

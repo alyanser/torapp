@@ -60,20 +60,20 @@ void Udp_socket::configure_default_connections() noexcept {
 
 			switch(state_) {
 
-			case State::Connect: {
-				send_request(connect_request_);
-				break;
-			}
+				case State::Connect: {
+					send_request(connect_request_);
+					break;
+				}
 
-			case State::Scrape: {
-				send_request(scrape_request_);
-				break;
-			}
+				case State::Scrape: {
+					send_request(scrape_request_);
+					break;
+				}
 
-			case State::Announce: {
-				send_request(announce_request_);
-				break;
-			}
+				case State::Announce: {
+					send_request(announce_request_);
+					break;
+				}
 			}
 
 			connection_timer_.start(get_timeout());

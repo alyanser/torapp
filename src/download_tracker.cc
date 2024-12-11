@@ -375,33 +375,33 @@ void Download_tracker::update_finish_line(const Error error) noexcept {
 	finish_line_.setText([error, dl_type_ = dl_type_]() -> QString {
 		switch(error) {
 
-		case Error::Null: {
-			return dl_type_ == Download_Type::Torrent ? "Seeding" : "Download finished";
-		}
+			case Error::Null: {
+				return dl_type_ == Download_Type::Torrent ? "Seeding" : "Download finished";
+			}
 
-		case Error::File_Write: {
-			return "Given path could not be opened for writing";
-		}
+			case Error::File_Write: {
+				return "Given path could not be opened for writing";
+			}
 
-		case Error::Network: {
-			return "Unknown network error";
-		}
+			case Error::Network: {
+				return "Unknown network error";
+			}
 
-		case Error::File_Lock: {
-			return "Given path is locked by another process";
-		}
+			case Error::File_Lock: {
+				return "Given path is locked by another process";
+			}
 
-		case Error::Space: {
-			return "Not enough space";
-		}
+			case Error::Space: {
+				return "Not enough space";
+			}
 
-		case Error::Invalid_Request: {
-			return QString("Invalid request. Possibly corrupted path or invalid ") + (dl_type_ == Download_Type::Torrent ? "torrent file" : "url");
-		}
+			case Error::Invalid_Request: {
+				return QString("Invalid request. Possibly corrupted path or invalid ") + (dl_type_ == Download_Type::Torrent ? "torrent file" : "url");
+			}
 
-		default: {
-			return "Oops. Something went wrong :(";
-		}
+			default: {
+				return "Oops. Something went wrong :(";
+			}
 		}
 	}());
 }
