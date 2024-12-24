@@ -67,7 +67,7 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata, util::Down
 		}
 
 		try {
-			bencode::impl::extract_info_dictionary(bencode::parse_content(raw_metadata_, ""), torrent_metadata_);
+			bencode::impl::extract_info_dictionary(bencode::parse_content(raw_metadata_), torrent_metadata_);
 		} catch(const std::exception & exception) {
 			qDebug() << "error while parsing received metadata" << exception.what();
 			return;
@@ -1441,7 +1441,7 @@ void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket
 	assert(socket);
 	assert(!message.isEmpty());
 
-	const auto received_dict = bencode::parse_content(message, "");
+	const auto received_dict = bencode::parse_content(message);
 	const auto metadata_size_itr = received_dict.find("metadata_size");
 
 	if(metadata_size_itr == received_dict.end()) {
@@ -1490,7 +1490,7 @@ void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket
 void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const socket, const QByteArray & message) {
 	assert(socket);
 	assert(!message.isEmpty());
-	const auto received_dict = bencode::parse_content(message, "");
+	const auto received_dict = bencode::parse_content(message);
 
 	if(const auto msg_type_itr = received_dict.find("msg_type"); msg_type_itr != received_dict.end()) {
 		const auto msg_type = std::any_cast<std::int64_t>(msg_type_itr->second);

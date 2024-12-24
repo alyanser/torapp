@@ -275,11 +275,11 @@ void Main_window::restore_downloads() noexcept {
 			if constexpr(is_url_download) {
 				dl_metadata.isValid() ? initiate_download(path, std::move(dl_metadata)) : remove_download_from_settings<QUrl>(path);
 			} else {
-				const auto torrent_metadata = [&path, dl_metadata = std::move(dl_metadata)]() mutable -> std::optional<bencode::Metadata> {
+				const auto torrent_metadata = [dl_metadata = std::move(dl_metadata)]() mutable -> std::optional<bencode::Metadata> {
 					const auto compl_file_content = dl_metadata.toStdString();
 
 					try {
-						return bencode::extract_metadata(bencode::parse_content(compl_file_content, path.toStdString()), compl_file_content);
+						return bencode::extract_metadata(bencode::parse_content(compl_file_content), compl_file_content);
 					} catch(const std::exception & exception) {
 						qDebug() << exception.what();
 						return {};

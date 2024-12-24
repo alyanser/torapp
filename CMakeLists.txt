@@ -36,6 +36,15 @@ set(MOC_INCLUDES
          src/resources.qrc
 )
 
+include(FetchContent)
+
+FetchContent_Declare(
+         bencode-parser
+         GIT_REPOSITORY "https://github.com/alyanser/bencode-parser.git"
+)
+
+FetchContent_MakeAvailable(bencode-parser)
+
 set(CMAKE_AUTOMOC on)
 set(CMAKE_AUTORCC on)
 
@@ -47,10 +56,7 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
          "include"
-)
-
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
-         "ext"
+         "${bencode-parser_SOURCE_DIR}/include"
 )
 
 find_package(Qt6 COMPONENTS Network Widgets REQUIRED)
