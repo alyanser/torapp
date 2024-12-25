@@ -34,8 +34,6 @@ Main_window::Main_window() {
 	connect(&network_manager_, &Network_manager::new_download_requested, this, &Main_window::initiate_download<bencode::Metadata>);
 }
 
-Main_window::~Main_window() { write_settings(); }
-
 void Main_window::configure_tray_icon() noexcept {
 
 	{
@@ -293,12 +291,3 @@ void Main_window::restore_downloads() noexcept {
 		settings.endGroup();
 	});
 }
-
-template void Main_window::initiate_download<bencode::Metadata>(const QString &, bencode::Metadata, QByteArray) noexcept;
-template void Main_window::initiate_download<QUrl>(const QString &, QUrl, QByteArray) noexcept;
-template void Main_window::add_download_to_settings<QUrl>(const QString &, QUrl &&) const noexcept;
-template void Main_window::add_download_to_settings<QString>(const QString &, QString &&) const noexcept;
-template void Main_window::remove_download_from_settings<bencode::Metadata>(const QString &) const noexcept;
-template void Main_window::remove_download_from_settings<QUrl>(const QString &) const noexcept;
-template void Main_window::restore_downloads<QUrl>() noexcept;
-template void Main_window::restore_downloads<bencode::Metadata>() noexcept;

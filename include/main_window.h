@@ -16,10 +16,14 @@ class Main_window : public QMainWindow {
 public:
 	Main_window();
 	Q_DISABLE_COPY_MOVE(Main_window)
-	~Main_window() override;
+
+	~Main_window() override {
+		write_settings();
+	}
 
 	template<typename dl_metadata_type>
 	void initiate_download(const QString & dl_path, dl_metadata_type dl_metadata, QByteArray info_sha1_hash = "") noexcept;
+
 signals:
 	void closed() const;
 

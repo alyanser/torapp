@@ -10,22 +10,78 @@
 class Tcp_socket : public QTcpSocket {
 	Q_OBJECT
 public:
-	explicit Tcp_socket(QUrl peer_url, std::int64_t uled_byte_threshold, QObject * parent = nullptr);
 
-	bool is_good_ratio() const noexcept;
-	bool is_pending_request(util::Packet_metadata request_metadata) const noexcept;
-	std::int64_t downloaded_byte_count() const noexcept;
-	std::int64_t uploaded_byte_count() const noexcept;
+	explicit Tcp_socket(QUrl peer_url, const std::int64_t uled_byte_threshold, QObject * const parent)
+		: QTcpSocket(parent), uled_byte_threshold(uled_byte_threshold), peer_url_(std::move(peer_url))
+	{
+		configure_default_connections();
+		connectToHost(QHostAddress(peer_url_.host()), static_cast<std::uint16_t>(peer_url_.port()));
+		disconnect_timer_.setSingleShot(true);
+	}
+
+	std::int64_t downloaded_byte_count() const noexcept {
+		return dled_byte_cnt_;
+	}
+
+	std::int64_t uploaded_byte_count() const noexcept {
+		return uled_byte_cnt_;
+	}
+
+	bool is_pending_request(const util::Packet_metadata request_metadata) const noexcept {
+		return pending_requests_.contains(request_metadata);
+	}
+
+	QUrl peer_url() const noexcept {
+		return peer_url_;
+	}
+
+	bool remove_request(const util::Packet_metadata request_metadata) noexcept {
+		return pending_requests_.remove(request_metadata);
+	}
+
+	bool request_sent(const util::Packet_metadata request_metadata) const noexcept {
+		return sent_requests_.contains(request_metadata);
+	}
+
+	void reset_disconnect_timer() noexcept {
+		disconnect_timer_.start(std::chrono::minutes(10));
+	}
+
+	void send_packet(const QByteArray & packet) noexcept {
+
+		if(state() == SocketState::ConnectedState) {
+			write(QByteArray::fromHex(packet));
+		}
+	}
+
+	void on_peer_fault() noexcept {
+
+		if(constexpr auto peer_fault_threshold = 50; ++peer_fault_cnt_ > peer_fault_threshold) {
+			qDebug() << "well someone couldn't even implement this trivial protocol correctly";
+			abort();
+		}
+	}
+
+	void add_uploaded_bytes(const std::int64_t uled_byte_cnt) noexcept {
+		assert(uled_byte_cnt > 0);
+		uled_byte_cnt_ += uled_byte_cnt;
+		emit uploaded_byte_count_changed(uled_byte_cnt);
+	}
+
+	void add_downloaded_bytes(const std::int64_t dled_byte_cnt) noexcept {
+		assert(dled_byte_cnt > 0);
+		dled_byte_cnt_ += dled_byte_cnt;
+		emit downloaded_byte_count_changed(dled_byte_cnt_);
+	}
+
+	bool is_good_ratio() const noexcept {
+		constexpr auto min_ratio = 1;
+		assert(uled_byte_cnt_ >= 0 && dled_byte_cnt_ >= 0);
+		return uled_byte_cnt_ <= uled_byte_threshold ? true : static_cast<double>(dled_byte_cnt_) / static_cast<double>(uled_byte_cnt_) >= min_ratio;
+	}
+
 	std::optional<QByteArray> receive_packet() noexcept;
-	void reset_disconnect_timer() noexcept;
-	void send_packet(const QByteArray & packet) noexcept;
-	QUrl peer_url() const noexcept;
-	void on_peer_fault() noexcept;
-	void add_uploaded_bytes(std::int64_t uled_byte_cnt) noexcept;
-	void add_downloaded_bytes(std::int64_t dled_byte_cnt) noexcept;
 	void post_request(util::Packet_metadata request, QByteArray packet) noexcept;
-	bool remove_request(util::Packet_metadata request_metadata) noexcept;
-	bool request_sent(util::Packet_metadata request_metadata) const noexcept;
 	///
 	QBitArray peer_bitfield;
 	QByteArray peer_id;

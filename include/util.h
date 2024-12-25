@@ -26,13 +26,9 @@ struct Packet_metadata {
 	std::int32_t piece_offset = 0;
 	std::int32_t byte_cnt = 0;
 
-	[[nodiscard]]
-	constexpr bool operator==(const Packet_metadata rhs) const noexcept {
-		return byte_cnt == rhs.byte_cnt && piece_idx == rhs.piece_idx && piece_offset == rhs.piece_offset;
-	}
+	constexpr bool operator == (const Packet_metadata & other) const noexcept = default;
 };
 
-[[nodiscard]]
 constexpr std::size_t qHash(const Packet_metadata packet_metadata, const std::size_t seed = 0) noexcept {
 	return ::qHashMulti(seed, packet_metadata.byte_cnt, packet_metadata.piece_idx, packet_metadata.piece_offset);
 }
@@ -69,7 +65,6 @@ QString stringify_bytes(byte_type received_byte_cnt, byte_type total_byte_cnt) n
 
 template<typename byte_type>
 requires std::integral<byte_type> || std::floating_point<byte_type>
-[[nodiscard]]
 constexpr std::pair<double, std::string_view> stringify_bytes(const byte_type byte_cnt, const Format conversion_fmt) noexcept {
 	constexpr auto kb_byte_cnt = 1024;
 	constexpr auto mb_byte_cnt = kb_byte_cnt * 1024;

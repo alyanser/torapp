@@ -15,9 +15,8 @@ struct Metadata {
 	std::vector<QUrl> tracker_urls;
 };
 
-[[nodiscard]]
 inline std::optional<Metadata> parse(const QByteArray & magnet_url) noexcept {
-	constexpr static std::string_view required_header("magnet:?xt=urn:btih:");
+	constexpr std::string_view required_header("magnet:?xt=urn:btih:");
 	constexpr auto hash_size = 40;
 
 	if(magnet_url.size() < static_cast<qsizetype>(hash_size + required_header.size()) ||
@@ -27,13 +26,17 @@ inline std::optional<Metadata> parse(const QByteArray & magnet_url) noexcept {
 
 	Metadata metadata{magnet_url.sliced(required_header.size(), hash_size).toLower(), {"Unknown"}, {}};
 
-	auto extract_str = [&magnet_url](qsizetype & idx, const char delim) {
+	auto extract_string = [&magnet_url](qsizetype & idx, const char delim) {
 		QByteArray str;
 
-		for(; idx < magnet_url.size() && magnet_url[idx] != delim; str += magnet_url[idx++])
-			;
+		for(; idx < magnet_url.size() && magnet_url[idx] != delim; ++idx) {
+			str += magnet_url[idx];
+		}
 
-		++idx; // skip the 'delim'
+		if(idx < magnet_url.size()) {
+			++idx; // skip the 'delim'
+		}
+
 		return str;
 	};
 
@@ -44,8 +47,8 @@ inline std::optional<Metadata> parse(const QByteArray & magnet_url) noexcept {
 			continue;
 		}
 
-		const auto key = extract_str(idx, '=');
-		auto value = extract_str(idx, '&');
+		const auto key = extract_string(idx, '=');
+		auto value = extract_string(idx, '&');
 
 		if(key == "dn") {
 			metadata.display_name = std::move(value);

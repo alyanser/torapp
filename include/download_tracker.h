@@ -36,11 +36,28 @@ public:
 	Download_tracker(const QString & dl_path, QUrl url, QWidget * parent = nullptr);
 	Download_tracker(const QString & dl_path, bencode::Metadata torrent_metadata, QWidget * parent = nullptr);
 
-	void set_restored_byte_count(std::int64_t restored_byte_cnt) noexcept;
+	void set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept {
+		restored_byte_cnt_ = restored_byte_cnt;
+	}
+
+	void set_error_and_finish(const Error error) noexcept {
+		update_finish_line(error);
+		switch_to_finished_state(error);
+	}
+
+	void set_error_and_finish(const QString & error_desc) noexcept {
+		assert(!error_desc.isEmpty());
+		finish_line_.setText(error_desc);
+		switch_to_finished_state(Error::Custom);
+	}
+
+	void set_ratio(const double ratio) noexcept {
+		assert(dl_type_ == Download_Type::Torrent);
+		assert(ratio >= 0);
+		ratio_label_.setText(QString::number(ratio, 'f', 2));
+	}
+
 	void set_state(State state) noexcept;
-	void set_ratio(double ratio) noexcept;
-	void set_error_and_finish(Error error) noexcept;
-	void set_error_and_finish(const QString & error_desc) noexcept;
 	void download_progress_update(std::int64_t received_byte_cnt, std::int64_t total_byte_cnt = -1) noexcept;
 	void verification_progress_update(std::int32_t verified_asset_cnt, std::int32_t total_asset_cnt) noexcept;
 	void set_upload_byte_count(std::int64_t uled_byte_cnt) noexcept;

@@ -1,4 +1,5 @@
 #include "torrent_metadata_dialog.h"
+#include "util.h"
 
 #include <bencode_parser.h>
 #include <QStorageInfo>

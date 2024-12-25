@@ -149,29 +149,10 @@ void Download_tracker::setup_network_status_layout() noexcept {
 	terminate_button_stack_.addWidget(&finish_button_);
 }
 
-void Download_tracker::set_error_and_finish(const Error error) noexcept {
-	update_finish_line(error);
-	switch_to_finished_state(error);
-}
-
-void Download_tracker::set_error_and_finish(const QString & error_desc) noexcept {
-	assert(!error_desc.isEmpty());
-	finish_line_.setText(error_desc);
-	switch_to_finished_state(Error::Custom);
-}
-
 void Download_tracker::set_upload_byte_count(const std::int64_t uled_byte_cnt) noexcept {
 	assert(dl_type_ == Download_Type::Torrent);
 	const auto [converted_ul_byte_cnt, ul_byte_postfix] = util::conversion::stringify_bytes(uled_byte_cnt, util::conversion::Format::Memory);
 	ul_quantity_label_.setText(QString::number(converted_ul_byte_cnt, 'f', 2) + ' ' + ul_byte_postfix.data());
-}
-
-void Download_tracker::set_restored_byte_count(const std::int64_t restored_byte_cnt) noexcept { restored_byte_cnt_ = restored_byte_cnt; }
-
-void Download_tracker::set_ratio(const double ratio) noexcept {
-	assert(dl_type_ == Download_Type::Torrent);
-	assert(ratio >= 0);
-	ratio_label_.setText(QString::number(ratio, 'f', 2));
 }
 
 void Download_tracker::begin_setting_groups(QSettings & settings) const noexcept {

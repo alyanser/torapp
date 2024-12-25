@@ -8,6 +8,8 @@
 #include <QSettings>
 #include <QPointer>
 #include <QFile>
+#include <qvariant.h>
+#include <random>
 
 Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray id, QByteArray info_sha1_hash)
     : properties_displayer_(torrent_metadata),
@@ -25,6 +27,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata, util::Dow
 	has_metadata_(true),
 	peer_additive_bitfield_(total_piece_cnt_ + spare_piece_cnt_, 0),
 	pieces_(total_piece_cnt_) {
+
 	assert(torrent_piece_size_ > 0);
 	assert(!info_sha1_hash_.isEmpty());
 	assert(!id_.isEmpty());
@@ -87,31 +90,6 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata, util::Down
 	});
 }
 
-[[nodiscard]]
-std::int64_t Peer_wire_client::downloaded_byte_count() const noexcept {
-	return dled_byte_cnt_;
-}
-
-[[nodiscard]]
-std::int64_t Peer_wire_client::uploaded_byte_count() const noexcept {
-	return uled_byte_cnt_;
-}
-
-[[nodiscard]]
-std::int64_t Peer_wire_client::remaining_byte_count() const noexcept {
-	return total_byte_cnt_ - dled_byte_cnt_;
-}
-
-[[nodiscard]]
-bool Peer_wire_client::is_valid_piece_index(const std::int32_t piece_idx) const noexcept {
-	return piece_idx >= 0 && piece_idx < total_piece_cnt_;
-}
-
-[[nodiscard]]
-qsizetype Peer_wire_client::file_size(const qsizetype file_idx) const noexcept {
-	return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
-}
-
 void Peer_wire_client::configure_default_connections() noexcept {
 	connect(this, &Peer_wire_client::piece_verified, this, &Peer_wire_client::on_piece_verified);
 	connect(this, &Peer_wire_client::existing_pieces_verified, tracker_, &Download_tracker::on_verification_completed);
@@ -159,7 +137,6 @@ void Peer_wire_client::connect_to_peers(const QList<QUrl> & peer_urls) noexcept 
 	});
 }
 
-[[nodiscard]]
 std::int32_t Peer_wire_client::piece_size(const std::int32_t piece_idx) const noexcept {
 	assert(is_valid_piece_index(piece_idx));
 	const auto piece_size =
@@ -189,7 +166,6 @@ void Peer_wire_client::on_piece_verified(const std::int32_t verified_piece_idx) 
 	assert(dled_piece_cnt_ <= total_piece_cnt_);
 }
 
-[[nodiscard]]
 bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece, const std::int32_t piece_idx) const noexcept {
 	assert(is_valid_piece_index(piece_idx));
 	constexpr auto sha1_hash_byte_cnt = 20;
@@ -203,7 +179,6 @@ bool Peer_wire_client::verify_piece_hash(const QByteArray & received_piece, cons
 	return piece_hash == QCryptographicHash::hash(received_piece, QCryptographicHash::Algorithm::Sha1);
 }
 
-[[nodiscard]]
 Peer_wire_client::Piece_metadata Peer_wire_client::piece_info(const std::int32_t piece_idx, const std::int32_t offset) const noexcept {
 	assert(is_valid_piece_index(piece_idx));
 	assert(offset >= 0);
@@ -357,7 +332,6 @@ void Peer_wire_client::on_socket_ready_read(Tcp_socket * const socket) noexcept 
 	});
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_allowed_fast_message(const std::int32_t piece_idx) noexcept {
 	using util::conversion::convert_to_hex;
 
@@ -369,7 +343,6 @@ QByteArray Peer_wire_client::craft_allowed_fast_message(const std::int32_t piece
 	return allowed_fast_msg + convert_to_hex(piece_idx);
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_have_message(const std::int32_t piece_idx) noexcept {
 	using util::conversion::convert_to_hex;
 
@@ -381,7 +354,6 @@ QByteArray Peer_wire_client::craft_have_message(const std::int32_t piece_idx) no
 	return have_msg + convert_to_hex(piece_idx);
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 
 	const static auto handshake_msg = [] {
@@ -396,7 +368,6 @@ QByteArray Peer_wire_client::craft_handshake_message() const noexcept {
 	return handshake_msg + info_sha1_hash_ + id_;
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_piece_message(const QByteArray & piece_data, const std::int32_t piece_idx, const std::int32_t piece_offset) noexcept {
 	using util::conversion::convert_to_hex;
 
@@ -408,7 +379,6 @@ QByteArray Peer_wire_client::craft_piece_message(const QByteArray & piece_data, 
 	return piece_msg + convert_to_hex(piece_idx) + convert_to_hex(piece_offset) + piece_data.toHex();
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) noexcept {
 	using util::conversion::convert_to_hex;
 
@@ -422,13 +392,16 @@ QByteArray Peer_wire_client::craft_bitfield_message(const QBitArray & bitfield) 
 	return bitfield_msg + util::conversion::convert_to_bytes(bitfield);
 }
 
-[[nodiscard]]
 std::optional<std::pair<QByteArray, QByteArray>> Peer_wire_client::verify_handshake_reply(Tcp_socket * const socket, const QByteArray & reply) const noexcept {
 	constexpr auto expected_reply_size = 68;
 
 	if(reply.size() != expected_reply_size) {
 		qDebug() << "Invalid peer handshake reply size";
 		return {};
+	}
+
+	if(reply.size() > 10) {
+	   qDebug() << "reply has more size than you think so please abort it";
 	}
 
 	{
@@ -651,7 +624,6 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket, cons
 	});
 }
 
-[[nodiscard]]
 std::optional<std::pair<qsizetype, qsizetype>> Peer_wire_client::beginning_file_handle_info(const std::int32_t piece_idx) const noexcept {
 	assert(is_valid_piece_index(piece_idx));
 
@@ -679,7 +651,6 @@ std::optional<std::pair<qsizetype, qsizetype>> Peer_wire_client::beginning_file_
 	return {};
 }
 
-[[nodiscard]]
 bool Peer_wire_client::write_to_disk(const QByteArray & received_piece, const std::int32_t received_piece_idx) noexcept {
 	assert(received_piece.size() == piece_size(received_piece_idx));
 	assert(verify_piece_hash(received_piece, received_piece_idx));
@@ -727,7 +698,6 @@ bool Peer_wire_client::write_to_disk(const QByteArray & received_piece, const st
 	return true;
 }
 
-[[nodiscard]]
 std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t requested_piece_idx) noexcept {
 	assert(is_valid_piece_index(requested_piece_idx));
 
@@ -778,7 +748,6 @@ std::optional<QByteArray> Peer_wire_client::read_from_disk(const std::int32_t re
 	return resultant_piece;
 }
 
-[[nodiscard]]
 bool Peer_wire_client::is_valid_reply(Tcp_socket * const socket, const QByteArray & reply, const Message_Id received_msg_id) noexcept {
 	constexpr auto max_msg_id = 20;
 
@@ -870,7 +839,6 @@ void Peer_wire_client::read_settings() noexcept {
 	assert(uled_byte_cnt_ >= 0);
 }
 
-[[nodiscard]]
 QSet<std::int32_t> Peer_wire_client::generate_allowed_fast_set(const std::uint32_t peer_ip, const std::int32_t total_piece_cnt) noexcept {
 
 	auto rand_bytes = [peer_ip] {
@@ -1077,7 +1045,6 @@ void Peer_wire_client::on_suggest_piece_received(Tcp_socket * const socket, cons
 	}
 }
 
-[[nodiscard]]
 util::Packet_metadata Peer_wire_client::extract_packet_metadata(const QByteArray & reply) {
 	assert(reply.size() > 12);
 
@@ -1214,7 +1181,6 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket, co
 }
 
 template<Peer_wire_client::Message_Id msg_id>
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_generic_message(const util::Packet_metadata packet_metadata) noexcept {
 	static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,
 			  "Only valid for Message_Id::[Reject_Request,Cancel,Request]");
@@ -1371,6 +1337,7 @@ void Peer_wire_client::communicate_with_peer(Tcp_socket * const socket) {
 			}
 
 			on_bitfield_received(socket);
+			on_bitfield_received(socket);
 			break;
 		}
 
@@ -1475,7 +1442,6 @@ void Peer_wire_client::on_extension_handshake_received(Tcp_socket * const socket
 		}
 
 		total_metadata_piece_cnt_ = static_cast<std::int64_t>(std::ceil(static_cast<double>(metadata_size_) / static_cast<double>(max_block_size)));
-
 		assert(raw_metadata_.isEmpty());
 		assert(metadata_field_.isEmpty());
 		assert(!obtained_metadata_piece_cnt_);
@@ -1563,7 +1529,6 @@ void Peer_wire_client::on_extension_metadata_message_received(Tcp_socket * const
 	}
 }
 
-[[nodiscard]]
 bool Peer_wire_client::validate_metadata_piece_info(const std::int64_t piece_idx, const std::int64_t received_raw_dict_size) const noexcept {
 
 	if(piece_idx < 0 || piece_idx >= total_metadata_piece_cnt_) {
@@ -1590,7 +1555,6 @@ void Peer_wire_client::send_metadata_requests(Tcp_socket * const socket) const n
 	}
 }
 
-[[nodiscard]]
 QByteArray Peer_wire_client::craft_metadata_request(const std::int64_t block_idx, const std::int8_t peer_ut_metadata_idx) noexcept {
 	assert(block_idx >= 0);
 	assert(peer_ut_metadata_idx > 0);
@@ -1602,7 +1566,3 @@ QByteArray Peer_wire_client::craft_metadata_request(const std::int64_t block_idx
 
 	return convert_to_hex(request_size) + convert_to_hex(protocol_prefix) + convert_to_hex(peer_ut_metadata_idx) + dictionary.toHex();
 }
-
-template QByteArray Peer_wire_client::craft_generic_message<Peer_wire_client::Message_Id::Reject_Request>(util::Packet_metadata) noexcept;
-template QByteArray Peer_wire_client::craft_generic_message<Peer_wire_client::Message_Id::Request>(util::Packet_metadata) noexcept;
-template QByteArray Peer_wire_client::craft_generic_message<Peer_wire_client::Message_Id::Cancel>(util::Packet_metadata) noexcept;

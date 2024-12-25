@@ -81,7 +81,6 @@ void Torrent_properties_displayer::setup_peer_table() noexcept {
 	peer_table_.setHorizontalHeaderLabels(peer_table_headings);
 }
 
-[[nodiscard]]
 QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file_path, const std::int64_t total_file_size) noexcept {
 	auto * const file_widget = new QWidget(&file_info_tab_);
 	auto * const file_layout = new QHBoxLayout(file_widget);
@@ -204,6 +203,7 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 	}();
 
 	const auto row_idx = peer_table_.rowCount() - 1;
+
 	enum class Col_idx {
 		peer_id,
 		dled_byte,

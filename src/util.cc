@@ -10,7 +10,6 @@ namespace util {
 
 template<typename result_type>
 requires std::integral<result_type>
-[[nodiscard]]
 result_type extract_integer(const QByteArray & raw_data, const qsizetype offset) {
 	constexpr auto byte_cnt = static_cast<qsizetype>(sizeof(result_type));
 
@@ -46,7 +45,6 @@ void begin_setting_group(QSettings & settings) noexcept {
 
 namespace conversion {
 
-[[nodiscard]]
 QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	constexpr auto bits_in_byte = 8;
 	QBitArray bits(bytes.size() * bits_in_byte, false);
@@ -61,7 +59,6 @@ QBitArray convert_to_bits(const QByteArrayView bytes) noexcept {
 	return bits;
 }
 
-[[nodiscard]]
 QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
 	constexpr auto bits_in_byte = 8;
 	assert(bits.size() % bits_in_byte == 0);
@@ -77,7 +74,6 @@ QByteArray convert_to_bytes(const QBitArray & bits) noexcept {
 
 template<typename numeric_type>
 requires std::integral<numeric_type>
-[[nodiscard]]
 QByteArray convert_to_hex(const numeric_type num) noexcept {
 	using unsigned_type = std::make_unsigned_t<numeric_type>;
 
@@ -94,7 +90,6 @@ QByteArray convert_to_hex(const numeric_type num) noexcept {
 
 template<typename byte_type>
 requires std::integral<byte_type> || std::floating_point<byte_type>
-[[nodiscard]]
 QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total_byte_cnt) noexcept {
 	std::string_view total_bytes_postfix("inf");
 	double converted_total_byte_cnt = 0;
@@ -111,7 +106,6 @@ QString stringify_bytes(const byte_type received_byte_cnt, const byte_type total
 
 template<typename numeric_type_x, typename numeric_type_y>
 requires std::integral<std::common_type_t<numeric_type_x, numeric_type_y>>
-[[nodiscard]]
 QString convert_to_percent_format(const numeric_type_x dividend, const numeric_type_y divisor) noexcept {
 	assert(divisor);
 	return QString::number(static_cast<double>(dividend) / static_cast<double>(divisor) * 100, 'f', 0) + " %";

@@ -6,7 +6,6 @@
 #include <QUrl>
 #include <QDir>
 
-[[nodiscard]]
 auto File_allocator::open_file_handles(const QString & dir_path, const bencode::Metadata & torrent_metadata) noexcept -> std::expected<File_pointers, Error> {
 
 	if(torrent_metadata.file_info.empty() || dir_path.isEmpty()) {
@@ -40,7 +39,6 @@ auto File_allocator::open_file_handles(const QString & dir_path, const bencode::
 	return file_handles;
 }
 
-[[nodiscard]]
 auto File_allocator::open_file_handles(const QString & file_path, const QUrl url) noexcept -> std::expected<File_pointers, Error> {
 
 	if(file_path.isEmpty() || !url.isValid()) {

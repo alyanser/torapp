@@ -8,7 +8,6 @@
 #include <QObject>
 #include <QTimer>
 #include <QSet>
-#include <random>
 
 namespace magnet {
 
@@ -60,9 +59,17 @@ public:
 	Peer_wire_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray id, QByteArray info_sha1_hash);
 	Peer_wire_client(magnet::Metadata torrent_metadata, util::Download_resources resources, QByteArray id);
 
-	std::int64_t downloaded_byte_count() const noexcept;
-	std::int64_t uploaded_byte_count() const noexcept;
-	std::int64_t remaining_byte_count() const noexcept;
+	std::int64_t downloaded_byte_count() const noexcept {
+		return dled_byte_cnt_;
+	}
+
+	std::int64_t uploaded_byte_count() const noexcept {
+		return uled_byte_cnt_;
+	}
+
+	std::int64_t remaining_byte_count() const noexcept {
+		return total_byte_cnt_ - dled_byte_cnt_;
+	}
 
 	void connect_to_peers(const QList<QUrl> & peer_urls) noexcept;
 signals:
@@ -87,11 +94,6 @@ private:
 		std::int32_t piece_size = 0;
 		std::int32_t block_size = 0;
 		std::int32_t block_cnt = 0;
-	};
-
-	struct File_info {
-		QFile * file_handle;
-		std::int64_t dled_byte_cnt;
 	};
 
 	template<Message_Id message_id>
@@ -121,6 +123,14 @@ private:
 	void on_extension_metadata_message_received(Tcp_socket * socket, const QByteArray & message);
 	void send_metadata_requests(Tcp_socket * socket) const noexcept;
 
+	qsizetype file_size(qsizetype file_idx) const noexcept {
+		return static_cast<qsizetype>(torrent_metadata_.file_info[static_cast<std::size_t>(file_idx)].second);
+	}
+
+	bool is_valid_piece_index(std::int32_t piece_idx) const noexcept {
+		return piece_idx >= 0 && piece_idx < total_piece_cnt_;
+	}
+
 	std::optional<std::pair<QByteArray, QByteArray>> verify_handshake_reply(Tcp_socket * socket, const QByteArray & reply) const noexcept;
 	void verify_existing_pieces() noexcept;
 	bool verify_piece_hash(const QByteArray & received_piece, std::int32_t piece_idx) const noexcept;
@@ -129,7 +139,6 @@ private:
 	static util::Packet_metadata extract_packet_metadata(const QByteArray & reply);
 	void communicate_with_peer(Tcp_socket * socket);
 	Piece_metadata piece_info(std::int32_t piece_idx, std::int32_t piece_offset = 0) const noexcept;
-	qsizetype file_size(qsizetype file_idx) const noexcept;
 
 	bool write_to_disk(const QByteArray & received_piece, std::int32_t received_piece_idx) noexcept;
 	std::optional<QByteArray> read_from_disk(std::int32_t requested_piece_idx) noexcept;
@@ -138,7 +147,6 @@ private:
 	void read_settings() noexcept;
 
 	static bool is_valid_reply(Tcp_socket * socket, const QByteArray & reply, Message_Id received_msg_id) noexcept;
-	bool is_valid_piece_index(std::int32_t piece_idx) const noexcept;
 
 	std::optional<std::pair<qsizetype, qsizetype>> beginning_file_handle_info(std::int32_t piece_idx) const noexcept;
 	std::int32_t piece_size(std::int32_t piece_idx) const noexcept;
