@@ -19,7 +19,7 @@ Peer_wire_client::Peer_wire_client(bencode::Metadata torrent_metadata, util::Dow
 	dl_path_(std::move(resources.dl_path)),
 	torrent_metadata_(std::move(torrent_metadata)),
 	tracker_(resources.tracker),
-	total_byte_cnt_(torrent_metadata.single_file ? torrent_metadata.single_file_size : torrent_metadata.multiple_files_size),
+	total_byte_cnt_(torrent_metadata_.single_file ? torrent_metadata_.single_file_size : torrent_metadata_.multiple_files_size),
 	torrent_piece_size_(torrent_metadata.piece_length),
 	total_piece_cnt_(static_cast<std::int32_t>(std::ceil(static_cast<double>(total_byte_cnt_) / static_cast<double>(torrent_piece_size_)))),
 	spare_piece_cnt_(total_piece_cnt_ % 8 ? 8 - total_piece_cnt_ % 8 : 0),
@@ -77,7 +77,7 @@ Peer_wire_client::Peer_wire_client(magnet::Metadata torrent_metadata, util::Down
 		}
 
 		if(torrent_metadata_.single_file) {
-			torrent_metadata_.file_info.push_back({torrent_metadata_.name, torrent_metadata_.single_file_size});
+			torrent_metadata_.file_info.emplace_back(torrent_metadata_.name, torrent_metadata_.single_file_size);
 		}
 
 		const auto & tracker_urls = torrent_metadata.tracker_urls;
@@ -1000,7 +1000,7 @@ void Peer_wire_client::on_block_received(Tcp_socket * const socket, const QByteA
 	received_blocks[received_block_idx] = true;
 
 	assert(received_piece_offset + received_block.size() <= piece_data.size());
-	std::move(received_block.begin(), received_block.end(), piece_data.begin() + received_piece_offset);
+	std::ranges::move(received_block, piece_data.begin() + received_piece_offset);
 
 	if(++received_block_cnt == total_block_cnt) {
 
