@@ -25,6 +25,7 @@ void Network_manager::download(util::Download_resources resources, const QUrl ur
 	assert(network_reply->parent());
 
 	connect(network_reply, &QNetworkReply::readyRead, tracker, [network_reply, tracker = tracker, file_handle = file_handle] {
+
 		if(!file_handle->exists()) {
 			tracker->set_error_and_finish(Download_tracker::Error::File_Write);
 		} else if(network_reply->error() != QNetworkReply::NoError) {
@@ -35,6 +36,7 @@ void Network_manager::download(util::Download_resources resources, const QUrl ur
 	});
 
 	connect(network_reply, &QNetworkReply::finished, tracker, [tracker = tracker, file_handle = file_handle, network_reply] {
+
 		if(network_reply->error() == QNetworkReply::NoError) {
 			tracker->set_error_and_finish(Download_tracker::Error::Null);
 		} else {
@@ -54,13 +56,13 @@ void Network_manager::download(util::Download_resources resources, const QUrl ur
 void Network_manager::download(util::Download_resources resources, bencode::Metadata torrent_metadata, QByteArray info_sha1_hash) noexcept {
 	auto & tracker_urls = torrent_metadata.announce_url_list;
 
-	if(std::find(tracker_urls.cbegin(), tracker_urls.cend(), torrent_metadata.announce_url) == tracker_urls.cend()) {
+	if(std::ranges::find(std::as_const(tracker_urls), torrent_metadata.announce_url) == tracker_urls.cend()) {
 		tracker_urls.insert(tracker_urls.begin(), torrent_metadata.announce_url);
 	}
 
-	tracker_urls.erase(
-	    std::remove_if(tracker_urls.begin(), tracker_urls.end(), [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; }),
-	    tracker_urls.end());
+	auto [first, last] = std::ranges::remove_if(tracker_urls, [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; });
+
+	tracker_urls.erase(first, last);
 
 	if(!tracker_urls.empty()) {
 		[[maybe_unused]]
@@ -78,7 +80,7 @@ void Network_manager::download(QString dl_path, magnet::Metadata torrent_metadat
 	assert(tracker);
 	assert(!torrent_metadata.tracker_urls.empty());
 	assert(!dl_path.isEmpty());
-	[[maybe_unused]]
+
 	auto * const udp_client = new Udp_torrent_client(std::move(torrent_metadata), {std::move(dl_path), {}, tracker}, this);
 
 	connect(udp_client, &Udp_torrent_client::new_download_requested, this, &Network_manager::new_download_requested);

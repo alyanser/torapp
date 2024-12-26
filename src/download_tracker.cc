@@ -81,17 +81,13 @@ Download_tracker::Download_tracker(const QString & dl_path, QUrl url, QWidget * 
 	connect(&resume_button_, &QPushButton::clicked, this, restart_download, Qt::SingleShotConnection);
 }
 
-Download_tracker::Download_tracker(const QString & dl_path, bencode::Metadata torrent_metadata, QWidget * const parent)
-    : Download_tracker(dl_path, Download_Type::Torrent, parent) {
+Download_tracker::Download_tracker(const QString & dl_path, bencode::Metadata torrent_metadata, QWidget * const parent) : Download_tracker(dl_path, Download_Type::Torrent, parent) {
 	package_name_label_.setText(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data());
 
-	connect(
-	    &retry_button_, &QPushButton::clicked, this,
-	    [this, dl_path, torrent_metadata = std::move(torrent_metadata)]() mutable {
-		    emit retry_download(dl_path, std::move(torrent_metadata));
-		    emit request_satisfied();
-	    },
-	    Qt::SingleShotConnection);
+	connect(&retry_button_, &QPushButton::clicked, this, [this, dl_path, torrent_metadata = std::move(torrent_metadata)]() mutable {
+		emit retry_download(dl_path, std::move(torrent_metadata));
+		emit request_satisfied();
+	}, Qt::SingleShotConnection);
 }
 
 void Download_tracker::setup_central_layout() noexcept {
@@ -197,8 +193,7 @@ void Download_tracker::download_progress_update(const std::int64_t received_byte
 
 	const auto text_fmt = util::conversion::stringify_bytes(received_byte_cnt, total_byte_cnt);
 	dl_quantity_label_.setText(text_fmt);
-	dl_progress_bar_.setFormat(text_fmt +
-					   (total_byte_cnt < 1 ? " nan %" : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt, total_byte_cnt)));
+	dl_progress_bar_.setFormat(text_fmt + (total_byte_cnt < 1 ? " nan %" : ' ' + util::conversion::convert_to_percent_format(received_byte_cnt, total_byte_cnt)));
 }
 
 void Download_tracker::set_state(const State state) noexcept {

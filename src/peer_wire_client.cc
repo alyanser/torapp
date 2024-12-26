@@ -535,8 +535,8 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket, const std:
 		    },
 		    Qt::SingleShotConnection);
 
-		auto on_request_rejected = [=, &requested_blocks = requested_blocks,
-						    decremented = false](const util::Packet_metadata rejected_request_metadata) mutable {
+		auto on_request_rejected = [=, this, &requested_blocks = requested_blocks, decremented = false](const auto & rejected_request_metadata) mutable {
+
 			if(decremented || requested_blocks.empty() || socket->state() != Tcp_socket::SocketState::ConnectedState) {
 				return;
 			}

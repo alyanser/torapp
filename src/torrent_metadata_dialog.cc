@@ -94,8 +94,7 @@ void Torrent_metadata_dialog::setup_display(const bencode::Metadata & torrent_me
 		const auto & [file_path, file_size] = file_info;
 		const auto [converted_size, postfix] = util::conversion::stringify_bytes(file_size, util::conversion::Format::Memory);
 		const auto file_label_text = QString(file_path.data()) + "\t( " + QString::number(converted_size) + ' ' + postfix.data() + " )";
-		file_info_label_.text().isEmpty() ? file_info_label_.setText(file_label_text)
-							    : file_info_label_.setText(file_info_label_.text() + '\n' + file_label_text);
+		file_info_label_.text().isEmpty() ? file_info_label_.setText(file_label_text) : file_info_label_.setText(file_info_label_.text() + '\n' + file_label_text);
 	});
 }
 
@@ -118,8 +117,9 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 	setup_display(*torrent_metadata);
 
 	connect(&begin_download_button_, &QPushButton::clicked, this, [this, torrent_metadata = std::move(torrent_metadata)]() mutable {
-		const auto dir_path = [this, &torrent_metadata = std::as_const(torrent_metadata),
-					     path_line_text = path_line_.text()]() mutable -> std::optional<QString> {
+
+		const auto dir_path = [this, &torrent_metadata = std::as_const(torrent_metadata), path_line_text = path_line_.text()]() mutable -> std::optional<QString> {
+
 			if(!QFileInfo::exists(path_line_text)) {
 				const auto reply_button = QMessageBox::question(this, "Path doesn't exist", "Path doesn't exist already. Do you wish to create it?");
 
