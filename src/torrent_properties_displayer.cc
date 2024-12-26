@@ -18,8 +18,7 @@ Torrent_properties_displayer::Torrent_properties_displayer(QWidget * const paren
 	setup_peer_table();
 }
 
-Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata, QWidget * const parent)
-    : Torrent_properties_displayer(parent) {
+Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metadata & torrent_metadata, QWidget * const parent) : Torrent_properties_displayer(parent) {
 	addTab(&general_info_tab_, "General");
 	addTab(&file_info_scroll_area_, "Files");
 	addTab(&peer_table_, "Peers");
@@ -30,8 +29,7 @@ Torrent_properties_displayer::Torrent_properties_displayer(const bencode::Metada
 	file_info_scroll_area_.setWidgetResizable(true);
 }
 
-Torrent_properties_displayer::Torrent_properties_displayer(const magnet::Metadata & /* torrent_metadata */, QWidget * const parent)
-    : Torrent_properties_displayer(parent) {
+Torrent_properties_displayer::Torrent_properties_displayer(const magnet::Metadata & /* torrent_metadata */, QWidget * const parent) : Torrent_properties_displayer(parent) {
 	addTab(&peer_table_, "Peers");
 }
 
@@ -110,8 +108,7 @@ QWidget * Torrent_properties_displayer::get_new_file_widget(const QString & file
 	return file_widget;
 }
 
-void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadata & torrent_metadata,
-									    const QList<std::pair<QFile *, std::int64_t>> & file_handles) noexcept {
+void Torrent_properties_displayer::setup_file_info_widget(const bencode::Metadata & torrent_metadata, const QList<std::pair<QFile *, std::int64_t>> & file_handles) noexcept {
 	assert(file_handles.size() == static_cast<qsizetype>(torrent_metadata.file_info.size()));
 
 	for(qsizetype file_idx = 0; file_idx < file_handles.size(); ++file_idx) {
@@ -160,8 +157,9 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 		auto * const ret_dled_byte_cnt_label = new QLabel(get_cell_label_text(0, util::conversion::Format::Memory));
 		ret_dled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
-		connect(socket, &Tcp_socket::downloaded_byte_count_changed, ret_dled_byte_cnt_label,
-			  [=](const auto dled_byte_cnt) { ret_dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt, util::conversion::Format::Memory)); });
+		connect(socket, &Tcp_socket::downloaded_byte_count_changed, ret_dled_byte_cnt_label, [=](const auto dled_byte_cnt) {
+			ret_dled_byte_cnt_label->setText(get_cell_label_text(dled_byte_cnt, util::conversion::Format::Memory));
+		});
 
 		return ret_dled_byte_cnt_label;
 	}();
@@ -170,8 +168,9 @@ void Torrent_properties_displayer::add_peer(const Tcp_socket * const socket) noe
 		auto * const ret_uled_byte_cnt_label = new QLabel(get_cell_label_text(0, util::conversion::Format::Memory));
 		ret_uled_byte_cnt_label->setAlignment(Qt::AlignCenter);
 
-		connect(socket, &Tcp_socket::uploaded_byte_count_changed, ret_uled_byte_cnt_label,
-			  [=](const auto uled_byte_cnt) { ret_uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt, util::conversion::Format::Memory)); });
+		connect(socket, &Tcp_socket::uploaded_byte_count_changed, ret_uled_byte_cnt_label, [=](const auto uled_byte_cnt) {
+			ret_uled_byte_cnt_label->setText(get_cell_label_text(uled_byte_cnt, util::conversion::Format::Memory));
+		});
 
 		return ret_uled_byte_cnt_label;
 	}();

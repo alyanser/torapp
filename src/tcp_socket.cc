@@ -72,9 +72,13 @@ void Tcp_socket::configure_default_connections() noexcept {
 	connect(this, &Tcp_socket::disconnected, this, &Tcp_socket::deleteLater);
 	connect(this, &Tcp_socket::readyRead, this, &Tcp_socket::reset_disconnect_timer);
 
-	connect(this, &Tcp_socket::connected, [&disconnect_timer_ = disconnect_timer_] { disconnect_timer_.start(std::chrono::minutes(2)); });
+	connect(this, &Tcp_socket::connected, [&disconnect_timer_ = disconnect_timer_] {
+		disconnect_timer_.start(std::chrono::minutes(2));
+	});
 
-	disconnect_timer_.callOnTimeout(this, [this] { state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost(); });
+	disconnect_timer_.callOnTimeout(this, [this] {
+		state() == SocketState::UnconnectedState ? deleteLater() : disconnectFromHost();
+	});
 
 	request_timer.callOnTimeout(this, [this] {
 		if(pending_requests_.isEmpty()) {

@@ -8,8 +8,7 @@
 #include <QSettings>
 #include <QPointer>
 
-Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash,
-						   QObject * const parent)
+Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util::Download_resources resources, QByteArray info_sha1_hash, QObject * const parent)
     : QObject(parent),
 	torrent_metadata_(std::move(torrent_metadata)),
 	info_sha1_hash_(info_sha1_hash.isEmpty() ? calculate_info_sha1_hash(torrent_metadata_) : std::move(info_sha1_hash)),
@@ -28,7 +27,12 @@ Udp_torrent_client::Udp_torrent_client(bencode::Metadata torrent_metadata, util:
 		if(!restored_dl_paused) {
 			send_connect_request();
 		} else {
-			connect(tracker_, &Download_tracker::download_resumed, this, [this] { send_connect_request(); }, Qt::SingleShotConnection);
+			connect(
+			    tracker_, &Download_tracker::download_resumed, this,
+			    [this] {
+				    send_connect_request();
+			    },
+			    Qt::SingleShotConnection);
 		}
 	});
 }
@@ -47,7 +51,9 @@ Udp_torrent_client::Udp_torrent_client(magnet::Metadata torrent_metadata, util::
 
 		auto * const socket = new Udp_socket(tracker_url, craft_connect_request(), this);
 
-		connect(socket, &Udp_socket::readyRead, this, [this, socket] { on_socket_ready_read(socket); });
+		connect(socket, &Udp_socket::readyRead, this, [this, socket] {
+			on_socket_ready_read(socket);
+		});
 	});
 }
 
@@ -99,11 +105,15 @@ void Udp_torrent_client::send_connect_request(const qsizetype tracker_url_idx) n
 	const auto & tracker_url = torrent_metadata_.announce_url_list[static_cast<std::size_t>(tracker_url_idx)];
 	auto * const socket = new Udp_socket(QUrl(tracker_url.data()), craft_connect_request(), this);
 
-	connect(socket, &Udp_socket::readyRead, this, [this, socket] { on_socket_ready_read(socket); });
+	connect(socket, &Udp_socket::readyRead, this, [this, socket] {
+		on_socket_ready_read(socket);
+	});
 
 	if(tracker_url_idx + 1 < static_cast<qsizetype>(torrent_metadata_.announce_url_list.size())) {
 
-		QTimer::singleShot(0, this, [this, tracker_url_idx] { send_connect_request(tracker_url_idx + 1); });
+		QTimer::singleShot(0, this, [this, tracker_url_idx] {
+			send_connect_request(tracker_url_idx + 1);
+		});
 	}
 }
 
@@ -320,15 +330,23 @@ void Udp_torrent_client::communicate_with_tracker(Udp_socket * const socket) {
 				socket->set_requests(craft_announce_request(*connection_id), craft_scrape_request(*connection_id));
 
 				if(event_ != Event::Stopped) {
-					QTimer::singleShot(0, socket, [socket] { socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce); });
+					QTimer::singleShot(0, socket, [socket] {
+						socket->send_initial_request(socket->announce_request(), Udp_socket::State::Announce);
+					});
 				}
 			};
 
-			connect(tracker_, &Download_tracker::download_resumed, this, [update_event_and_request] { update_event_and_request(Event::Started); });
+			connect(tracker_, &Download_tracker::download_resumed, this, [update_event_and_request] {
+				update_event_and_request(Event::Started);
+			});
 
-			connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] { update_event_and_request(Event::Stopped); });
+			connect(tracker_, &Download_tracker::download_paused, this, [update_event_and_request] {
+				update_event_and_request(Event::Stopped);
+			});
 
-			connect(&peer_client_, &Peer_wire_client::download_finished, this, [update_event_and_request] { update_event_and_request(Event::Completed); });
+			connect(&peer_client_, &Peer_wire_client::download_finished, this, [update_event_and_request] {
+				update_event_and_request(Event::Completed);
+			});
 
 			return;
 		}

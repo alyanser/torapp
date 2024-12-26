@@ -115,13 +115,11 @@ template<typename... arith_types>
 constexpr auto instantiate_arithmetic_types() {
 	static_assert((std::integral<arith_types> && ...));
 
-	return std::tuple_cat(std::make_tuple(&convert_to_hex<arith_types>)...,
-				    std::make_tuple(static_cast<QString (*)(arith_types, arith_types)>(&stringify_bytes<arith_types>))...,
+	return std::tuple_cat(std::make_tuple(&convert_to_hex<arith_types>)..., std::make_tuple(static_cast<QString (*)(arith_types, arith_types)>(&stringify_bytes<arith_types>))...,
 				    std::make_tuple(&convert_to_percent_format<arith_types, arith_types>)..., std::make_tuple(&extract_integer<arith_types>)...);
 }
 
-extern const auto arithmetic_ins =
-    instantiate_arithmetic_types<std::int32_t, std::uint32_t, std::int16_t, std::uint16_t, std::int64_t, std::uint16_t, std::uint8_t, std::int8_t>();
+extern const auto arithmetic_ins = instantiate_arithmetic_types<std::int32_t, std::uint32_t, std::int16_t, std::uint16_t, std::int64_t, std::uint16_t, std::uint8_t, std::int8_t>();
 
 template QString convert_to_percent_format<std::int64_t, std::int32_t>(std::int64_t, std::int32_t) noexcept;
 

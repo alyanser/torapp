@@ -28,8 +28,7 @@ Torrent_metadata_dialog::Torrent_metadata_dialog(const QString & torrent_file_pa
 		});
 	};
 
-	make_label_text_selectable({torrent_name_label_, created_by_label_, creation_time_label_, comment_label_, encoding_label_, piece_length_label_,
-					    size_label_, announce_label_, file_info_label_});
+	make_label_text_selectable({torrent_name_label_, created_by_label_, creation_time_label_, comment_label_, encoding_label_, piece_length_label_, size_label_, announce_label_, file_info_label_});
 }
 
 void Torrent_metadata_dialog::configure_default_connections() noexcept {
@@ -117,9 +116,7 @@ void Torrent_metadata_dialog::extract_metadata(const QString & torrent_file_path
 	setup_display(*torrent_metadata);
 
 	connect(&begin_download_button_, &QPushButton::clicked, this, [this, torrent_metadata = std::move(torrent_metadata)]() mutable {
-
 		const auto dir_path = [this, &torrent_metadata = std::as_const(torrent_metadata), path_line_text = path_line_.text()]() mutable -> std::optional<QString> {
-
 			if(!QFileInfo::exists(path_line_text)) {
 				const auto reply_button = QMessageBox::question(this, "Path doesn't exist", "Path doesn't exist already. Do you wish to create it?");
 

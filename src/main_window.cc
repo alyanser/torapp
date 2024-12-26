@@ -179,7 +179,9 @@ void Main_window::initiate_download(const QString & dl_path, dl_metadata_type dl
 	}
 
 	{
-		auto remove_dl = [this, dl_path] { remove_download_from_settings<dl_metadata_type>(dl_path); };
+		auto remove_dl = [this, dl_path] {
+			remove_download_from_settings<dl_metadata_type>(dl_path);
+		};
 
 		connect(tracker, &Download_tracker::download_dropped, this, remove_dl);
 

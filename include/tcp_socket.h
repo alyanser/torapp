@@ -10,10 +10,10 @@
 class Tcp_socket : public QTcpSocket {
 	Q_OBJECT
 public:
-
 	explicit Tcp_socket(QUrl peer_url, const std::int64_t uled_byte_threshold, QObject * const parent)
-		: QTcpSocket(parent), uled_byte_threshold(uled_byte_threshold), peer_url_(std::move(peer_url))
-	{
+	    : QTcpSocket(parent),
+		uled_byte_threshold(uled_byte_threshold),
+		peer_url_(std::move(peer_url)) {
 		configure_default_connections();
 		connectToHost(QHostAddress(peer_url_.host()), static_cast<std::uint16_t>(peer_url_.port()));
 		disconnect_timer_.setSingleShot(true);

@@ -25,7 +25,6 @@ void Network_manager::download(util::Download_resources resources, const QUrl ur
 	assert(network_reply->parent());
 
 	connect(network_reply, &QNetworkReply::readyRead, tracker, [network_reply, tracker = tracker, file_handle = file_handle] {
-
 		if(!file_handle->exists()) {
 			tracker->set_error_and_finish(Download_tracker::Error::File_Write);
 		} else if(network_reply->error() != QNetworkReply::NoError) {
@@ -36,7 +35,6 @@ void Network_manager::download(util::Download_resources resources, const QUrl ur
 	});
 
 	connect(network_reply, &QNetworkReply::finished, tracker, [tracker = tracker, file_handle = file_handle, network_reply] {
-
 		if(network_reply->error() == QNetworkReply::NoError) {
 			tracker->set_error_and_finish(Download_tracker::Error::Null);
 		} else {
@@ -60,7 +58,9 @@ void Network_manager::download(util::Download_resources resources, bencode::Meta
 		tracker_urls.insert(tracker_urls.begin(), torrent_metadata.announce_url);
 	}
 
-	auto [first, last] = std::ranges::remove_if(tracker_urls, [](const std::string & tracker_url) { return QUrl(tracker_url.data()).scheme() != "udp"; });
+	auto [first, last] = std::ranges::remove_if(tracker_urls, [](const std::string & tracker_url) {
+		return QUrl(tracker_url.data()).scheme() != "udp";
+	});
 
 	tracker_urls.erase(first, last);
 
@@ -70,7 +70,9 @@ void Network_manager::download(util::Download_resources resources, bencode::Meta
 	} else {
 		emit resources.tracker->download_dropped();
 
-		std::ranges::for_each(resources.file_handles, [](auto * const file_handle) { file_handle->deleteLater(); });
+		std::ranges::for_each(resources.file_handles, [](auto * const file_handle) {
+			file_handle->deleteLater();
+		});
 
 		QMessageBox::critical(nullptr, "No support", "Torapp doesn't support TCP trackers yet :(");
 	}

@@ -26,7 +26,7 @@ struct Packet_metadata {
 	std::int32_t piece_offset = 0;
 	std::int32_t byte_cnt = 0;
 
-	constexpr bool operator == (const Packet_metadata & other) const noexcept = default;
+	constexpr bool operator==(const Packet_metadata & other) const noexcept = default;
 };
 
 constexpr std::size_t qHash(const Packet_metadata packet_metadata, const std::size_t seed = 0) noexcept {

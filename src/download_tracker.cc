@@ -6,8 +6,7 @@
 #include <QSettings>
 #include <QDir>
 
-Download_tracker::Download_tracker(const QString & dl_path, const Download_Type dl_type, QWidget * const parent)
-    : QFrame(parent), dl_path_(dl_path), dl_type_(dl_type) {
+Download_tracker::Download_tracker(const QString & dl_path, const Download_Type dl_type, QWidget * const parent) : QFrame(parent), dl_path_(dl_path), dl_type_(dl_type) {
 	setFixedHeight(205);
 	setLineWidth(3);
 
@@ -84,10 +83,13 @@ Download_tracker::Download_tracker(const QString & dl_path, QUrl url, QWidget * 
 Download_tracker::Download_tracker(const QString & dl_path, bencode::Metadata torrent_metadata, QWidget * const parent) : Download_tracker(dl_path, Download_Type::Torrent, parent) {
 	package_name_label_.setText(torrent_metadata.name.empty() ? "N/A" : torrent_metadata.name.data());
 
-	connect(&retry_button_, &QPushButton::clicked, this, [this, dl_path, torrent_metadata = std::move(torrent_metadata)]() mutable {
-		emit retry_download(dl_path, std::move(torrent_metadata));
-		emit request_satisfied();
-	}, Qt::SingleShotConnection);
+	connect(
+	    &retry_button_, &QPushButton::clicked, this,
+	    [this, dl_path, torrent_metadata = std::move(torrent_metadata)]() mutable {
+		    emit retry_download(dl_path, std::move(torrent_metadata));
+		    emit request_satisfied();
+	    },
+	    Qt::SingleShotConnection);
 }
 
 void Download_tracker::setup_central_layout() noexcept {
