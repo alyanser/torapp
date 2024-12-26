@@ -167,6 +167,11 @@ void Download_tracker::on_verification_completed() noexcept {
 }
 
 void Download_tracker::download_progress_update(const std::int64_t received_byte_cnt, const std::int64_t total_byte_cnt) noexcept {
+
+	if(!total_byte_cnt) {
+		return;
+	}
+
 	assert(received_byte_cnt >= 0);
 
 	{
