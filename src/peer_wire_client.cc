@@ -107,6 +107,7 @@ void Peer_wire_client::configure_default_connections() noexcept {
 	});
 
 	connect(this, &Peer_wire_client::piece_verified, [&properties_displayer_ = properties_displayer_, &file_handles_ = file_handles_] {
+
 		for(qsizetype file_idx = 0; file_idx < file_handles_.size(); ++file_idx) {
 			const auto file_dled_byte_cnt = file_handles_[file_idx].second;
 			properties_displayer_.update_file_info(file_idx, file_dled_byte_cnt);
@@ -281,19 +282,21 @@ void Peer_wire_client::on_socket_connected(Tcp_socket * const socket) noexcept {
 	connect(tracker_, &Download_tracker::download_paused, socket, &Tcp_socket::disconnectFromHost);
 
 	connect(socket, &Tcp_socket::readyRead, this, [this, socket] {
+
 		if(socket->state() == Tcp_socket::SocketState::ConnectedState) {
 			assert(socket->bytesAvailable());
 			on_socket_ready_read(socket);
 		}
 	});
 
-	connect(this, &Peer_wire_client::piece_verified, socket,
-		  [socket](const std::int32_t dled_piece_idx) { socket->send_packet(craft_have_message(dled_piece_idx)); });
+	connect(this, &Peer_wire_client::piece_verified, socket, [socket](const std::int32_t dled_piece_idx) {
+		socket->send_packet(craft_have_message(dled_piece_idx));
+	});
 
 	connect(socket, &Tcp_socket::disconnected, this, [this, socket] {
+
 		if(socket->handshake_done) {
-			qDebug() << "peer disconnected after doing handshake :("
-				   << "[ Active peers:" << active_peers_.size() << ']';
+			qDebug() << "peer disconnected after doing handshake :(" << "[ Active peers:" << active_peers_.size() << ']';
 
 			{
 				const auto peer_idx = active_peers_.indexOf(socket->peer_url());
@@ -522,20 +525,18 @@ void Peer_wire_client::send_block_requests(Tcp_socket * const socket, const std:
 			}
 		});
 
-		connect(
-		    socket, &Tcp_socket::got_choked, this,
-		    [&requested_blocks = requested_blocks, socket, block_idx, dec_connection] {
-			    assert(socket->peer_choked);
+		connect(socket, &Tcp_socket::got_choked, this, [&requested_blocks = requested_blocks, socket, block_idx, dec_connection] {
+			assert(socket->peer_choked);
 
-			    if(socket->state() == Tcp_socket::SocketState::ConnectedState && !socket->fast_extension_enabled && !requested_blocks.empty()) {
-				    assert(requested_blocks[block_idx] > 0);
-				    --requested_blocks[block_idx];
-				    disconnect(dec_connection);
-			    }
-		    },
-		    Qt::SingleShotConnection);
+			if(socket->state() == Tcp_socket::SocketState::ConnectedState && !socket->fast_extension_enabled && !requested_blocks.empty()) {
+				assert(requested_blocks[block_idx] > 0);
+				--requested_blocks[block_idx];
+				disconnect(dec_connection);
+			}
 
-		auto on_request_rejected = [=, this, &requested_blocks = requested_blocks, decremented = false](const auto & rejected_request_metadata) mutable {
+		}, Qt::SingleShotConnection);
+
+		auto on_request_rejected = [=, &requested_blocks = requested_blocks, decremented = false](const auto & rejected_request_metadata) mutable {
 
 			if(decremented || requested_blocks.empty() || socket->state() != Tcp_socket::SocketState::ConnectedState) {
 				return;
@@ -580,8 +581,7 @@ void Peer_wire_client::on_block_request_received(Tcp_socket * const socket, cons
 		return send_reject_message();
 	}
 
-	auto send_piece = [this, socket, piece_idx = requested_piece_idx, offset = requested_offset,
-				 requested_byte_cnt = requested_byte_cnt](const QByteArray & piece_to_send) {
+	auto send_piece = [this, socket, piece_idx = requested_piece_idx, offset = requested_offset, requested_byte_cnt = requested_byte_cnt](const QByteArray & piece_to_send) {
 		session_uled_byte_cnt_ += requested_byte_cnt;
 		tracker_->set_ratio(static_cast<double>(session_dled_byte_cnt_) / static_cast<double>(session_uled_byte_cnt_));
 
@@ -673,8 +673,7 @@ bool Peer_wire_client::write_to_disk(const QByteArray & received_piece, const st
 		auto & [file_handle, file_dled_byte_cnt] = file_handles_[file_handle_idx];
 		file_handle->seek(written_byte_cnt ? 0 : beg_file_offset);
 
-		const auto to_write_byte_cnt =
-		    std::min(received_piece.size() - written_byte_cnt, written_byte_cnt ? file_size(file_handle_idx) : beg_file_byte_cnt);
+		const auto to_write_byte_cnt = std::min(received_piece.size() - written_byte_cnt, written_byte_cnt ? file_size(file_handle_idx) : beg_file_byte_cnt);
 
 		assert(to_write_byte_cnt > 0);
 		assert(file_handle->pos() + to_write_byte_cnt <= file_size(file_handle_idx));
@@ -1003,7 +1002,6 @@ void Peer_wire_client::on_block_received(Tcp_socket * const socket, const QByteA
 	std::ranges::move(received_block, piece_data.begin() + received_piece_offset);
 
 	if(++received_block_cnt == total_block_cnt) {
-
 		QTimer::singleShot(0, this, [this, received_piece_idx] { on_piece_downloaded(pieces_[received_piece_idx], received_piece_idx); });
 	}
 
@@ -1091,8 +1089,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket, co
 				constexpr std::int8_t ext_msg_id = 20;
 				constexpr std::int8_t handshake_msg_id = 0;
 
-				return convert_to_hex(handshake_size) + convert_to_hex(ext_msg_id) + convert_to_hex(handshake_msg_id) +
-					 QByteArray(extended_handshake_dict.data()).toHex();
+				return convert_to_hex(handshake_size) + convert_to_hex(ext_msg_id) + convert_to_hex(handshake_msg_id) + QByteArray(extended_handshake_dict.data()).toHex();
 			}();
 
 			socket->send_packet(extended_handshake);
@@ -1106,6 +1103,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket, co
 	});
 
 	connect(this, &Peer_wire_client::send_requests, socket, [this, socket] {
+
 		if(socket->state() != Tcp_socket::SocketState::ConnectedState || socket->peer_bitfield.isEmpty() || target_piece_idxes_.isEmpty()) {
 			return;
 		}
@@ -1182,8 +1180,7 @@ void Peer_wire_client::on_handshake_reply_received(Tcp_socket * const socket, co
 
 template<Peer_wire_client::Message_Id msg_id>
 QByteArray Peer_wire_client::craft_generic_message(const util::Packet_metadata packet_metadata) noexcept {
-	static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel,
-			  "Only valid for Message_Id::[Reject_Request,Cancel,Request]");
+	static_assert(msg_id == Message_Id::Reject_Request || msg_id == Message_Id::Request || msg_id == Message_Id::Cancel, "Only valid for Message_Id::[Reject_Request,Cancel,Request]");
 
 	using util::conversion::convert_to_hex;
 
