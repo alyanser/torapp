@@ -1,6 +1,5 @@
 <p align="center"><img src="https://raw.githubusercontent.com/alyanser/torapp/master/resources/app_icon.png" height="240" width="240"></p>
-A torrent client (no it doesn't use tor. bad name i know)<br><br>
-
+<h2> Torapp — A Torrent Client</h2>
 
 <b>Build:</b>
 <pre>
@@ -17,6 +16,7 @@ cmake --build build
 Support for TCP trackers
 Ability to choose which files to target first / file priorities
 Making the visuals less ugly
+Migrate to QML (?)
 </pre>
 
 <b>Preview:</b><br>
