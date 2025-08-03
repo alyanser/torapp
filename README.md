@@ -1,5 +1,5 @@
 <p align="center"><img src="https://raw.githubusercontent.com/alyanser/torapp/master/resources/app_icon.png" height="240" width="240"></p>
-<h2> Torapp — A Torrent Client</h2>
+<h2> Torapp — A BitTorrent Client</h2>
 
 <b>Build:</b>
 <pre>
