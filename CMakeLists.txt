@@ -43,7 +43,6 @@ Set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
          bencode-parser
          GIT_REPOSITORY "https://github.com/alyanser/bencode-parser.git"
-         GIT_TAG "2a46234921892899d571b9c002cdea99b28d38f1"
          GIT_SHALLOW TRUE
          GIT_PROGRESS TRUE
 )
