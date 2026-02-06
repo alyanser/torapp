@@ -412,10 +412,6 @@ std::optional<std::pair<QByteArray, QByteArray>> Peer_wire_client::verify_handsh
 		return {};
 	}
 
-	if(reply.size() > 10) {
-		qDebug() << "reply has more size than you think so please abort it";
-	}
-
 	{
 		const auto protocol_label_len = [&reply] {
 			constexpr auto protocol_label_len_offset = 0;
